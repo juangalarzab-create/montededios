@@ -40,15 +40,22 @@ const firebaseConfig = {
 const VAPID_KEY = "BMCg-0sYXWYU6QqDLecHLCmBkzTvAWEk8CuhXjedqxqVVIprBxanVrACQUBRnPpEt2vqJlM-vzlchH5ER2kdELo";
 // ══════════════════════════════════════════════════════════════════════════════
 
-const app  = initializeApp(firebaseConfig);
-const db   = getDatabase(app);
-let messaging;
-try { messaging = getMessaging(app); } catch(e) {}
+try {
+  const app  = initializeApp(firebaseConfig);
+  const db   = getDatabase(app);
+  let messaging = null;
+  try { messaging = getMessaging(app); } catch(e) { console.warn('FCM no disponible:', e.message); }
 
-// Exponer al scope global para usar desde el JS clásico
-window._fb = { db, ref, onValue, set, push, update, remove, serverTimestamp, messaging, getToken, onMessage, VAPID_KEY };
-window._fbReady = true;
-window.dispatchEvent(new Event('fbready'));
+  // Exponer al scope global para usar desde el JS clásico
+  window._fb = { db, ref, onValue, set, push, update, remove, serverTimestamp, messaging, getToken, onMessage, VAPID_KEY };
+  window._fbReady = true;
+  window.dispatchEvent(new Event('fbready'));
+} catch(e) {
+  console.error('Firebase init error:', e.message);
+  // Signal failure so app falls back to demo mode clearly
+  window._fbReady = false;
+  window.dispatchEvent(new Event('fbready'));
+}
 </script>
 
 <style>
@@ -960,11 +967,19 @@ const fmtTime = ts => {
 // FIREBASE / DEMO MODE
 // ══════════════════════════════════════════════════════════════════════════════
 function initApp() {
-  if(window._fbReady) {
+  if(window._fbReady === true) {
     setupFirebase();
+  } else if(window._fbReady === false) {
+    // Firebase init failed
+    startDemoMode();
   } else {
-    window.addEventListener('fbready', setupFirebase, {once:true});
-    setTimeout(()=>{ if(!fbReady) startDemoMode(); }, 3000);
+    // Still loading
+    window.addEventListener('fbready', () => {
+      if(window._fbReady === true) setupFirebase();
+      else startDemoMode();
+    }, {once:true});
+    // Longer timeout for slow connections (GitHub Pages can be slow)
+    setTimeout(()=>{ if(!fbReady) startDemoMode(); }, 8000);
   }
 }
 
