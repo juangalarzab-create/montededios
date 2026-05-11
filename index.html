@@ -1011,6 +1011,20 @@ function setupFirebase() {
   onValue(ref(db,'config'),   snap => { if(snap.val()) config = {...config,...snap.val()}; });
   // Listen to users for cross-device login
   onValue(ref(db,'users'), snap => { window._fbUsers = snap.val() || {}; });
+  // Listen to songs (main data listener)
+  onValue(ref(db,'songs'), snap => {
+    const incoming = snap.val() || {};
+    // Preserve any pending local selected states that haven't saved yet
+    Object.keys(incoming).forEach(id => {
+      if(songs[id] && songs[id]._pendingSelected !== undefined) {
+        incoming[id].selected = songs[id]._pendingSelected;
+      }
+    });
+    songs = incoming;
+    renderProfileSongs();
+    renderSongsList();
+    if(selEv && events[selEv]) renderNextEventHero(events[selEv]);
+  });
 
   // ── Notificaciones en tiempo real para todos los cambios ──────────────────
   let _firstLoadEvents = true, _firstLoadMusicians = true, _firstLoadSongs = true;
@@ -1040,36 +1054,27 @@ function setupFirebase() {
     }
   });
 
+  // Songs notifications only (data is handled by main listener above)
+  // This secondary listener just fires push notifications on changes
+  let _prevSongCount = 0;
   onValue(ref(db,'songs'), snap => {
-    if(_firstLoadSongs){ _firstLoadSongs=false; return; }
     const newSongs = snap.val() || {};
     const newCount = Object.keys(newSongs).length;
-    const oldCount = Object.keys(songs).length;
-    if(newCount > oldCount) {
+    if(_prevSongCount > 0 && newCount > _prevSongCount) {
       const newId = Object.keys(newSongs).find(k=>!songs[k]);
       const s = newId ? newSongs[newId] : null;
       if(s) pushNotif('🎵 Nuevo tema', `"${s.title}" subido por ${s.ownerName||'alguien'}`);
     }
-    // Check selected changes (star toggle)
-    Object.values(newSongs).forEach(s => {
-      const old = songs[s.id];
-      if(old && old.selected !== s.selected) {
-        renderEL(); // refresh hero songs
-      }
-    });
+    _prevSongCount = newCount;
   });
-  // Listen to songs
-  onValue(ref(db,'songs'), snap => {
-    songs = snap.val() || {};
-    renderSongsList();
-    if(document.getElementById('modal-profile')?.classList.contains('hidden')===false) {
-      renderProfileSongs();
-    }
-  });
+  // (songs already handled by main listener above)
 
   setRTIndicator('live');
+  // Hide demo banner — we are connected
+  const banner = document.getElementById('fb-banner');
+  if(banner) banner.classList.remove('show');
   setupFCM();
-  setTimeout(syncDemoAdminToFirebase, 2000); // sync admin to Firebase
+  setTimeout(syncDemoAdminToFirebase, 2000);
 }
 
 function startDemoMode() {
@@ -1106,6 +1111,9 @@ function setRTIndicator(state) {
   const lbl = document.getElementById('rt-label');
   dot.className = 'rt-dot ' + state;
   lbl.textContent = state==='live'?'en vivo':state==='demo'?'demo':'offline';
+  // Hide demo banner when actually connected
+  const banner = document.getElementById('fb-banner');
+  if(banner) banner.style.display = state==='live' ? 'none' : '';
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1200,12 +1208,37 @@ function sendPushNotification(msg) {
   }
 }
 
+// Notification sound (simple beep via Web Audio API)
+function playNotifSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine'; osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+    setTimeout(() => ctx.close(), 500);
+  } catch(e) {}
+}
+
 function pushNotif(title, body) {
-  // In-app toast always
+  // In-app toast
   toast(`${title}: ${body}`, 'info');
-  // System notification if permitted
+  // Sound
+  playNotifSound();
+  // System notification (works when app is open or in background if SW registered)
   if('Notification' in window && Notification.permission === 'granted') {
-    new Notification(title, { body, icon:'icon-192.png', badge:'icon-192.png', vibrate:[200,100,200] });
+    const n = new Notification(title, {
+      body, icon:'icon-192.png', badge:'icon-192.png',
+      vibrate:[200,100,200,100,200],
+      tag: 'montededios-' + Date.now(),
+      requireInteraction: false
+    });
+    // Click on notification opens/focuses the app
+    n.onclick = () => { window.focus(); n.close(); };
   }
 }
 
@@ -1362,10 +1395,13 @@ function renderNextEventHero(ev) {
       }).join('')
     : '<span style="font-size:11px;color:var(--muted);">Sin encargados</span>';
 
+  // Find Voz Principal: by explicit role, or first Cantante/Voz
   const vozP = assignees.find(a => a.rolEvento === 'Voz Principal')
-             || assignees.find(a => a.role === 'Cantante');
-  const heroSongs = vozP
-    ? Object.values(songs).filter(s => s.ownerId === vozP.musId && s.selected)
+             || assignees.find(a => a.cargo === 'Voz' || a.role === 'Cantante');
+  // Match songs by musId OR by id (some assignees store id directly)
+  const vozId = vozP?.musId || vozP?.id;
+  const heroSongs = vozId
+    ? Object.values(songs).filter(s => (s.ownerId === vozId) && s.selected === true)
     : [];
   const songsList = heroSongs.length
     ? heroSongs.map(s => `
@@ -1833,16 +1869,24 @@ async function saveME(id) {
 async function askDelM(id) {
   const m = musicians[id]; if(!m) return;
   const usedIn = Object.values(events).filter(e=>e.assignees?.[id]).length;
+  const isUser = !!(window._fbUsers?.[id]); // is a registered user
   showConfirm(`¿Eliminar a ${m.name}?`,
-    usedIn>0?`Está asignado en ${usedIn} evento(s).`:'Esta acción no se puede deshacer.',
+    `${isUser?'Se borrarán todos sus datos (canciones, perfil, etc.). ':''}`
+    + (usedIn>0?`Asignado en ${usedIn} evento(s). `:'')
+    + 'Esta acción no se puede deshacer.',
     async ()=>{
-      await fbRemove(`musicians/${id}`);
-      // Remove from events
-      for(const [evId] of Object.entries(events)) {
-        await fbRemove(`events/${evId}/assignees/${id}`);
+      // Delete all their songs
+      const theirSongs = Object.keys(songs).filter(sid => songs[sid].ownerId === id);
+      for(const sid of theirSongs) { await fbRemove(`songs/${sid}`); }
+      // Remove from all events assignees
+      for(const [evId, ev] of Object.entries(events)) {
+        if(ev.assignees?.[id]) await fbRemove(`events/${evId}/assignees/${id}`);
       }
-      await logActivity('musician','🗑️',`Artista "${m.name}" eliminado`);
-      toast(`${m.name} eliminado`,'warning');
+      // Remove from musicians, users, fcmTokens by scanning
+      await fbRemove(`musicians/${id}`);
+      await fbRemove(`users/${id}`);
+      await logActivity('musician','🗑️',`Integrante "${m.name}" eliminado por admin`);
+      toast(`${m.name} eliminado completamente`,'warning');
     });
 }
 
@@ -2514,13 +2558,14 @@ async function finishRegister() {
   // 2. Save to Firebase users list (for login lookup across devices)
   await fbSet(`users/${id}`, {
     id, loginLabel, displayName, fullName: user.fullName,
-    cargo: regData.cargo, role,
+    cargo: regData.cargo, role, bday: regData.bday,
     pass: user.pass, createdAt: Date.now()
   });
   await logActivity('musician','🎤',`Nuevo integrante: "${user.fullName}" (${regData.cargo})`);
-  // 3. Save locally
+  // 3. Save locally + session
   localStorage.setItem('mdios_user', JSON.stringify(user));
   localStorage.setItem('mdios_uid', id);
+  sessionStorage.setItem('mdios_session', '1');
   currentUser = user;
   // Show success then enter
   showRegSuccess(user, ()=>{
@@ -2546,6 +2591,29 @@ function showRegSuccess(user, cb) {
   setTimeout(cb, 1800);
 }
 
+// Pull full user data from Firebase after login (bday, availDates, etc.)
+async function enrichUserFromFirebase(uid) {
+  if(!fbReady || !uid) return;
+  try {
+    // Get musician record (has bday, unavailDates)
+    const mRec = musicians[uid];
+    if(mRec && currentUser) {
+      if(mRec.bday && !currentUser.bday)        currentUser.bday      = mRec.bday;
+      if(mRec.unavailDates)                      currentUser.unavailDates = mRec.unavailDates;
+      if(mRec.displayName && !currentUser.displayName) currentUser.displayName = mRec.displayName;
+      localStorage.setItem('mdios_user', JSON.stringify(currentUser));
+    }
+    // Also get from users path
+    const { db, ref, get } = window._fb;
+    const snap = await get(ref(db, `users/${uid}`));
+    if(snap.exists() && currentUser) {
+      const fbUser = snap.val();
+      if(fbUser.bday && !currentUser.bday) currentUser.bday = fbUser.bday;
+      localStorage.setItem('mdios_user', JSON.stringify(currentUser));
+    }
+  } catch(e) { console.warn('enrichUser:', e); }
+}
+
 function doLogin() {
   const nameInp = (document.getElementById('login-name-inp')?.value || '').trim().toLowerCase();
   const passInp =  document.getElementById('login-pass-inp')?.value || '';
@@ -2557,10 +2625,12 @@ function doLogin() {
   function enterApp(u) {
     currentUser = u;
     localStorage.setItem('mdios_user', JSON.stringify(u));
+    sessionStorage.setItem('mdios_session', '1'); // mark active session
     hideRegister();
     updateUserUI();
     if(err) err.style.display='none';
     toast(`¡Hola, ${u.nombres}! 👋`, 'success');
+    enrichUserFromFirebase(u.id);
     setTimeout(startReminderEngine, 500);
   }
 
@@ -2700,14 +2770,21 @@ function clearSavedUser() {
 }
 
 function checkAutoLogin() {
+  // Check IndexedDB-backed session first (more persistent than localStorage)
   const saved = localStorage.getItem('mdios_user');
-  if(saved) {
+  const session = sessionStorage.getItem('mdios_session'); // active session flag
+  if(saved && session) {
+    // Active session — enter directly without showing register
     try {
-      // Don't auto-enter — show login screen with pre-filled name
-      buildLoginSection();
-      return false; // always show register screen, but with login pre-filled
+      const u = JSON.parse(saved);
+      currentUser = u;
+      hideRegister();
+      updateUserUI();
+      setTimeout(startReminderEngine, 800);
+      return true;
     } catch(e) {}
   }
+  // No active session — show login with pre-filled name if saved
   buildLoginSection();
   return false;
 }
@@ -2741,19 +2818,35 @@ function renderProfileModal() {
   const unavailEntries = Object.entries(mRecord.unavailDates||{}).sort((a,b)=>a[1].localeCompare(b[1]));
   const mySongs = Object.values(songs).filter(s=>s.ownerId===u.id);
   const songRows = mySongs.length ? mySongs.map(s=>`
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:9px;
-      padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+    <div data-song-row="${s.id}"
+      style="background:${s.selected?'rgba(240,180,41,.06)':'var(--surface)'};
+        border:1px solid ${s.selected?'var(--accent)':'var(--border)'};
+        border-radius:9px;padding:9px 12px;display:flex;align-items:center;
+        justify-content:space-between;gap:8px;margin-bottom:6px;
+        transition:border-color .2s,background .2s;">
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;font-size:13px;">${s.title} <span class="song-tono">${s.tono||''}</span></div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${s.selected?'⭐ En mi lista':'☆ No en lista'}</div>
+        <div style="font-weight:600;font-size:13px;">${s.title}
+          ${s.tono?`<span class="song-tono">${s.tono}</span>`:''}
+          ${s.bpm?`<span style="background:rgba(92,168,224,.12);color:var(--info);border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700;">${s.bpm} BPM</span>`:''}
+        </div>
+        <div data-song-label="${s.id}" style="font-size:11px;margin-top:2px;color:${s.selected?'var(--success)':'var(--muted)'};">
+          ${s.selected?'✅ <strong>En mi lista</strong>':'☆ No en lista'}
+        </div>
       </div>
-      <div style="display:flex;gap:5px;flex-shrink:0;">
-        <button class="btn btn-ghost btn-sm" onclick="toggleSongSelected('${s.id}')"
-          style="font-size:11px;padding:4px 8px;" title="${s.selected?'Quitar de lista':'Poner en lista'}">${s.selected?'⭐':'☆'}</button>
+      <div style="display:flex;gap:5px;align-items:center;flex-shrink:0;">
+        <button class="btn btn-ghost btn-sm"
+          data-song-id="${s.id}"
+          onclick="toggleSongSelected('${s.id}')"
+          style="font-size:18px;padding:4px 10px;min-width:40px;
+            background:${s.selected?'rgba(240,180,41,.2)':'transparent'};
+            border-color:${s.selected?'var(--accent)':''};"
+          title="${s.selected?'Quitar de lista':'Agregar a lista'}">
+          ${s.selected?'⭐':'<span style="opacity:.3;">☆</span>'}
+        </button>
         <button class="btn btn-danger btn-sm" onclick="deleteSong('${s.id}')"
           style="font-size:11px;padding:4px 8px;">🗑</button>
       </div>
-    </div>`).join('') : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Sin temas subidos aún</div>';
+    </div>`).join('') : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Sin temas subidos aún — toca ＋ Subir tema</div>';
 
   const unavailHtml = unavailEntries.length
     ? unavailEntries.map(([key,date])=>`
@@ -3114,8 +3207,18 @@ function toggleSongSelected(songId) {
   toast(s.selected ? `⭐ "${s.title}" en tu lista` : `☆ "${s.title}" quitado`,
         s.selected ? 'success' : 'warning');
 
-  // ── 4. Save to Firebase in background (no await = no UI block) ────────────
-  fbSet(`songs/${songId}/selected`, s.selected).catch(()=>{});
+  // ── 4. Mark as pending then save to Firebase ────────────────────────────
+  // _pendingSelected prevents Firebase listener from overwriting before save confirms
+  songs[songId]._pendingSelected = s.selected;
+  fbSet(`songs/${songId}/selected`, s.selected)
+    .then(() => { delete songs[songId]._pendingSelected; })
+    .catch(() => {
+      // Rollback on error
+      s.selected = !s.selected;
+      songs[songId] = s;
+      delete songs[songId]._pendingSelected;
+      renderProfileSongs();
+    });
   logActivity('song', s.selected?'⭐':'☆',
     `"${currentUser?.fullName}" ${s.selected?'agregó':'quitó'} "${s.title}" de su lista`
   ).catch(()=>{});
@@ -3374,23 +3477,62 @@ function showChangePass() {
 }
 
 async function logoutUser() {
-  if(!confirm('¿Cerrar sesión? Tu perfil se eliminará de la lista del ministerio hasta que vuelvas a ingresar.')) return;
-  const uid = currentUser?.id;
+  if(!confirm('¿Cerrar sesión? Se borrarán todos tus datos locales.')) return;
+  const uid  = currentUser?.id;
   const name = currentUser?.fullName;
-  // Remove from Firebase musicians list
+
   if(uid && uid !== 'demo-admin-001') {
+    // Delete user's songs from Firebase
+    const userSongs = Object.keys(songs).filter(sid => songs[sid].ownerId === uid);
+    for(const sid of userSongs) { await fbRemove(`songs/${sid}`); }
+    // Remove from musicians and users
     await fbRemove(`musicians/${uid}`);
-    await logActivity('musician','👋',`"${name}" cerró sesión y salió del ministerio`);
+    await fbRemove(`users/${uid}`);
+    await logActivity('musician','👋',`"${name}" cerró sesión`);
   }
+
+  // Clear ALL local data for this user
+  localStorage.removeItem('mdios_user');
+  localStorage.removeItem('mdios_uid');
+  localStorage.removeItem('gm_songs');
+  localStorage.removeItem('gm_ev');
+  localStorage.removeItem('gm_mu');
+  localStorage.removeItem('gm_ac');
+  sessionStorage.removeItem('mdios_session');
+
   currentUser = null; isAdmin = false;
-  // Keep localStorage for next login
+  songs = {}; // clear in-memory songs
+
   document.getElementById('role-btn').textContent='👤 Invitado';
   document.getElementById('role-btn').className='role-pill viewer';
   updateAdminUI();
-  buildLoginSection();
+  renderSongsList();
+  renderProfileSongs();
+
+  // Immediately show register screen
   const scr = document.getElementById('register-screen');
+  // Reset to step 1
+  document.querySelectorAll('.reg-step').forEach(s=>s.classList.remove('active'));
+  document.getElementById('reg-step-1')?.classList.add('active');
+  ['sd1','sd2','sd3'].forEach((id,i)=>{ const el=document.getElementById(id); if(el) el.classList.toggle('done',i===0); });
   scr.style.display='flex';
   scr.style.opacity='1';
+  // Rebuild login section without pre-filled name (user logged out)
+  const sec = document.getElementById('reg-login-section');
+  if(sec) sec.innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">¿Ya tienes perfil? Ingresa aquí</div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:16px;max-width:320px;margin:0 auto;">
+      <div style="margin-bottom:8px;">
+        <label style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:4px;">Nombre de perfil</label>
+        <input type="text" id="login-name-inp" placeholder="Ej: AdminLider" style="width:100%;" onkeydown="if(event.key==='Enter')document.getElementById('login-pass-inp').focus()">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:4px;">Contraseña</label>
+        <input type="password" id="login-pass-inp" placeholder="••••••" style="width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="doLogin()">→ Ingresar</button>
+      <div id="login-err" style="font-size:11px;color:var(--danger);margin-top:8px;display:none;text-align:center;"></div>
+    </div>`;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
