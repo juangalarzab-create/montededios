@@ -71,16 +71,31 @@ self.addEventListener('push', event => {
 // ── NOTIFICATION CLICK ─────────────────────────────────────────────────────
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const url = event.notification.data?.url || '/';
+  const url = event.notification.data?.url || self.registration.scope;
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then(clientList => {
         // Focus existing window if open
         for (const client of clientList) {
-          if (client.url === url && 'focus' in client) return client.focus();
+          if ('focus' in client) return client.focus();
         }
-        // Otherwise open new window
+        // Otherwise open new window to the app
         if (clients.openWindow) return clients.openWindow(url);
       })
+  );
+});
+
+// ── PUSH — background notifications with sound via notification API ─────────
+self.addEventListener('push', event => {
+  const data = event.data ? event.data.json().catch(()=>({})) : {};
+  const title = data.title || 'Monte de Dios';
+  const body  = data.body  || 'Hay cambios en el ministerio';
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body, icon: 'icon-192.png', badge: 'icon-192.png',
+      vibrate: [200, 100, 200, 100, 200],
+      tag: 'montededios',
+      data: { url: self.registration.scope }
+    })
   );
 });
