@@ -1019,8 +1019,41 @@ function setupFirebase() {
   }
 
   // Listen to all data
-  onValue(ref(db,'events'),   snap => { events    = snap.val() || {}; renderEL(); updateStats(); if(selEv && document.getElementById('modal-ev-detail')?.classList.contains('hidden')===false) { const ev=events[selEv]; if(ev) renderDetail(ev); } });
-  onValue(ref(db,'musicians'),snap => { musicians = snap.val() || {}; renderMT(); updateStats(); });
+  onValue(ref(db,'events'),   snap => {
+    events = snap.val() || {};
+    renderEL(); // renders list + hero (songs may not be loaded yet, hero will refresh when songs arrive)
+    updateStats();
+    if(selEv && !document.getElementById('modal-ev-detail')?.classList.contains('hidden')) {
+      const ev=events[selEv]; if(ev) renderDetail(ev);
+    }
+  });
+  onValue(ref(db,'musicians'), snap => {
+    musicians = snap.val() || {};
+    renderMT(); updateStats();
+    // If current user was deleted by admin → kick them out immediately
+    if(currentUser && currentUser.id !== 'demo-admin-001' && !musicians[currentUser.id]) {
+      toast('Tu cuenta fue eliminada por el administrador','error');
+      setTimeout(async () => {
+        // Clear all local data
+        localStorage.removeItem('mdios_user');
+        localStorage.removeItem('mdios_uid');
+        sessionStorage.removeItem('mdios_session');
+        currentUser = null; isAdmin = false; songs = {};
+        // Show register screen
+        document.getElementById('role-btn').textContent = '👤 Invitado';
+        document.getElementById('role-btn').className = 'role-pill viewer';
+        updateAdminUI();
+        document.querySelectorAll('.reg-step').forEach(s=>s.classList.remove('active'));
+        document.getElementById('reg-step-1')?.classList.add('active');
+        ['sd1','sd2','sd3'].forEach((id,i)=>{
+          const el=document.getElementById(id); if(el) el.classList.toggle('done',i===0);
+        });
+        buildLoginSection(); // show login with empty fields (user was deleted)
+        const scr = document.getElementById('register-screen');
+        scr.style.display='flex'; scr.style.opacity='1';
+      }, 1500);
+    }
+  });
   onValue(ref(db,'activity'), snap => {
     const raw = snap.val() || {};
     activity = Object.values(raw).sort((a,b)=>b.ts-a.ts).slice(0,50);
@@ -1077,13 +1110,25 @@ function setupFirebase() {
       }
     });
   });
-  // Listen to songs
+  // Listen to songs — refresh everything including hero
   onValue(ref(db,'songs'), snap => {
-    songs = snap.val() || {};
+    const incoming = snap.val() || {};
+    // Preserve pending local selected states
+    Object.keys(incoming).forEach(id => {
+      if(songs[id] && songs[id]._pendingSelected !== undefined) {
+        incoming[id].selected = songs[id]._pendingSelected;
+      }
+    });
+    songs = incoming;
     renderSongsList();
-    if(document.getElementById('modal-profile')?.classList.contains('hidden')===false) {
+    if(!document.getElementById('modal-profile')?.classList.contains('hidden')) {
       renderProfileSongs();
     }
+    // Always refresh hero with the nearest upcoming event
+    const _td = today();
+    const _evArr = Object.values(events).sort((a,b)=>a.date.localeCompare(b.date));
+    const _next  = _evArr.find(e=>e.date>=_td) || _evArr[0];
+    if(_next) renderNextEventHero(_next);
   });
 
   setRTIndicator('live');
@@ -1111,6 +1156,11 @@ function startDemoMode() {
   const ls = localStorage.getItem('gm_songs');
   if(ls) songs = JSON.parse(ls);
   renderEL(); updateStats(); renderMT(); renderSongsList();
+  // Render hero after demo data loaded
+  const _td2 = today();
+  const _evArr2 = Object.values(events).sort((a,b)=>a.date.localeCompare(b.date));
+  const _next2  = _evArr2.find(e=>e.date>=_td2) || _evArr2[0];
+  if(_next2) setTimeout(()=>renderNextEventHero(_next2), 100);
   // Don't auto-open first event on load — user picks from list
 }
 
@@ -1379,46 +1429,60 @@ function renderNextEventHero(ev) {
   if(!hero) return;
   if(!ev) { hero.style.display='none'; return; }
   hero.style.display = 'block';
+
   const td = today();
-  const isToday = ev.date === td;
+  const isToday  = ev.date === td;
   const assignees = ev.assignees ? Object.values(ev.assignees) : [];
 
-  // Role abbreviations
+  // ── Role abbreviations ────────────────────────────────────────────────────
   const SIGLAS = {
     'Voz Principal':'VP','Voz':'VOZ','Cantante':'VOZ','Coros':'COR','Coros 2':'COR2',
     'Director':'DIR','Guitarrista':'GTR','Tecladista':'TCL','Bajista':'BJO',
     'Baterista':'BAT','Percusionista':'PER','Trompetista':'TRP','Saxofonista':'SAX',
     'Violinista':'VLN','Violonchelista':'VLC','Flautista':'FLT','Músico':'MUS','Líder':'LDR'
   };
-  function getSigla(a) { return SIGLAS[a.rolEvento] || SIGLAS[a.role] || (a.role||'').slice(0,3).toUpperCase(); }
+  const getSigla = a => SIGLAS[a.rolEvento] || SIGLAS[a.role] || (a.role||'').slice(0,3).toUpperCase();
 
+  // ── Encargados con siglas ─────────────────────────────────────────────────
   const peoplePills = assignees.length
     ? assignees.map(a => {
-        const color = rc(a.role||'');
+        const color   = rc(a.role||'');
         const initials = a.name.split(' ').map(w=>w[0]).slice(0,2).join('');
-        const sigla = getSigla(a);
+        const sigla   = getSigla(a);
         return `<div class="ev-hero-person">
           <div class="av" style="background:${color}22;color:${color};">${initials}</div>
           <span class="nm">${a.name.split(' ')[0]}</span>
-          <span style="font-size:9px;font-weight:700;color:${color};opacity:.8;">· ${sigla}</span>
+          <span style="font-size:9px;font-weight:700;color:${color};opacity:.9;">· ${sigla}</span>
         </div>`;
       }).join('')
-    : '<span style="font-size:11px;color:var(--muted);">Sin encargados</span>';
+    : '<span style="font-size:11px;color:var(--muted);">Sin encargados asignados</span>';
 
+  // ── Voz Principal → sus temas elegidos ───────────────────────────────────
   const vozP = assignees.find(a => a.rolEvento === 'Voz Principal')
-             || assignees.find(a => a.role === 'Cantante');
-  const heroSongs = vozP
-    ? Object.values(songs).filter(s => s.ownerId === vozP.musId && s.selected)
+             || assignees.find(a => a.cargo === 'Voz' || a.role === 'Cantante');
+  const vozId = vozP ? (vozP.musId || vozP.id) : null;
+
+  // Match by ownerId, then by ownerName as fallback
+  const allSongs = Object.values(songs);
+  let heroSongs = vozId
+    ? allSongs.filter(s => s.ownerId === vozId && s.selected === true)
     : [];
-  const songsList = heroSongsFinal.length
-    ? heroSongsFinal.map(s => `
+  if(!heroSongs.length && vozP) {
+    heroSongs = allSongs.filter(s => s.ownerName === vozP.name && s.selected === true);
+  }
+
+  const songsList = heroSongs.length
+    ? heroSongs.map(s => `
         <div class="ev-hero-song">
           <span class="st">🎵 ${s.title}</span>
           ${s.tono ? `<span class="tag tono-tag">${s.tono}</span>` : ''}
           ${s.bpm  ? `<span class="tag bpm-tag">${s.bpm} BPM</span>` : ''}
         </div>`).join('')
-    : '<span style="font-size:11px;color:var(--muted);">Sin temas en lista aún</span>';
+    : `<span style="font-size:11px;color:var(--muted);">${
+        vozP ? `${vozP.name.split(' ')[0]} no tiene temas elegidos aún` : 'Sin voz principal asignada'
+      }</span>`;
 
+  // ── Render ────────────────────────────────────────────────────────────────
   hero.innerHTML = `
     <div class="ev-hero" onclick="openEvDetailModal('${ev.id}')">
       <div class="ev-hero-header">
@@ -1435,7 +1499,7 @@ function renderNextEventHero(ev) {
         <div class="ev-hero-people">${peoplePills}</div>
       </div>
       <div class="ev-hero-section">
-        <div class="ev-hero-sec-title">🎤 Temas${vozP ? ' — ' + vozP.name.split(' ')[0] : ''}</div>
+        <div class="ev-hero-sec-title">🎤 Temas — ${vozP ? vozP.name.split(' ')[0] : 'Voz Principal'}</div>
         <div class="ev-hero-songs">${songsList}</div>
       </div>
     </div>`;
@@ -2026,236 +2090,245 @@ function exportCalendarPDF() {
 function _doExportCalendarPDF() {
   const {jsPDF} = window.jspdf;
 
-  // Group events by month
-  const byMonth = {};
-  Object.values(events).forEach(ev => {
-    const [y,m] = ev.date.split('-');
-    const key = `${y}-${m}`;
-    if(!byMonth[key]) byMonth[key] = [];
-    byMonth[key].push(ev);
-  });
+  // ── Get all upcoming events sorted by date ──────────────────────────────
+  const td = today();
+  const evList = Object.values(events)
+    .filter(ev => ev.date >= td)
+    .sort((a,b) => a.date.localeCompare(b.date));
 
-  const doc = new jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
-  const W=297, H=210;
-  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const days = ['LU','MA','MI','JU','VI','SA','DO'];
+  if(!evList.length) {
+    toast('No hay eventos próximos para exportar','warning');
+    return;
+  }
 
-  // ── App color palette ────────────────────────────────────────────────────
-  // Dark background: #0d0d0f = 13,13,15
-  // Surface:  #16161a = 22,22,26
-  // Surface2: #1e1e24 = 30,30,36
-  // Border:   #2a2a35 = 42,42,53
-  // Accent:   #f0b429 = 240,180,41
-  // Accent2:  #e05c2a = 224,92,42
-  // Text:     #f0ede8 = 240,237,232
-  // Muted:    #7a7a8a = 122,122,138
-  // Success:  #3ecf8e = 62,207,142
-  // Info:     #5ca8e0 = 92,168,224
-  const BG      = [13,13,15];
-  const SURF    = [22,22,26];
-  const SURF2   = [30,30,36];
-  const BORDER  = [42,42,53];
-  const ACCENT  = [240,180,41];
-  const ACCENT2 = [224,92,42];
-  const TEXT    = [240,237,232];
-  const MUTED   = [122,122,138];
-  const GREEN   = [62,207,142];
-  const BLUE    = [92,168,224];
-  const RED     = [224,92,92];
+  // ── Role helpers ──────────────────────────────────────────────────────────
+  const SIGLAS = {
+    'Voz Principal':'VP','Voz':'VOZ','Cantante':'VOZ','Coros':'COR','Coros 2':'COR2',
+    'Director':'DIR','Guitarrista':'GTR','Tecladista':'TCL','Bajista':'BJO',
+    'Baterista':'BAT','Percusionista':'PER','Trompetista':'TRP','Saxofonista':'SAX',
+    'Violinista':'VLN','Violonchelista':'VLC','Flautista':'FLT','Músico':'MUS','Líder':'LDR'
+  };
+  const getSigla = a => SIGLAS[a.rolEvento] || SIGLAS[a.role] || (a.role||'').slice(0,3).toUpperCase();
 
-  let firstPage = true;
-  Object.keys(byMonth).sort().forEach(monthKey => {
-    if(!firstPage) doc.addPage();
-    firstPage = false;
+  const months = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO',
+                  'JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+  const days   = ['DOMINGO','LUNES','MARTES','MIÉRCOLES','JUEVES','VIERNES','SÁBADO'];
 
-    const [year, month] = monthKey.split('-').map(Number);
-    const evList = byMonth[monthKey];
-    const monthName = months[month-1];
+  // ── Page setup — portrait A4 ───────────────────────────────────────────────
+  const doc = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  const W = 210, H = 297;
 
-    // ── Full dark background ─────────────────────────────────────────────
+  // ── Colors (matching the image) ────────────────────────────────────────────
+  const BG       = [10, 5, 15];        // very dark background
+  const CARD_L   = [100, 30, 80];      // left card — dark magenta
+  const CARD_R   = [70, 20, 100];      // right card — dark purple
+  const ACCENT   = [230, 150, 50];     // orange/gold
+  const WHITE    = [255, 255, 255];
+  const PINK     = [220, 100, 180];    // section title color
+  const MUTED    = [200, 180, 210];
+
+  // ── TITLE PAGE ─────────────────────────────────────────────────────────────
+  // Background
+  doc.setFillColor(...BG);
+  doc.rect(0, 0, W, H, 'F');
+
+  // Gradient-style background — layered rectangles
+  doc.setFillColor(60, 10, 60);
+  doc.rect(0, 0, W, H*0.4, 'F');
+  doc.setFillColor(30, 5, 40);
+  doc.rect(0, H*0.4, W, H*0.6, 'F');
+
+  // Decorative dots/circles
+  doc.setFillColor(120, 40, 100); doc.setDrawColor(120,40,100);
+  doc.circle(20, 30, 15, 'F');
+  doc.setFillColor(80, 20, 80);
+  doc.circle(190, 60, 20, 'F');
+  doc.setFillColor(100, 30, 90);
+  doc.circle(15, H-30, 18, 'F');
+  doc.setFillColor(70, 15, 70);
+  doc.circle(195, H-50, 25, 'F');
+
+  // Title
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(34);
+  doc.setTextColor(...WHITE);
+  doc.text('PRÓXIMOS', W/2, 60, {align:'center'});
+  doc.text('EVENTOS', W/2, 80, {align:'center'});
+
+  // Subtitle line
+  doc.setFillColor(...ACCENT);
+  doc.rect(W/2 - 30, 86, 60, 1.5, 'F');
+
+  // Count
+  doc.setFontSize(13);
+  doc.setTextColor(...MUTED);
+  doc.text(`${evList.length} evento${evList.length!==1?'s':''} próximo${evList.length!==1?'s':''}`, W/2, 96, {align:'center'});
+
+  // Footer
+  doc.setFontSize(11);
+  doc.setTextColor(...ACCENT);
+  doc.text('@Ministerio Monte De Dios.', W/2, H-15, {align:'center'});
+  doc.setFontSize(8);
+  doc.setTextColor(...MUTED);
+  doc.text(`Generado: ${new Date().toLocaleDateString('es-PE')}`, W/2, H-8, {align:'center'});
+
+  // ── EVENT CARDS (one per page after title) ─────────────────────────────────
+  evList.forEach((ev, idx) => {
+    doc.addPage();
+
+    // Background
     doc.setFillColor(...BG);
-    doc.rect(0,0,W,H,'F');
+    doc.rect(0, 0, W, H, 'F');
 
-    // ── Accent bar top ───────────────────────────────────────────────────
-    doc.setFillColor(...ACCENT);
-    doc.rect(0,0,W,1.5,'F');
+    // Bg gradient
+    doc.setFillColor(50, 8, 50);
+    doc.rect(0, 0, W, H, 'F');
 
-    // ── Header area ──────────────────────────────────────────────────────
-    doc.setFillColor(...SURF);
-    doc.rect(0,0,W,22,'F');
-    doc.setFillColor(...ACCENT);
-    doc.rect(0,0,3,22,'F'); // left accent stripe
+    // Decorative circles
+    doc.setFillColor(90, 25, 80); doc.circle(10, 20, 12, 'F');
+    doc.setFillColor(60, 10, 60); doc.circle(200, 40, 18, 'F');
+    doc.setFillColor(80, 15, 70); doc.circle(5,  H-20, 15, 'F');
+    doc.setFillColor(50, 8,  50); doc.circle(205, H-30, 22, 'F');
 
-    // Title
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(20);
-    doc.setTextColor(...TEXT);
-    doc.text(`${monthName} ${year}`, 14, 14);
+    const assignees = ev.assignees ? Object.values(ev.assignees) : [];
+    const vozP = assignees.find(a=>a.rolEvento==='Voz Principal')
+               || assignees.find(a=>a.cargo==='Voz'||a.role==='Cantante');
+    const voices  = assignees.filter(a=>a.role==='Cantante'||a.cargo==='Voz'||a.rolEvento?.includes('Voz')||a.rolEvento?.includes('Coro'));
+    const musicos = assignees.filter(a=>a.role!=='Cantante'&&a.cargo!=='Voz'&&!a.rolEvento?.includes('Voz')&&!a.rolEvento?.includes('Coro'));
 
-    // Subtitle right
-    doc.setFont('helvetica','normal');
-    doc.setFontSize(8);
-    doc.setTextColor(...MUTED);
-    doc.text('Monte de Dios — Calendario de Ministerio', W-8, 14, {align:'right'});
+    // ── Card container ──────────────────────────────────────────────────────
+    const cardY     = 22;
+    const cardH     = H - 50;
+    const cardW     = W - 20;
+    const cardX     = 10;
+    const halfW     = cardW / 2;
 
-    // ── Day header row ────────────────────────────────────────────────────
-    const startX  = 8;
-    const colW    = (W - startX*2) / 7;
-    const hdrY    = 22;
-    const hdrH    = 10;
-    doc.setFillColor(...SURF2);
-    doc.rect(startX, hdrY, colW*7, hdrH, 'F');
+    // Card left (event info) — rounded background
+    doc.setFillColor(...CARD_L);
+    doc.roundedRect(cardX, cardY, halfW - 2, cardH, 8, 8, 'F');
 
-    days.forEach((d, i) => {
-      const isWknd = i >= 5;
-      doc.setFont('helvetica','bold');
-      doc.setFontSize(8);
-      doc.setTextColor(...(isWknd ? ACCENT : MUTED));
-      doc.text(d, startX + i*colW + colW/2, hdrY+7, {align:'center'});
-    });
+    // Card right (people) — rounded background
+    doc.setFillColor(...CARD_R);
+    doc.roundedRect(cardX + halfW + 2, cardY, halfW - 2, cardH, 8, 8, 'F');
 
-    // ── Grid ─────────────────────────────────────────────────────────────
-    const gridY = hdrY + hdrH;
-    const gridH = H - gridY - 8;
-    const totalRows = 6; // support months starting on Sat/Sun needing 6 rows
-    const rowH  = gridH / totalRows;
+    // ── LEFT: Event info ────────────────────────────────────────────────────
+    const lx = cardX + 8;
+    let ly = cardY + 18;
 
-    // Cell backgrounds alternating
-    doc.setFillColor(...SURF);
-    doc.rect(startX, gridY, colW*7, rowH*totalRows, 'F');
+    // Day of week
+    const evDateObj = new Date(ev.date + 'T12:00:00');
+    const dayName   = days[evDateObj.getDay()];
+    const [ey,em,ed] = ev.date.split('-');
+    const dateStr   = `${dayName} ${parseInt(ed)} DE ${months[parseInt(em)-1]}`;
 
-    // Grid lines
-    doc.setDrawColor(...BORDER);
-    doc.setLineWidth(0.15);
-    for(let i=0;i<=7;i++){
-      doc.line(startX+i*colW, gridY, startX+i*colW, gridY+rowH*totalRows);
+    // 📅 Date
+    doc.setFontSize(9); doc.setTextColor(...ACCENT);
+    doc.text('📅', lx, ly); ly += 1;
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(...WHITE);
+    const dateParts = doc.splitTextToSize(dateStr, halfW - 20);
+    doc.text(dateParts, lx + 8, ly);
+    ly += dateParts.length * 6 + 4;
+
+    // 📍 Venue
+    if(ev.venue) {
+      doc.setFontSize(9); doc.setTextColor(...ACCENT);
+      doc.text('📍', lx, ly); ly += 1;
+      doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(...WHITE);
+      const venueParts = doc.splitTextToSize(ev.venue.toUpperCase(), halfW - 20);
+      doc.text(venueParts, lx + 8, ly);
+      ly += venueParts.length * 6 + 4;
     }
-    for(let i=0;i<=totalRows;i++){
-      doc.line(startX, gridY+i*rowH, startX+colW*7, gridY+i*rowH);
+
+    // ⏰ Time
+    if(ev.time) {
+      doc.setFontSize(9); doc.setTextColor(...ACCENT);
+      doc.text('⏰', lx, ly); ly += 1;
+      doc.setFont('helvetica','normal'); doc.setFontSize(13); doc.setTextColor(...WHITE);
+      doc.text(`Hora: ${ev.time}`, lx + 8, ly);
+      ly += 9;
     }
 
-    // ── Fill days ─────────────────────────────────────────────────────────
-    const firstDay   = new Date(year, month-1, 1).getDay();
-    const startOff   = firstDay === 0 ? 6 : firstDay - 1;
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const todayStr   = new Date().toISOString().split('T')[0];
+    // Event name at bottom of left card
+    const evNameY = cardY + cardH - 18;
+    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(...ACCENT);
+    const titleParts = doc.splitTextToSize(ev.title.toUpperCase(), halfW - 16);
+    doc.text(titleParts, lx, evNameY);
 
-    const evByDay = {};
-    evList.forEach(ev => {
-      const d = parseInt(ev.date.split('-')[2]);
-      if(!evByDay[d]) evByDay[d] = [];
-      evByDay[d].push(ev);
-    });
+    // ── RIGHT: People ────────────────────────────────────────────────────────
+    const rx = cardX + halfW + 10;
+    let ry = cardY + 12;
 
-    for(let day=1; day<=daysInMonth; day++){
-      const cell  = day - 1 + startOff;
-      const row   = Math.floor(cell / 7);
-      const col   = cell % 7;
-      const cx    = startX + col * colW;
-      const cy    = gridY  + row * rowH;
-      const isWknd = col >= 5;
-      const dayStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-      const isToday = dayStr === todayStr;
+    // Voz principal name as header
+    if(vozP) {
+      doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(...WHITE);
+      const vpName = vozP.name.toUpperCase();
+      doc.text(vpName, rx, ry, {maxWidth: halfW - 14}); ry += 8;
+      // Underline
+      doc.setDrawColor(...ACCENT); doc.setLineWidth(0.5);
+      doc.line(rx, ry - 2, rx + doc.getTextWidth(vpName.slice(0,18)), ry - 2);
+      ry += 4;
+    } else {
+      ry += 8;
+    }
 
-      // Highlight today cell
-      if(isToday){
+    // ── VOCES column ─────────────────────────────────────────────────────────
+    if(voices.length) {
+      doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...WHITE);
+      doc.text('VOCES', rx, ry); ry += 7;
+
+      voices.forEach(a => {
+        const sigla = getSigla(a);
+        // Circle bullet with sigla
         doc.setFillColor(...ACCENT);
-        doc.setGState && doc.setGState(doc.GState({opacity:0.12}));
-        doc.rect(cx+0.2, cy+0.2, colW-0.4, rowH-0.4, 'F');
-        doc.setGState && doc.setGState(doc.GState({opacity:1}));
-      }
-      // Highlight event days
-      if(evByDay[day]){
-        doc.setFillColor(...SURF2);
-        doc.rect(cx+0.2, cy+0.2, colW-0.4, rowH-0.4, 'F');
-      }
+        doc.circle(rx + 3, ry - 2, 3, 'F');
+        doc.setFont('helvetica','bold'); doc.setFontSize(5); doc.setTextColor(...BG);
+        doc.text(sigla.slice(0,2), rx + 1.2, ry - 0.5);
 
-      // Day number
-      doc.setFont('helvetica','bold');
-      doc.setFontSize(9);
-      doc.setTextColor(...(isToday ? ACCENT : isWknd ? [180,140,60] : MUTED));
-      doc.text(`${day}`, cx+2.5, cy+7);
-
-      // Events
-      if(evByDay[day]){
-        let lY = cy + 12;
-        const lineH = 5.5;
-
-        evByDay[day].forEach(ev => {
-          const raw = ev.assignees ? Object.values(ev.assignees) : [];
-
-          // Sort: Voz Principal first, then Voz/Cantante, then Coros, then musicians
-          const ordered = [
-            ...raw.filter(a => a.rolEvento === 'Voz Principal'),
-            ...raw.filter(a => a.rolEvento !== 'Voz Principal' && (a.role === 'Cantante' || a.rolEvento?.includes('Voz') || a.rolEvento?.includes('Coro'))),
-            ...raw.filter(a => a.role !== 'Cantante' && a.rolEvento !== 'Voz Principal' && !a.rolEvento?.includes('Voz') && !a.rolEvento?.includes('Coro')),
-          ];
-
-          ordered.forEach((a, ai) => {
-            if(lY > cy + rowH - 2) return;
-            const isVoz = a.rolEvento === 'Voz Principal';
-            const isCoro = a.rolEvento?.includes('Coro') || (a.role === 'Cantante' && !isVoz);
-            const color = isVoz ? ACCENT : isCoro ? GREEN : BLUE;
-
-            // Colored dot
-            doc.setFillColor(...color);
-            doc.circle(cx+3, lY-1.5, 1.2, 'F');
-
-            // Name
-            const firstName = a.name.split(' ')[0];
-            const lastName  = a.name.split(' ')[1] ? a.name.split(' ')[1][0]+'.' : '';
-            const nameStr   = `${firstName} ${lastName}`.trim();
-
-            doc.setFont('helvetica', isVoz ? 'bold' : 'normal');
-            doc.setFontSize(isVoz ? 7.5 : 6.5);
-            doc.setTextColor(...TEXT);
-            doc.text(nameStr, cx+5.5, lY);
-
-            // Underline for Voz Principal
-            if(isVoz){
-              const tw = doc.getTextWidth(nameStr);
-              doc.setDrawColor(...ACCENT);
-              doc.setLineWidth(0.4);
-              doc.line(cx+5.5, lY+0.5, cx+5.5+tw, lY+0.5);
-            }
-            lY += lineH;
-          });
-
-          // Event name hint if multiple events
-          if(evByDay[day].length > 1 && lY < cy+rowH-2){
-            doc.setFontSize(5);
-            doc.setTextColor(...MUTED);
-            const evTitle = ev.title.length > 12 ? ev.title.slice(0,11)+'…' : ev.title;
-            doc.text(`· ${evTitle}`, cx+2, lY);
-            lY += 4;
-          }
-        });
-      }
+        doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...WHITE);
+        doc.text(a.name.toUpperCase(), rx + 8, ry);
+        ry += 6;
+        if(ry > cardY + cardH - 10) return; // overflow guard
+      });
+      ry += 3;
     }
 
-    // ── Footer bar ───────────────────────────────────────────────────────
-    doc.setFillColor(...SURF);
-    doc.rect(0, H-8, W, 8, 'F');
-    doc.setFillColor(...ACCENT);
-    doc.rect(0, H-8, W, 0.8, 'F');
+    // ── MÚSICOS column ────────────────────────────────────────────────────────
+    if(musicos.length) {
+      doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...WHITE);
+      doc.text('MÚSICOS', rx, ry); ry += 7;
 
-    // Legend
-    doc.setFontSize(6.5);
-    doc.setFont('helvetica','bold');
-    doc.setFillColor(...ACCENT); doc.circle(10, H-3.5, 1.2,'F');
-    doc.setTextColor(...ACCENT); doc.text('Voz Principal (subrayado)', 13, H-2.5);
-    doc.setFillColor(...GREEN);  doc.circle(65, H-3.5, 1.2,'F');
-    doc.setTextColor(...GREEN);  doc.text('Coros / Voz', 68, H-2.5);
-    doc.setFillColor(...BLUE);   doc.circle(100, H-3.5, 1.2,'F');
-    doc.setTextColor(...BLUE);   doc.text('Músicos', 103, H-2.5);
-    doc.setTextColor(...MUTED);  doc.setFont('helvetica','normal');
-    doc.text(`Monte de Dios • ${new Date().toLocaleDateString('es-PE')}`, W-8, H-2.5, {align:'right'});
+      musicos.forEach(a => {
+        const sigla = getSigla(a);
+        doc.setFillColor(...ACCENT);
+        doc.circle(rx + 3, ry - 2, 3, 'F');
+        doc.setFont('helvetica','bold'); doc.setFontSize(5); doc.setTextColor(...BG);
+        doc.text(sigla.slice(0,2), rx + 1.2, ry - 0.5);
+
+        doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...WHITE);
+        doc.text(a.name.toUpperCase(), rx + 8, ry);
+        ry += 6;
+        if(ry > cardY + cardH - 10) return;
+      });
+    }
+
+    // If no assignees
+    if(!assignees.length) {
+      doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...MUTED);
+      doc.text('Sin encargados', rx, cardY + cardH/2);
+    }
+
+    // ── Footer ──────────────────────────────────────────────────────────────
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...ACCENT);
+    doc.text('@Ministerio Monte De Dios.', W/2, H-8, {align:'center'});
+
+    // Page number
+    doc.setFontSize(7); doc.setTextColor(...MUTED);
+    doc.text(`${idx+1} / ${evList.length}`, W-14, H-8);
   });
 
   const calBase64 = doc.output('datauristring');
   _lastPDFDataUrl = calBase64;
-  _simulateProgressAndDownload(calBase64, 'calendario_monte_de_dios.pdf');
+  _simulateProgressAndDownload(calBase64, 'proximos_eventos_monte_de_dios.pdf');
 }
 
 function genPDF(list){
