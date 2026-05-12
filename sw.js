@@ -52,18 +52,26 @@ self.addEventListener('fetch', event => {
 
 // ── PUSH NOTIFICATIONS ─────────────────────────────────────────────────────
 self.addEventListener('push', event => {
-  const data = event.data ? event.data.json() : {};
-  const title   = data.notification?.title   || 'Monte de Dios';
-  const body    = data.notification?.body    || 'Hay cambios en tus eventos';
-  const icon    = data.notification?.icon    || '/icon-192.png';
-  const badge   = '/icon-192.png';
-  const tag     = data.notification?.tag     || 'montededios';
+  let data = {}, notif = {};
+  try {
+    data  = event.data ? event.data.json() : {};
+    notif = data.notification || data;
+  } catch(e){}
+
+  const title = notif.title || data.title || 'Monte de Dios';
+  const body  = notif.body  || data.body  || 'Hay cambios en el ministerio';
+  const icon  = notif.icon  || '/icon-192.png';
 
   event.waitUntil(
     self.registration.showNotification(title, {
-      body, icon, badge, tag,
-      vibrate: [200, 100, 200],
-      data: { url: data.notification?.click_action || '/' }
+      body,
+      icon,
+      badge:   '/icon-192.png',
+      vibrate: [300, 100, 300, 100, 300],
+      tag:     'montededios-push',
+      silent:  false,              // uses device default sound at device volume
+      requireInteraction: false,
+      data: { url: notif.click_action || data.url || self.registration.scope }
     })
   );
 });
