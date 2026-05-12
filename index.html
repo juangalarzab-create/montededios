@@ -40,22 +40,15 @@ const firebaseConfig = {
 const VAPID_KEY = "BMCg-0sYXWYU6QqDLecHLCmBkzTvAWEk8CuhXjedqxqVVIprBxanVrACQUBRnPpEt2vqJlM-vzlchH5ER2kdELo";
 // ══════════════════════════════════════════════════════════════════════════════
 
-try {
-  const app  = initializeApp(firebaseConfig);
-  const db   = getDatabase(app);
-  let messaging = null;
-  try { messaging = getMessaging(app); } catch(e) { console.warn('FCM no disponible:', e.message); }
+const app  = initializeApp(firebaseConfig);
+const db   = getDatabase(app);
+let messaging;
+try { messaging = getMessaging(app); } catch(e) {}
 
-  // Exponer al scope global para usar desde el JS clásico
-  window._fb = { db, ref, onValue, set, push, update, remove, serverTimestamp, messaging, getToken, onMessage, VAPID_KEY };
-  window._fbReady = true;
-  window.dispatchEvent(new Event('fbready'));
-} catch(e) {
-  console.error('Firebase init error:', e.message);
-  // Signal failure so app falls back to demo mode clearly
-  window._fbReady = false;
-  window.dispatchEvent(new Event('fbready'));
-}
+// Exponer al scope global para usar desde el JS clásico
+window._fb = { db, ref, onValue, set, push, update, remove, serverTimestamp, messaging, getToken, onMessage, VAPID_KEY };
+window._fbReady = true;
+window.dispatchEvent(new Event('fbready'));
 </script>
 
 <style>
@@ -882,7 +875,45 @@ textarea{resize:vertical;min-height:64px;}
 // ══════════════════════════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════════════════════════
-const ADMIN_PIN_DEFAULT = 'monte2026'; // Se sobreescribe desde Firebase /config/adminPin
+const ADMIN_PIN_DEFAULT = 'monte2026';
+
+// ── TELEGRAM FILE STORAGE ────────────────────────────────────────────────────
+// Files (PDFs) are uploaded to Telegram and stored by file_id
+// Replace with your actual values:
+const TG_TOKEN   = '8009738168:AAH_VWs3LBEU0R7oSJHOSvS-nl45tjZ6OtU'; // your bot token
+const TG_CHAT_ID = '-1003754449329'; // your channel/chat ID
+
+async function uploadFileToTelegram(file, caption) {
+  if(!file) return null;
+  try {
+    const form = new FormData();
+    form.append('chat_id', TG_CHAT_ID);
+    form.append('document', file, file.name);
+    form.append('caption', caption || file.name);
+    const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendDocument`, {
+      method: 'POST', body: form
+    });
+    const data = await res.json();
+    if(data.ok) {
+      return {
+        fileId:   data.result.document.file_id,
+        fileName: data.result.document.file_name,
+        caption:  caption
+      };
+    }
+    console.warn('Telegram upload failed:', data);
+    return null;
+  } catch(e) { console.warn('Telegram error:', e); return null; }
+}
+
+async function getTelegramFileUrl(fileId) {
+  try {
+    const res  = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/getFile?file_id=${fileId}`);
+    const data = await res.json();
+    if(data.ok) return `https://api.telegram.org/file/bot${TG_TOKEN}/${data.result.file_path}`;
+    return null;
+  } catch(e) { return null; }
+} // Se sobreescribe desde Firebase /config/adminPin
 const RC = {
   Cantante:'#f0b429',Guitarrista:'#e05c2a',Bajista:'#3ecf8e',Baterista:'#3ecf8e',
   Pianista:'#7c5cbf',Tecladista:'#7c5cbf',Violinista:'#5ca8e0',Flautista:'#5ca8e0',
@@ -919,9 +950,9 @@ const ROLES_EVENTO = [
 
 // Demo admin — always works offline, no registration needed
 const DEMO_ADMIN = {
-  id:'demo-admin-001', nombres:'Admin', apellidos:'Lider',
-  fullName:'Admin Lider', displayName:'Admin.L', loginLabel:'AdminLider',
-  bday:'1990-01-01', cargo:'Líder', role:'Líder',
+  id:'demo-admin-001', nombres:'Admin', apellidos:'Ministerio',
+  fullName:'Admin Ministerio', displayName:'Admin.M', loginLabel:'AdminMinisterio',
+  bday:'1990-02-14', cargo:'Líder', role:'Líder',
   pass: btoa('monte2026'), availDates:{}, createdAt:0
 };
 
@@ -929,20 +960,16 @@ const DEMO_ADMIN = {
 async function syncDemoAdminToFirebase() {
   if(!fbReady) return;
   try {
-    const { db, ref, get } = window._fb;
-    // Solo si no existe ya
-    const snap = await get(ref(db, 'users/demo-admin-001'));
-    if(!snap.exists()) {
-      await fbSet('users/demo-admin-001', {
-        id:'demo-admin-001', loginLabel:'AdminLider', displayName:'Admin.L',
-        fullName:'Admin Lider', cargo:'Líder', role:'Líder',
-        pass: btoa('monte2026'), createdAt:0
-      });
-      await fbSet('musicians/demo-admin-001', {
-        id:'demo-admin-001', name:'Admin Lider', role:'Líder', cargo:'Líder',
-        displayName:'Admin.L', unavailDates:{}, createdAt:0
-      });
-    }
+    // Always ensure admin exists in Firebase as full user (visible to all)
+    await fbSet('users/demo-admin-001', {
+      id:'demo-admin-001', loginLabel:'AdminMinisterio', displayName:'Admin.M',
+      fullName:'Admin Ministerio', cargo:'Líder', role:'Líder',
+      bday:'1990-02-14', pass: btoa('monte2026'), createdAt:0
+    });
+    await fbSet('musicians/demo-admin-001', {
+      id:'demo-admin-001', name:'Admin Ministerio', role:'Líder', cargo:'Líder',
+      displayName:'Admin.M', bday:'1990-02-14', unavailDates:{}, createdAt:0
+    });
   } catch(e) { console.warn('syncDemoAdmin:', e); }
 }
 
@@ -967,19 +994,11 @@ const fmtTime = ts => {
 // FIREBASE / DEMO MODE
 // ══════════════════════════════════════════════════════════════════════════════
 function initApp() {
-  if(window._fbReady === true) {
+  if(window._fbReady) {
     setupFirebase();
-  } else if(window._fbReady === false) {
-    // Firebase init failed
-    startDemoMode();
   } else {
-    // Still loading
-    window.addEventListener('fbready', () => {
-      if(window._fbReady === true) setupFirebase();
-      else startDemoMode();
-    }, {once:true});
-    // Longer timeout for slow connections (GitHub Pages can be slow)
-    setTimeout(()=>{ if(!fbReady) startDemoMode(); }, 8000);
+    window.addEventListener('fbready', setupFirebase, {once:true});
+    setTimeout(()=>{ if(!fbReady) startDemoMode(); }, 3000);
   }
 }
 
@@ -1011,20 +1030,6 @@ function setupFirebase() {
   onValue(ref(db,'config'),   snap => { if(snap.val()) config = {...config,...snap.val()}; });
   // Listen to users for cross-device login
   onValue(ref(db,'users'), snap => { window._fbUsers = snap.val() || {}; });
-  // Listen to songs (main data listener)
-  onValue(ref(db,'songs'), snap => {
-    const incoming = snap.val() || {};
-    // Preserve any pending local selected states that haven't saved yet
-    Object.keys(incoming).forEach(id => {
-      if(songs[id] && songs[id]._pendingSelected !== undefined) {
-        incoming[id].selected = songs[id]._pendingSelected;
-      }
-    });
-    songs = incoming;
-    renderProfileSongs();
-    renderSongsList();
-    if(selEv && events[selEv]) renderNextEventHero(events[selEv]);
-  });
 
   // ── Notificaciones en tiempo real para todos los cambios ──────────────────
   let _firstLoadEvents = true, _firstLoadMusicians = true, _firstLoadSongs = true;
@@ -1054,25 +1059,35 @@ function setupFirebase() {
     }
   });
 
-  // Songs notifications only (data is handled by main listener above)
-  // This secondary listener just fires push notifications on changes
-  let _prevSongCount = 0;
   onValue(ref(db,'songs'), snap => {
+    if(_firstLoadSongs){ _firstLoadSongs=false; return; }
     const newSongs = snap.val() || {};
     const newCount = Object.keys(newSongs).length;
-    if(_prevSongCount > 0 && newCount > _prevSongCount) {
+    const oldCount = Object.keys(songs).length;
+    if(newCount > oldCount) {
       const newId = Object.keys(newSongs).find(k=>!songs[k]);
       const s = newId ? newSongs[newId] : null;
       if(s) pushNotif('🎵 Nuevo tema', `"${s.title}" subido por ${s.ownerName||'alguien'}`);
     }
-    _prevSongCount = newCount;
+    // Check selected changes (star toggle)
+    Object.values(newSongs).forEach(s => {
+      const old = songs[s.id];
+      if(old && old.selected !== s.selected) {
+        renderEL(); // refresh hero songs
+      }
+    });
   });
-  // (songs already handled by main listener above)
+  // Listen to songs
+  onValue(ref(db,'songs'), snap => {
+    songs = snap.val() || {};
+    renderSongsList();
+    if(document.getElementById('modal-profile')?.classList.contains('hidden')===false) {
+      renderProfileSongs();
+    }
+  });
 
   setRTIndicator('live');
-  // Hide demo banner — we are connected
-  const banner = document.getElementById('fb-banner');
-  if(banner) banner.classList.remove('show');
+  document.getElementById('fb-banner')?.classList.remove('show');
   setupFCM();
   setTimeout(syncDemoAdminToFirebase, 2000);
 }
@@ -1111,9 +1126,6 @@ function setRTIndicator(state) {
   const lbl = document.getElementById('rt-label');
   dot.className = 'rt-dot ' + state;
   lbl.textContent = state==='live'?'en vivo':state==='demo'?'demo':'offline';
-  // Hide demo banner when actually connected
-  const banner = document.getElementById('fb-banner');
-  if(banner) banner.style.display = state==='live' ? 'none' : '';
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1208,37 +1220,24 @@ function sendPushNotification(msg) {
   }
 }
 
-// Notification sound (simple beep via Web Audio API)
 function playNotifSound() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const osc=ctx.createOscillator(), gain=ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
-    osc.type = 'sine'; osc.frequency.value = 880;
-    gain.gain.setValueAtTime(0.4, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.4);
-    setTimeout(() => ctx.close(), 500);
-  } catch(e) {}
+    osc.type='sine'; osc.frequency.value=880;
+    gain.gain.setValueAtTime(.4,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.4);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime+.4);
+    setTimeout(()=>ctx.close(),500);
+  } catch(e){}
 }
-
 function pushNotif(title, body) {
-  // In-app toast
   toast(`${title}: ${body}`, 'info');
-  // Sound
   playNotifSound();
-  // System notification (works when app is open or in background if SW registered)
   if('Notification' in window && Notification.permission === 'granted') {
-    const n = new Notification(title, {
-      body, icon:'icon-192.png', badge:'icon-192.png',
-      vibrate:[200,100,200,100,200],
-      tag: 'montededios-' + Date.now(),
-      requireInteraction: false
-    });
-    // Click on notification opens/focuses the app
-    n.onclick = () => { window.focus(); n.close(); };
+    const n = new Notification(title, {body, icon:'icon-192.png', badge:'icon-192.png', vibrate:[200,100,200,100,200]});
+    n.onclick = ()=>{ window.focus(); n.close(); };
   }
 }
 
@@ -1384,24 +1383,32 @@ function renderNextEventHero(ev) {
   const isToday = ev.date === td;
   const assignees = ev.assignees ? Object.values(ev.assignees) : [];
 
+  // Role abbreviations
+  const SIGLAS = {
+    'Voz Principal':'VP','Voz':'VOZ','Cantante':'VOZ','Coros':'COR','Coros 2':'COR2',
+    'Director':'DIR','Guitarrista':'GTR','Tecladista':'TCL','Bajista':'BJO',
+    'Baterista':'BAT','Percusionista':'PER','Trompetista':'TRP','Saxofonista':'SAX',
+    'Violinista':'VLN','Violonchelista':'VLC','Flautista':'FLT','Músico':'MUS','Líder':'LDR'
+  };
+  function getSigla(a) { return SIGLAS[a.rolEvento] || SIGLAS[a.role] || (a.role||'').slice(0,3).toUpperCase(); }
+
   const peoplePills = assignees.length
     ? assignees.map(a => {
         const color = rc(a.role||'');
         const initials = a.name.split(' ').map(w=>w[0]).slice(0,2).join('');
+        const sigla = getSigla(a);
         return `<div class="ev-hero-person">
           <div class="av" style="background:${color}22;color:${color};">${initials}</div>
           <span class="nm">${a.name.split(' ')[0]}</span>
+          <span style="font-size:9px;font-weight:700;color:${color};opacity:.8;">· ${sigla}</span>
         </div>`;
       }).join('')
     : '<span style="font-size:11px;color:var(--muted);">Sin encargados</span>';
 
-  // Find Voz Principal: by explicit role, or first Cantante/Voz
   const vozP = assignees.find(a => a.rolEvento === 'Voz Principal')
-             || assignees.find(a => a.cargo === 'Voz' || a.role === 'Cantante');
-  // Match songs by musId OR by id (some assignees store id directly)
-  const vozId = vozP?.musId || vozP?.id;
-  const heroSongs = vozId
-    ? Object.values(songs).filter(s => (s.ownerId === vozId) && s.selected === true)
+             || assignees.find(a => a.role === 'Cantante');
+  const heroSongs = vozP
+    ? Object.values(songs).filter(s => s.ownerId === vozP.musId && s.selected)
     : [];
   const songsList = heroSongs.length
     ? heroSongs.map(s => `
@@ -1600,7 +1607,7 @@ function renderDetail(ev) {
     <div class="sec">Encargados (${assignees.length})
       ${isAdmin?`<span onclick="toggleAssignPanel('${ev.id}')"
         style="float:right;font-size:10px;color:var(--accent);cursor:pointer;font-weight:600;">
-        ＋ Editar asignados</span>`:''}
+        ✏️ Editar asignados</span>`:''}
     </div>
     <!-- Panel edición (oculto por defecto, solo admin) -->
     <div id="assign-edit-panel" style="display:none;margin-bottom:14px;">
@@ -1608,7 +1615,7 @@ function renderDetail(ev) {
         <input type="text" placeholder="🔍 Buscar integrante..." oninput="filterAssign(this.value,'${ev.id}')"
           style="margin-bottom:10px;font-size:12px;padding:6px 10px;">
         <div class="mchips" id="mchips-grid">${mchips}</div>
-        <div style="font-size:10px;color:var(--muted);">Clic para asignar · 🚫 = no disponible esta fecha</div>
+        <div style="font-size:10px;color:var(--muted);">Clic para asignar/reasignar · 🚫 = no disponible</div>
       </div>
     </div>
     <!-- Solo encargados asignados -->
@@ -1639,15 +1646,62 @@ async function toggleAssign(evId, musId) {
   const m   = musicians[musId]; if(!m) return;
   const assignees = ev.assignees || {};
   if(assignees[musId]) {
+    // Already assigned — remove
     await fbRemove(`events/${evId}/assignees/${musId}`);
     await logActivity('event','➖',`"${m.name}" retirado de "${ev.title}"`);
     toast(`${m.name} quitado`,'warning');
+    renderDetail(ev);
   } else {
-    const asgn = {musId, name:m.name, role:m.role};
-    await fbSet(`events/${evId}/assignees/${musId}`, asgn);
-    await logActivity('event','➕',`"${m.name}" asignado a "${ev.title}"`);
-    toast(`${m.name} asignado ✓`,'success');
+    // Show role selector before assigning
+    showRoleSelector(m.name, async (rolEvento) => {
+      const asgn = {musId, name:m.name, role:m.role, rolEvento};
+      await fbSet(`events/${evId}/assignees/${musId}`, asgn);
+      await logActivity('event','➕',`"${m.name}" asignado como ${rolEvento} en "${ev.title}"`);
+      toast(`${m.name} → ${rolEvento} ✓`,'success');
+    });
   }
+}
+
+function showRoleSelector(personName, onSelect) {
+  const roles = ['Voz Principal','Voz','Coros','Coros 2','Director',
+    'Guitarrista','Tecladista','Bajista','Baterista','Percusionista',
+    'Trompetista','Saxofonista','Violinista','Músico'];
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:2000;padding:20px;';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;
+      width:min(340px,100%);padding:22px;max-height:85vh;overflow-y:auto;">
+      <div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;margin-bottom:4px;">Asignar rol</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">${personName}</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${roles.map(r=>`
+          <button onclick="this.closest('.role-sel-overlay').dataset.sel='${r}'"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;
+            padding:10px 14px;text-align:left;cursor:pointer;color:var(--text);
+            font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;transition:all .15s;"
+            onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+            onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)'">
+            ${r}
+          </button>`).join('')}
+      </div>
+      <button onclick="this.closest('div').parentElement.remove()"
+        style="margin-top:12px;width:100%;background:transparent;border:1px solid var(--border);
+        border-radius:9px;padding:9px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;">
+        Cancelar
+      </button>
+    </div>`;
+  overlay.className = 'role-sel-overlay';
+  document.body.appendChild(overlay);
+  // Listen for selection via dataset
+  const check = setInterval(()=>{
+    const sel = overlay.dataset.sel;
+    if(sel) {
+      clearInterval(check);
+      overlay.remove();
+      onSelect(sel);
+    }
+    if(!document.body.contains(overlay)) clearInterval(check);
+  }, 100);
 }
 
 async function removeAssign(evId, musId) {
@@ -1869,24 +1923,16 @@ async function saveME(id) {
 async function askDelM(id) {
   const m = musicians[id]; if(!m) return;
   const usedIn = Object.values(events).filter(e=>e.assignees?.[id]).length;
-  const isUser = !!(window._fbUsers?.[id]); // is a registered user
   showConfirm(`¿Eliminar a ${m.name}?`,
-    `${isUser?'Se borrarán todos sus datos (canciones, perfil, etc.). ':''}`
-    + (usedIn>0?`Asignado en ${usedIn} evento(s). `:'')
-    + 'Esta acción no se puede deshacer.',
+    usedIn>0?`Está asignado en ${usedIn} evento(s).`:'Esta acción no se puede deshacer.',
     async ()=>{
-      // Delete all their songs
-      const theirSongs = Object.keys(songs).filter(sid => songs[sid].ownerId === id);
-      for(const sid of theirSongs) { await fbRemove(`songs/${sid}`); }
-      // Remove from all events assignees
-      for(const [evId, ev] of Object.entries(events)) {
-        if(ev.assignees?.[id]) await fbRemove(`events/${evId}/assignees/${id}`);
-      }
-      // Remove from musicians, users, fcmTokens by scanning
       await fbRemove(`musicians/${id}`);
-      await fbRemove(`users/${id}`);
-      await logActivity('musician','🗑️',`Integrante "${m.name}" eliminado por admin`);
-      toast(`${m.name} eliminado completamente`,'warning');
+      // Remove from events
+      for(const [evId] of Object.entries(events)) {
+        await fbRemove(`events/${evId}/assignees/${id}`);
+      }
+      await logActivity('musician','🗑️',`Artista "${m.name}" eliminado`);
+      toast(`${m.name} eliminado`,'warning');
     });
 }
 
@@ -2558,14 +2604,13 @@ async function finishRegister() {
   // 2. Save to Firebase users list (for login lookup across devices)
   await fbSet(`users/${id}`, {
     id, loginLabel, displayName, fullName: user.fullName,
-    cargo: regData.cargo, role, bday: regData.bday,
+    cargo: regData.cargo, role,
     pass: user.pass, createdAt: Date.now()
   });
   await logActivity('musician','🎤',`Nuevo integrante: "${user.fullName}" (${regData.cargo})`);
-  // 3. Save locally + session
+  // 3. Save locally
   localStorage.setItem('mdios_user', JSON.stringify(user));
   localStorage.setItem('mdios_uid', id);
-  sessionStorage.setItem('mdios_session', '1');
   currentUser = user;
   // Show success then enter
   showRegSuccess(user, ()=>{
@@ -2591,29 +2636,6 @@ function showRegSuccess(user, cb) {
   setTimeout(cb, 1800);
 }
 
-// Pull full user data from Firebase after login (bday, availDates, etc.)
-async function enrichUserFromFirebase(uid) {
-  if(!fbReady || !uid) return;
-  try {
-    // Get musician record (has bday, unavailDates)
-    const mRec = musicians[uid];
-    if(mRec && currentUser) {
-      if(mRec.bday && !currentUser.bday)        currentUser.bday      = mRec.bday;
-      if(mRec.unavailDates)                      currentUser.unavailDates = mRec.unavailDates;
-      if(mRec.displayName && !currentUser.displayName) currentUser.displayName = mRec.displayName;
-      localStorage.setItem('mdios_user', JSON.stringify(currentUser));
-    }
-    // Also get from users path
-    const { db, ref, get } = window._fb;
-    const snap = await get(ref(db, `users/${uid}`));
-    if(snap.exists() && currentUser) {
-      const fbUser = snap.val();
-      if(fbUser.bday && !currentUser.bday) currentUser.bday = fbUser.bday;
-      localStorage.setItem('mdios_user', JSON.stringify(currentUser));
-    }
-  } catch(e) { console.warn('enrichUser:', e); }
-}
-
 function doLogin() {
   const nameInp = (document.getElementById('login-name-inp')?.value || '').trim().toLowerCase();
   const passInp =  document.getElementById('login-pass-inp')?.value || '';
@@ -2625,12 +2647,11 @@ function doLogin() {
   function enterApp(u) {
     currentUser = u;
     localStorage.setItem('mdios_user', JSON.stringify(u));
-    sessionStorage.setItem('mdios_session', '1'); // mark active session
+    sessionStorage.setItem('mdios_session','1');
     hideRegister();
     updateUserUI();
     if(err) err.style.display='none';
     toast(`¡Hola, ${u.nombres}! 👋`, 'success');
-    enrichUserFromFirebase(u.id);
     setTimeout(startReminderEngine, 500);
   }
 
@@ -2770,21 +2791,14 @@ function clearSavedUser() {
 }
 
 function checkAutoLogin() {
-  // Check IndexedDB-backed session first (more persistent than localStorage)
   const saved = localStorage.getItem('mdios_user');
-  const session = sessionStorage.getItem('mdios_session'); // active session flag
-  if(saved && session) {
-    // Active session — enter directly without showing register
+  if(saved) {
     try {
-      const u = JSON.parse(saved);
-      currentUser = u;
-      hideRegister();
-      updateUserUI();
-      setTimeout(startReminderEngine, 800);
-      return true;
+      // Don't auto-enter — show login screen with pre-filled name
+      buildLoginSection();
+      return false; // always show register screen, but with login pre-filled
     } catch(e) {}
   }
-  // No active session — show login with pre-filled name if saved
   buildLoginSection();
   return false;
 }
@@ -2818,35 +2832,19 @@ function renderProfileModal() {
   const unavailEntries = Object.entries(mRecord.unavailDates||{}).sort((a,b)=>a[1].localeCompare(b[1]));
   const mySongs = Object.values(songs).filter(s=>s.ownerId===u.id);
   const songRows = mySongs.length ? mySongs.map(s=>`
-    <div data-song-row="${s.id}"
-      style="background:${s.selected?'rgba(240,180,41,.06)':'var(--surface)'};
-        border:1px solid ${s.selected?'var(--accent)':'var(--border)'};
-        border-radius:9px;padding:9px 12px;display:flex;align-items:center;
-        justify-content:space-between;gap:8px;margin-bottom:6px;
-        transition:border-color .2s,background .2s;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:9px;
+      padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;font-size:13px;">${s.title}
-          ${s.tono?`<span class="song-tono">${s.tono}</span>`:''}
-          ${s.bpm?`<span style="background:rgba(92,168,224,.12);color:var(--info);border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700;">${s.bpm} BPM</span>`:''}
-        </div>
-        <div data-song-label="${s.id}" style="font-size:11px;margin-top:2px;color:${s.selected?'var(--success)':'var(--muted)'};">
-          ${s.selected?'✅ <strong>En mi lista</strong>':'☆ No en lista'}
-        </div>
+        <div style="font-weight:600;font-size:13px;">${s.title} <span class="song-tono">${s.tono||''}</span></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${s.selected?'⭐ En mi lista':'☆ No en lista'}</div>
       </div>
-      <div style="display:flex;gap:5px;align-items:center;flex-shrink:0;">
-        <button class="btn btn-ghost btn-sm"
-          data-song-id="${s.id}"
-          onclick="toggleSongSelected('${s.id}')"
-          style="font-size:18px;padding:4px 10px;min-width:40px;
-            background:${s.selected?'rgba(240,180,41,.2)':'transparent'};
-            border-color:${s.selected?'var(--accent)':''};"
-          title="${s.selected?'Quitar de lista':'Agregar a lista'}">
-          ${s.selected?'⭐':'<span style="opacity:.3;">☆</span>'}
-        </button>
+      <div style="display:flex;gap:5px;flex-shrink:0;">
+        <button class="btn btn-ghost btn-sm" onclick="toggleSongSelected('${s.id}')"
+          style="font-size:11px;padding:4px 8px;" title="${s.selected?'Quitar de lista':'Poner en lista'}">${s.selected?'⭐':'☆'}</button>
         <button class="btn btn-danger btn-sm" onclick="deleteSong('${s.id}')"
           style="font-size:11px;padding:4px 8px;">🗑</button>
       </div>
-    </div>`).join('') : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Sin temas subidos aún — toca ＋ Subir tema</div>';
+    </div>`).join('') : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Sin temas subidos aún</div>';
 
   const unavailHtml = unavailEntries.length
     ? unavailEntries.map(([key,date])=>`
@@ -2870,6 +2868,8 @@ function renderProfileModal() {
         <div style="font-size:11px;color:var(--muted);">${u.role||u.cargo}</div>
         <span style="display:inline-block;margin-top:3px;font-size:10px;padding:1px 8px;border-radius:20px;
           font-weight:700;background:${color}18;color:${color};border:1px solid ${color}30;">${cargoIco} ${u.cargo}</span>
+        <button onclick="editUserCargo()" style="background:none;border:none;color:var(--muted);
+          font-size:10px;cursor:pointer;text-decoration:underline;margin-left:5px;">editar</button>
       </div>
     </div>
     <div style="padding:14px 18px;display:flex;flex-direction:column;gap:11px;">
@@ -3074,32 +3074,43 @@ async function uploadSong() {
   const bpm   = document.getElementById('song-bpm-inp')?.value.trim();
   if(!title){ toast('Ingresa el nombre del tema','error'); return; }
 
-  // Show saving indicator
   const saveBtn = document.querySelector('[onclick="uploadSong()"]');
   if(saveBtn){ saveBtn.disabled=true; saveBtn.textContent='Guardando…'; }
 
-  const ytLink    = document.getElementById('song-yt-inp')?.value.trim()       || '';
-  const letraLink = document.getElementById('song-letra-link')?.value.trim()   || '';
-  const chartLink = document.getElementById('song-chart-link')?.value.trim()   || '';
+  const ytLink    = document.getElementById('song-yt-inp')?.value.trim()     || '';
+  const letraLink = document.getElementById('song-letra-link')?.value.trim() || '';
+  const chartLink = document.getElementById('song-chart-link')?.value.trim() || '';
   const letraFile = document.getElementById('song-letra-pdf')?.files[0];
   const chartFile = document.getElementById('song-chart-pdf')?.files[0];
+
+  // ── Upload PDFs to Telegram (if provided) ─────────────────────────────────
+  let letraTG = null, chartTG = null;
+  if(letraFile) {
+    toast('Subiendo letras a servidor…','info');
+    letraTG = await uploadFileToTelegram(letraFile, `${title} — Letras`);
+  }
+  if(chartFile) {
+    toast('Subiendo chart a servidor…','info');
+    chartTG = await uploadFileToTelegram(chartFile, `${title} — Chart`);
+  }
 
   const song = {
     id: gid(), title, tono: tono||'', bpm: bpm||'',
     ownerId: currentUser.id, ownerName: currentUser.fullName,
     ytLink, letraLink, chartLink,
-    letraData: letraFile ? await fileToBase64(letraFile) : '',
-    chartData: chartFile ? await fileToBase64(chartFile) : '',
-    letraName: letraFile ? letraFile.name : '',
-    chartName: chartFile ? chartFile.name : '',
+    // Telegram file references (no base64 storage)
+    letraFileId:   letraTG?.fileId   || '',
+    letraFileName: letraTG?.fileName || letraFile?.name || '',
+    chartFileId:   chartTG?.fileId   || '',
+    chartFileName: chartTG?.fileName || chartFile?.name || '',
     selected: false, createdAt: Date.now()
   };
 
   songs[song.id] = song;
   await fbSet(`songs/${song.id}`, song);
-  await logActivity('musician','🎵',`"${currentUser.fullName}" subió el tema "${title}"`);
+  await logActivity('musician','🎵',`"${currentUser.fullName}" subió "${title}"`);
 
-  // ── Limpiar TODOS los campos sin cerrar el panel ──
+  // ── Clear form ─────────────────────────────────────────────────────────────
   ['song-title-inp','song-tono-inp','song-bpm-inp','song-yt-inp','song-letra-link','song-chart-link']
     .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   ['song-letra-pdf','song-chart-pdf']
@@ -3110,11 +3121,7 @@ async function uploadSong() {
 
   renderProfileSongs();
   renderSongsList();
-
-  // ── Aviso verde prominente ──
   showSaveSuccess(`✅ "${title}" guardado correctamente`);
-
-  // Foco en el título para capturar el siguiente tema de inmediato
   setTimeout(()=>{ document.getElementById('song-title-inp')?.focus(); }, 100);
 }
 
@@ -3207,18 +3214,11 @@ function toggleSongSelected(songId) {
   toast(s.selected ? `⭐ "${s.title}" en tu lista` : `☆ "${s.title}" quitado`,
         s.selected ? 'success' : 'warning');
 
-  // ── 4. Mark as pending then save to Firebase ────────────────────────────
-  // _pendingSelected prevents Firebase listener from overwriting before save confirms
+  // ── 4. Save to Firebase in background (no await = no UI block) ────────────
   songs[songId]._pendingSelected = s.selected;
   fbSet(`songs/${songId}/selected`, s.selected)
-    .then(() => { delete songs[songId]._pendingSelected; })
-    .catch(() => {
-      // Rollback on error
-      s.selected = !s.selected;
-      songs[songId] = s;
-      delete songs[songId]._pendingSelected;
-      renderProfileSongs();
-    });
+    .then(()=>{ delete songs[songId]._pendingSelected; })
+    .catch(()=>{ s.selected=!s.selected; songs[songId]=s; delete songs[songId]._pendingSelected; renderProfileSongs(); });
   logActivity('song', s.selected?'⭐':'☆',
     `"${currentUser?.fullName}" ${s.selected?'agregó':'quitó'} "${s.title}" de su lista`
   ).catch(()=>{});
@@ -3235,8 +3235,27 @@ function openSongLink(url) {
 function downloadPDF(base64Data, filename, tipo) {
   if(!base64Data){ toast('Sin archivo PDF disponible','warning'); return; }
   const label = tipo || filename || 'documento';
-  // ── Confirmar descarga ────────────────────────────────────────────────────
   showDownloadConfirm(label, ()=> doDownloadPDF(base64Data, filename||'documento.pdf', label));
+}
+
+async function downloadFromTelegram(fileId, fileName, tipo) {
+  if(!fileId){ toast('Sin archivo disponible','warning'); return; }
+  const label = tipo || fileName || 'documento';
+  showDownloadConfirm(label, async () => {
+    toast('Obteniendo archivo del servidor…','info');
+    const url = await getTelegramFileUrl(fileId);
+    if(!url){ toast('No se pudo obtener el archivo','error'); return; }
+    try {
+      const res   = await fetch(url);
+      const blob  = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      _lastPDFDataUrl = blobUrl;
+      _lastBlobUrl    = blobUrl;
+      _simulateProgressAndDownload(blobUrl, fileName||'documento.pdf');
+    } catch(e) {
+      toast('Error al descargar: ' + e.message,'error');
+    }
+  });
 }
 
 function showDownloadConfirm(label, onConfirm) {
@@ -3424,7 +3443,8 @@ function renderSongsList() {
   const container = document.getElementById('songs-list');
   const countEl   = document.getElementById('songs-count');
   if(!container) return;
-  const all = Object.values(songs).sort((a,b)=>a.title.localeCompare(b.title));
+  // Sort newest first
+  const all = Object.values(songs).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   if(countEl) countEl.textContent = `${all.length} tema${all.length!==1?'s':''}`;
   const filtered = songsSearchQ
     ? all.filter(s=>s.title.toLowerCase().includes(songsSearchQ)||s.tono?.toLowerCase().includes(songsSearchQ)||s.ownerName?.toLowerCase().includes(songsSearchQ))
@@ -3435,8 +3455,8 @@ function renderSongsList() {
   }
   container.innerHTML = filtered.map(s=>{
     const hasYT     = !!s.ytLink;
-    const hasLetra  = !!(s.letraLink||s.letraData);
-    const hasChart  = !!(s.chartLink||s.chartData);
+    const hasLetra  = !!(s.letraLink||s.letraFileId);
+    const hasChart  = !!(s.chartLink||s.chartFileId);
     return `<div class="song-card">
       <div class="song-card-top">
         <div class="song-thumb">🎵</div>
@@ -3453,14 +3473,16 @@ function renderSongsList() {
           onclick="${hasYT?`openSongLink('${s.ytLink}')`:''}">
           ▶ Video
         </button>
-        <button class="song-btn ${!hasLetra?'disabled':''}"
-          onclick="${s.letraData?`downloadPDF('${s.letraData}','${s.letraName||s.title+'_letras.pdf'}','Letras de ${s.title}')`
-                    :s.letraLink?`openSongLink('${s.letraLink}')`:''}">
+        <button class="song-btn ${!(s.letraFileId||s.letraLink)?'disabled':''}"
+          onclick="${s.letraFileId
+            ? `downloadFromTelegram('${s.letraFileId}','${s.letraFileName||s.title+'_letras.pdf'}','Letras de ${s.title}')`
+            : s.letraLink?`openSongLink('${s.letraLink}')`:''}" >
           📄 Letras
         </button>
-        <button class="song-btn ${!hasChart?'disabled':''}"
-          onclick="${s.chartData?`downloadPDF('${s.chartData}','${s.chartName||s.title+'_chart.pdf'}','Chart de ${s.title}')`
-                    :s.chartLink?`openSongLink('${s.chartLink}')`:''}">
+        <button class="song-btn ${!(s.chartFileId||s.chartLink)?'disabled':''}"
+          onclick="${s.chartFileId
+            ? `downloadFromTelegram('${s.chartFileId}','${s.chartFileName||s.title+'_chart.pdf'}','Chart de ${s.title}')`
+            : s.chartLink?`openSongLink('${s.chartLink}')`:''}" >
           🎼 Chart
         </button>
       </div>
@@ -3473,66 +3495,63 @@ function showChangePass() {
   if(!np || np.length < 4){ toast('Contraseña muy corta','error'); return; }
   currentUser.pass = btoa(np);
   localStorage.setItem('mdios_user', JSON.stringify(currentUser));
+  if(fbReady && currentUser.id) {
+    fbUpdate(`users/${currentUser.id}`, {pass: currentUser.pass}).catch(()=>{});
+  }
   toast('Contraseña actualizada ✓','success');
 }
 
-async function logoutUser() {
-  if(!confirm('¿Cerrar sesión? Se borrarán todos tus datos locales.')) return;
-  const uid  = currentUser?.id;
-  const name = currentUser?.fullName;
-
-  if(uid && uid !== 'demo-admin-001') {
-    // Delete user's songs from Firebase
-    const userSongs = Object.keys(songs).filter(sid => songs[sid].ownerId === uid);
-    for(const sid of userSongs) { await fbRemove(`songs/${sid}`); }
-    // Remove from musicians and users
-    await fbRemove(`musicians/${uid}`);
-    await fbRemove(`users/${uid}`);
-    await logActivity('musician','👋',`"${name}" cerró sesión`);
+async function editUserCargo() {
+  if(!currentUser) return;
+  const cargos = ['Voz','Músico','Líder'];
+  const instrums = ['Guitarrista','Tecladista','Bajista','Baterista','Percusionista','Trompetista','Saxofonista','Violinista','Flautista'];
+  const newCargo = prompt(`Cargo actual: ${currentUser.cargo}\nElige: Voz, Músico, Líder`);
+  if(!newCargo || !cargos.includes(newCargo.trim())) { toast('Cargo no válido. Usa: Voz, Músico o Líder','error'); return; }
+  let newRole = newCargo.trim() === 'Voz' ? 'Cantante' : newCargo.trim() === 'Líder' ? 'Líder' : '';
+  if(newCargo.trim() === 'Músico') {
+    const instr = prompt('¿Qué instrumento tocas?\n' + instrums.join(', '));
+    if(!instr || !instrums.includes(instr.trim())) { toast('Instrumento no válido','error'); return; }
+    newRole = instr.trim();
   }
+  currentUser.cargo = newCargo.trim();
+  currentUser.role  = newRole;
+  localStorage.setItem('mdios_user', JSON.stringify(currentUser));
+  // Update Firebase
+  if(currentUser.id) {
+    await fbUpdate(`musicians/${currentUser.id}`, {role: newRole, cargo: newCargo.trim()});
+    await fbUpdate(`users/${currentUser.id}`, {role: newRole, cargo: newCargo.trim()});
+    await logActivity('musician','✏️',`"${currentUser.fullName}" cambió su cargo a ${newCargo.trim()}`);
+  }
+  toast(`Cargo actualizado a ${newCargo.trim()} ✓`,'success');
+  // Re-render profile
+  openProfileModal();
+}
 
-  // Clear ALL local data for this user
+async function logoutUser() {
+  if(!confirm('¿Cerrar sesión? Tu perfil se eliminará de la lista del ministerio hasta que vuelvas a ingresar.')) return;
+  const uid = currentUser?.id;
+  const name = currentUser?.fullName;
+  // Remove from Firebase musicians list
+  if(uid && uid !== 'demo-admin-001') {
+    await fbRemove(`musicians/${uid}`);
+    await logActivity('musician','👋',`"${name}" cerró sesión y salió del ministerio`);
+  }
+  currentUser = null; isAdmin = false;
   localStorage.removeItem('mdios_user');
   localStorage.removeItem('mdios_uid');
-  localStorage.removeItem('gm_songs');
-  localStorage.removeItem('gm_ev');
-  localStorage.removeItem('gm_mu');
-  localStorage.removeItem('gm_ac');
   sessionStorage.removeItem('mdios_session');
-
-  currentUser = null; isAdmin = false;
-  songs = {}; // clear in-memory songs
-
+  songs = {};
   document.getElementById('role-btn').textContent='👤 Invitado';
   document.getElementById('role-btn').className='role-pill viewer';
   updateAdminUI();
   renderSongsList();
-  renderProfileSongs();
-
-  // Immediately show register screen
-  const scr = document.getElementById('register-screen');
-  // Reset to step 1
+  // Reset register to step 1
   document.querySelectorAll('.reg-step').forEach(s=>s.classList.remove('active'));
   document.getElementById('reg-step-1')?.classList.add('active');
-  ['sd1','sd2','sd3'].forEach((id,i)=>{ const el=document.getElementById(id); if(el) el.classList.toggle('done',i===0); });
-  scr.style.display='flex';
-  scr.style.opacity='1';
-  // Rebuild login section without pre-filled name (user logged out)
-  const sec = document.getElementById('reg-login-section');
-  if(sec) sec.innerHTML = `
-    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">¿Ya tienes perfil? Ingresa aquí</div>
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:16px;max-width:320px;margin:0 auto;">
-      <div style="margin-bottom:8px;">
-        <label style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:4px;">Nombre de perfil</label>
-        <input type="text" id="login-name-inp" placeholder="Ej: AdminLider" style="width:100%;" onkeydown="if(event.key==='Enter')document.getElementById('login-pass-inp').focus()">
-      </div>
-      <div style="margin-bottom:12px;">
-        <label style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:4px;">Contraseña</label>
-        <input type="password" id="login-pass-inp" placeholder="••••••" style="width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
-      </div>
-      <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="doLogin()">→ Ingresar</button>
-      <div id="login-err" style="font-size:11px;color:var(--danger);margin-top:8px;display:none;text-align:center;"></div>
-    </div>`;
+  ['sd1','sd2','sd3'].forEach((id,i)=>{const el=document.getElementById(id);if(el)el.classList.toggle('done',i===0);});
+  const scr = document.getElementById('register-screen');
+  scr.style.display='flex'; scr.style.opacity='1';
+  buildLoginSection();
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
