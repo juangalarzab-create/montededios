@@ -880,8 +880,8 @@ const ADMIN_PIN_DEFAULT = 'monte2026';
 // ── TELEGRAM FILE STORAGE ────────────────────────────────────────────────────
 // Files (PDFs) are uploaded to Telegram and stored by file_id
 // Replace with your actual values:
-const TG_TOKEN   = '8009738168:AAH_VWs3LBEU0R7oSJHOSvS-nl45tjZ6OtU'; // your bot token
-const TG_CHAT_ID = '-1003754449329'; // your channel/chat ID
+const TG_TOKEN   = '8009738168:AAH_VWs3LBEU0R7oSJHOSvS-nl45tjZ6OtU';
+const TG_CHAT_ID = '-1003754449329';
 
 async function uploadFileToTelegram(file, caption) {
   if(!file) return null;
@@ -1410,8 +1410,8 @@ function renderNextEventHero(ev) {
   const heroSongs = vozP
     ? Object.values(songs).filter(s => s.ownerId === vozP.musId && s.selected)
     : [];
-  const songsList = heroSongs.length
-    ? heroSongs.map(s => `
+  const songsList = heroSongsFinal.length
+    ? heroSongsFinal.map(s => `
         <div class="ev-hero-song">
           <span class="st">🎵 ${s.title}</span>
           ${s.tono ? `<span class="tag tono-tag">${s.tono}</span>` : ''}
@@ -1868,15 +1868,15 @@ function renderMT() {
             padding:2px 8px;font-size:10px;font-weight:600;">🚫 ${fmtDate(d)}</span>`).join('')
       : `<span style="font-size:11px;color:var(--success);">✅ Disponible siempre</span>`;
     const cargoIco = {Músico:'🎸',Voz:'🎤',Líder:'👑'}[m.cargo||'']||'';
-    return `<div class="mus-card" onclick="showMemberCard('${m.id}')"
-        style="cursor:pointer;transition:border-color .2s;"
+    return `<div class="mus-card" style="transition:border-color .2s;"
         onmouseenter="this.style.borderColor='var(--accent)'"
         onmouseleave="this.style.borderColor=''">
       <div class="mus-card-main">
-        <div class="mus-av" style="background:${color}22;color:${color};font-size:15px;font-weight:700;">
+        <div class="mus-av" style="background:${color}22;color:${color};font-size:15px;font-weight:700;cursor:pointer;"
+          onclick="showMemberCard('${m.id}')">
           ${m.name[0]}
         </div>
-        <div class="mus-info">
+        <div class="mus-info" onclick="showMemberCard('${m.id}')" style="cursor:pointer;flex:1;">
           <div class="mus-name" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
             <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};
               display:inline-block;flex-shrink:0;" title="${dotTitle}"></span>
@@ -1887,6 +1887,15 @@ function renderMT() {
           </div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px;">${m.role}</div>
         </div>
+        ${isAdmin && m.id !== 'demo-admin-001' ? `
+        <button onclick="askDelM('${m.id}')" title="Eliminar integrante"
+          style="background:rgba(224,92,92,.1);border:1px solid rgba(224,92,92,.3);
+            color:var(--danger);border-radius:8px;padding:6px 9px;cursor:pointer;
+            font-size:14px;flex-shrink:0;transition:all .2s;"
+          onmouseover="this.style.background='var(--danger)';this.style.color='#fff'"
+          onmouseout="this.style.background='rgba(224,92,92,.1)';this.style.color='var(--danger)'">
+          🗑
+        </button>` : ''}
       </div>
       ${unavailDates.length ? `
       <div style="padding:7px 13px 10px;border-top:1px solid var(--border);
@@ -1921,18 +1930,25 @@ async function saveME(id) {
 }
 
 async function askDelM(id) {
+  if(!isAdmin){ toast('Solo el admin puede eliminar integrantes','warning'); return; }
   const m = musicians[id]; if(!m) return;
   const usedIn = Object.values(events).filter(e=>e.assignees?.[id]).length;
+  const songCount = Object.values(songs).filter(s=>s.ownerId===id).length;
   showConfirm(`¿Eliminar a ${m.name}?`,
-    usedIn>0?`Está asignado en ${usedIn} evento(s).`:'Esta acción no se puede deshacer.',
+    `Se borrarán todos sus datos: ${songCount} tema(s), ${usedIn} asignación(es) en eventos. Acción irreversible.`,
     async ()=>{
-      await fbRemove(`musicians/${id}`);
-      // Remove from events
-      for(const [evId] of Object.entries(events)) {
-        await fbRemove(`events/${evId}/assignees/${id}`);
+      // 1. Delete all their songs
+      const theirSongs = Object.keys(songs).filter(sid=>songs[sid].ownerId===id);
+      for(const sid of theirSongs) await fbRemove(`songs/${sid}`);
+      // 2. Remove from all events
+      for(const [evId, ev] of Object.entries(events)) {
+        if(ev.assignees?.[id]) await fbRemove(`events/${evId}/assignees/${id}`);
       }
-      await logActivity('musician','🗑️',`Artista "${m.name}" eliminado`);
-      toast(`${m.name} eliminado`,'warning');
+      // 3. Remove from musicians, users
+      await fbRemove(`musicians/${id}`);
+      await fbRemove(`users/${id}`);
+      await logActivity('musician','🗑️',`Admin eliminó a "${m.name}" completamente`);
+      toast(`${m.name} eliminado completamente`,'warning');
     });
 }
 
@@ -2612,10 +2628,12 @@ async function finishRegister() {
   localStorage.setItem('mdios_user', JSON.stringify(user));
   localStorage.setItem('mdios_uid', id);
   currentUser = user;
-  // Show success then enter
+  // Show success banner then enter main app
   showRegSuccess(user, ()=>{
+    sessionStorage.setItem('mdios_session','1');
     hideRegister();
     updateUserUI();
+    switchView('events', document.querySelector('.bnav-btn'));
     setTimeout(startReminderEngine, 500);
   });
 }
@@ -2641,9 +2659,8 @@ function doLogin() {
   const passInp =  document.getElementById('login-pass-inp')?.value || '';
   const err     =  document.getElementById('login-err');
 
-  function showErr(msg) {
-    if(err){ err.textContent = msg; err.style.display='block'; }
-  }
+  function showErr(msg) { if(err){ err.textContent=msg; err.style.display='block'; } }
+
   function enterApp(u) {
     currentUser = u;
     localStorage.setItem('mdios_user', JSON.stringify(u));
@@ -2652,58 +2669,56 @@ function doLogin() {
     updateUserUI();
     if(err) err.style.display='none';
     toast(`¡Hola, ${u.nombres}! 👋`, 'success');
+    enrichUserFromFirebase(u.id);
     setTimeout(startReminderEngine, 500);
   }
 
   if(!nameInp){ showErr('Escribe tu nombre de perfil'); return; }
   if(!passInp){ showErr('Escribe tu contraseña'); return; }
 
-  // ── 0. Check DEMO ADMIN first (always works, no Firebase needed) ───────────
-  const demoLabelMatch = nameInp === 'adminlider' || nameInp === 'admin.l'
-                      || nameInp === 'admin' || nameInp === 'admin lider';
-  if(demoLabelMatch) {
-    if(passInp === 'monte2026') { enterApp(DEMO_ADMIN); return; }
-    else { showErr('Contraseña incorrecta para Admin'); return; }
-  }
-
-  // ── 1. Check against LOCAL saved user ──────────────────────────────────────
-  const saved = localStorage.getItem('mdios_user');
-  if(saved) {
-    try {
-      const u = JSON.parse(saved);
-      const labelMatch = (u.loginLabel||'').toLowerCase() === nameInp
-                      || (u.fullName||'').toLowerCase().replace(/\s/g,'') === nameInp.replace(/\s/g,'')
-                      || (u.nombres||'').toLowerCase() === nameInp;
-      if(labelMatch) {
-        if(atob(u.pass||'') === passInp) { enterApp(u); return; }
-        else { showErr('Contraseña incorrecta'); return; }
-      }
-    } catch(e){}
-  }
-
-  // ── 2. Check Firebase users (cross-device) ─────────────────────────────────
+  // Firebase is source of truth
   const fbUsers = window._fbUsers || {};
   const fbMatch = Object.values(fbUsers).find(u => {
-    const lbl = (u.loginLabel||'').toLowerCase();
-    const full = (u.fullName||'').toLowerCase().replace(/\s/g,'');
-    return lbl === nameInp || full === nameInp.replace(/\s/g,'');
+    const lbl  = (u.loginLabel||'').toLowerCase();
+    const full = (u.fullName||'').toLowerCase().replace(/ /g,'');
+    const nom  = (u.fullName||'').split(' ')[0].toLowerCase();
+    return lbl===nameInp || full===nameInp.replace(/ /g,'') || nom===nameInp;
   });
+
   if(fbMatch) {
     if(atob(fbMatch.pass||'') === passInp) {
       const u = {
-        id: fbMatch.id,
-        nombres: fbMatch.fullName.split(' ')[0],
-        apellidos: fbMatch.fullName.split(' ').slice(1).join(' '),
-        fullName: fbMatch.fullName, displayName: fbMatch.displayName,
-        loginLabel: fbMatch.loginLabel, cargo: fbMatch.cargo,
-        role: fbMatch.role, pass: fbMatch.pass, availDates:{}, createdAt: fbMatch.createdAt
+        id:fbMatch.id, nombres:fbMatch.fullName.split(' ')[0],
+        apellidos:fbMatch.fullName.split(' ').slice(1).join(' '),
+        fullName:fbMatch.fullName, displayName:fbMatch.displayName,
+        loginLabel:fbMatch.loginLabel, cargo:fbMatch.cargo,
+        role:fbMatch.role, bday:fbMatch.bday||'',
+        pass:fbMatch.pass, availDates:{}, createdAt:fbMatch.createdAt
       };
       enterApp(u); return;
     } else { showErr('Contraseña incorrecta'); return; }
   }
 
-  showErr('Nombre de perfil no encontrado');
+  // Fallback: local cache when Firebase not loaded yet
+  const saved = localStorage.getItem('mdios_user');
+  if(saved) {
+    try {
+      const u = JSON.parse(saved);
+      const lm = (u.loginLabel||'').toLowerCase()===nameInp
+               || (u.fullName||'').toLowerCase().replace(/ /g,'')===nameInp.replace(/ /g,'')
+               || (u.nombres||'').toLowerCase()===nameInp;
+      if(lm) {
+        if(atob(u.pass||'')===passInp) { enterApp(u); return; }
+        else { showErr('Contraseña incorrecta'); return; }
+      }
+    } catch(e){}
+  }
+
+  showErr(Object.keys(fbUsers).length===0
+    ? 'Conectando... intenta de nuevo en 3 segundos'
+    : 'Usuario no encontrado — ¿ya te registraste?');
 }
+
 
 function hideRegister() {
   const scr = document.getElementById('register-screen');
@@ -2791,14 +2806,19 @@ function clearSavedUser() {
 }
 
 function checkAutoLogin() {
-  const saved = localStorage.getItem('mdios_user');
-  if(saved) {
+  const saved   = localStorage.getItem('mdios_user');
+  const session = sessionStorage.getItem('mdios_session');
+  if(saved && session==='1') {
     try {
-      // Don't auto-enter — show login screen with pre-filled name
-      buildLoginSection();
-      return false; // always show register screen, but with login pre-filled
-    } catch(e) {}
+      const u = JSON.parse(saved);
+      currentUser = u;
+      hideRegister();
+      updateUserUI();
+      setTimeout(startReminderEngine, 800);
+      return true;
+    } catch(e){}
   }
+  // No active session — show login with pre-filled name
   buildLoginSection();
   return false;
 }
@@ -3242,18 +3262,61 @@ async function downloadFromTelegram(fileId, fileName, tipo) {
   if(!fileId){ toast('Sin archivo disponible','warning'); return; }
   const label = tipo || fileName || 'documento';
   showDownloadConfirm(label, async () => {
-    toast('Obteniendo archivo del servidor…','info');
+    const bar   = document.getElementById('dl-bar');
+    const pctEl = document.getElementById('dl-pct');
+
+    // Step 1: get Telegram file path
+    if(bar) bar.style.width = '20%';
+    if(pctEl) pctEl.textContent = '20%';
+    toast('Conectando con servidor…','info');
+
     const url = await getTelegramFileUrl(fileId);
-    if(!url){ toast('No se pudo obtener el archivo','error'); return; }
+    if(!url){
+      toast('No se pudo obtener el archivo del servidor','error');
+      return;
+    }
+
+    if(bar) bar.style.width = '50%';
+    if(pctEl) pctEl.textContent = '50%';
+
+    // Step 2: Try fetch first; if CORS blocks, open directly
     try {
-      const res   = await fetch(url);
-      const blob  = await res.blob();
+      const res = await fetch(url, {mode:'cors'});
+      if(!res.ok) throw new Error('CORS blocked');
+      const blob    = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
       _lastPDFDataUrl = blobUrl;
       _lastBlobUrl    = blobUrl;
-      _simulateProgressAndDownload(blobUrl, fileName||'documento.pdf');
+
+      if(bar) bar.style.width='100%';
+      if(pctEl) pctEl.textContent='100%';
+
+      setTimeout(()=>{
+        const pw = document.getElementById('dl-progress-wrap');
+        const sm = document.getElementById('dl-success-msg');
+        if(pw) pw.style.display='none';
+        if(sm) sm.style.display='block';
+        // Trigger download
+        const a = document.createElement('a');
+        a.href = blobUrl; a.download = fileName||'documento.pdf';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(()=>URL.revokeObjectURL(blobUrl), 120000);
+      }, 300);
+
     } catch(e) {
-      toast('Error al descargar: ' + e.message,'error');
+      // CORS blocked — open in new tab (Telegram CDN link opens directly)
+      if(bar) bar.style.width='100%';
+      if(pctEl) pctEl.textContent='100%';
+      setTimeout(()=>{
+        const pw = document.getElementById('dl-progress-wrap');
+        const sm = document.getElementById('dl-success-msg');
+        if(pw) pw.style.display='none';
+        if(sm) sm.style.display='block';
+        _lastPDFDataUrl = url;
+        _lastBlobUrl    = url;
+        // Open directly — browser will download or show PDF
+        window.open(url,'_blank');
+      }, 300);
     }
   });
 }
