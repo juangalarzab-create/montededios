@@ -2,11 +2,11 @@
   "name": "Monte de Dios",
   "short_name": "Monte de Dios",
   "description": "Gestión de eventos y ministerio en tiempo real",
-  "start_url": "/",
+  "start_url": "/montededios/",
   "display": "standalone",
   "background_color": "#0d0d0f",
   "theme_color": "#0d0d0f",
-  "orientation": "portrait-primary",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "icon-192.png",
@@ -21,7 +21,10 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["productivity", "music"],
+  "categories": [
+    "productivity",
+    "music"
+  ],
   "lang": "es",
   "shortcuts": [
     {
@@ -29,5 +32,7 @@
       "url": "/?action=new-event",
       "description": "Crear un nuevo evento"
     }
-  ]
+  ],
+  "scope": "/montededios/",
+  "id": "/montededios/"
 }
