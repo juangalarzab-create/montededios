@@ -1064,6 +1064,18 @@ function setupFirebase() {
   // Listen to users for cross-device login
   onValue(ref(db,'users'), snap => { window._fbUsers = snap.val() || {}; });
 
+  // ── Broadcast notifications listener — fires on ALL connected clients ─────
+  let _lastNotifTs = Date.now(); // only show notifs newer than app open time
+  onValue(ref(db,'notifications'), snap => {
+    const all = snap.val() || {};
+    Object.values(all).forEach(n => {
+      if(n.ts > _lastNotifTs) {
+        _lastNotifTs = n.ts;
+        pushNotif(n.title, n.body);
+      }
+    });
+  });
+
   // ── Notificaciones en tiempo real para todos los cambios ──────────────────
   let _firstLoadEvents = true, _firstLoadMusicians = true, _firstLoadSongs = true;
 
@@ -1254,14 +1266,43 @@ async function logActivity(type, icon, text) {
 async function setupFCM() {
   if(!window._fb?.messaging) return;
   const { messaging, getToken, onMessage, VAPID_KEY } = window._fb;
-  if(!VAPID_KEY || VAPID_KEY==='BMCg-0sYXWYU6QqDLecHLCmBkzTvAWEk8CuhXjedqxqVVIprBxanVrACQUBRnPpEt2vqJlM-vzlchH5ER2kdELo') return;
+  if(!VAPID_KEY) return;
+  // NOTE: removed wrong placeholder check — VAPID_KEY IS the real key
   try {
+    // Request notification permission if not yet granted
+    if('Notification' in window && Notification.permission === 'default') {
+      await Notification.requestPermission();
+    }
     const token = await getToken(messaging, {vapidKey: VAPID_KEY});
-    if(token) await fbSet(`fcmTokens/${token.slice(-20)}`, {token, ts: Date.now()});
+    if(token) {
+      // Store full token keyed by last 30 chars (unique enough)
+      const key = token.slice(-30).replace(/[^a-zA-Z0-9]/g,'_');
+      await fbSet(`fcmTokens/${key}`, {token, uid: currentUser?.id||'anon', ts: Date.now()});
+      console.log('FCM token registered');
+    }
+    // Handle foreground messages
     onMessage(messaging, payload => {
-      toast(`🔔 ${payload.notification?.title || 'Nueva notificación'}`, 'info');
+      const title = payload.notification?.title || 'Monte de Dios';
+      const body  = payload.notification?.body  || '';
+      pushNotif(title, body);
     });
-  } catch(e) { console.warn('FCM:', e); }
+  } catch(e) { console.warn('FCM setup error:', e.message); }
+}
+
+// Send push to ALL registered FCM tokens via Firebase
+// (called when creating/editing events)
+async function broadcastPushToAll(title, body) {
+  // Store notification in Firebase so all clients see it
+  // Each client's onValue listener on /notifications will trigger pushNotif locally
+  if(!fbReady) return;
+  const { db, ref, push } = window._fb;
+  try {
+    await push(ref(db,'notifications'), {
+      title, body,
+      ts: Date.now(),
+      from: currentUser?.displayName || 'Admin'
+    });
+  } catch(e) { console.warn('broadcastPush:', e); }
 }
 
 function sendPushNotification(msg) {
@@ -1580,7 +1621,7 @@ async function addEvent() {
   await fbSet(`events/${id}`, ev);
   const assigned = Object.values(assignees).map(a=>a.name).join(', ');
   await logActivity('event','🗓️',`Nuevo evento: "${title}" el ${fmtDate(date)}${assigned?' · '+assigned:''}`);
-  pushNotif('🗓️ Nuevo Evento', `"${title}" — ${fmtDate(date)}${ev.time?' a las '+ev.time:''}${ev.venue?' · '+ev.venue:''}`);
+  broadcastPushToAll('🗓️ Nuevo Evento', `"${title}" — ${fmtDate(date)}${ev.time?' a las '+ev.time:''}${ev.venue?' · '+ev.venue:''}`);
   closeEvModal();
   newEvSelPeople = {};
   selEvent(id);
@@ -2148,187 +2189,207 @@ function _doExportCalendarPDF() {
     'Violinista':'VI','Musico':'MU','Lider':'LD'
   };
   const getSigla = a => SIGLAS[a.rolEvento]||SIGLAS[a.role]||(a.role||'').slice(0,2).toUpperCase();
-  const MONTHS = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
-  const DAYS   = ['DOM','LUN','MAR','MIE','JUE','VIE','SAB'];
 
-  // App palette
+  // App colors — exact match to hero card
   const BG    = [13,13,15];
   const SURF  = [22,22,26];
   const SURF2 = [30,30,36];
   const BORD  = [42,42,53];
-  const ACC   = [240,180,41];
-  const ACC2  = [224,92,42];
-  const WHT   = [240,237,232];
-  const MUT   = [122,122,138];
-  const GRN   = [62,207,142];
-  const BLU   = [92,168,224];
+  const ACC   = [240,180,41];   // gold accent
+  const ACC2  = [224,92,42];    // orange
+  const WHT   = [240,237,232];  // text
+  const MUT   = [122,122,138];  // muted
+  const GRN   = [62,207,142];   // success
+  const BLU   = [92,168,224];   // info
   const DARK  = [13,13,15];
 
-  const EPP = 6; // events per page — max 6
+  const EPP   = 4; // 4 events per page — matches hero card size
   const pages = Math.ceil(allEvs.length / EPP);
-  const doc = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  const doc   = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
   const W=210, H=297;
 
   for(let pg=0; pg<pages; pg++){
     if(pg>0) doc.addPage();
 
-    // ── Background ────────────────────────────────────────────────────────────
+    // Full dark background
     doc.setFillColor(...BG); doc.rect(0,0,W,H,'F');
 
-    // ── Top accent bar ─────────────────────────────────────────────────────────
-    doc.setFillColor(...ACC);
-    doc.rect(0,0,W,1.2,'F');
-
-    // ── Header ────────────────────────────────────────────────────────────────
-    doc.setFillColor(...SURF);
-    doc.rect(0,0,W,18,'F');
-    doc.setFillColor(...ACC);
-    doc.rect(0,0,3,18,'F');
-
-    doc.setFont('helvetica','bold'); doc.setFontSize(13);
+    // Page header — matches app header style
+    doc.setFillColor(...SURF); doc.rect(0,0,W,14,'F');
+    doc.setFillColor(...ACC);  doc.rect(0,0,W,1.2,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(10);
     doc.setTextColor(...WHT);
-    doc.text('Monte de Dios  -  Eventos', 12, 11);
-    doc.setFont('helvetica','normal'); doc.setFontSize(8);
+    doc.text('MONTE DE DIOS  —  Eventos', 8, 9);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7);
     doc.setTextColor(...MUT);
-    doc.text(`Pag. ${pg+1}/${pages}  |  ${new Date().toLocaleDateString('es-PE')}`, W-8, 11, {align:'right'});
+    doc.text(`${pg+1} / ${pages}  |  ${new Date().toLocaleDateString('es-PE')}`, W-6, 9, {align:'right'});
 
-    // ── Cards ─────────────────────────────────────────────────────────────────
     const slice  = allEvs.slice(pg*EPP, (pg+1)*EPP);
-    const marg   = 7;
-    const gap    = 3;
-    const startY = 21;
+    const marg   = 6;
+    const gap    = 4;
+    const startY = 17;
     const cardW  = W - marg*2;
-    const usable = H - startY - 9;
+    const usable = H - startY - 8;
     const cardH  = (usable - gap*(slice.length-1)) / slice.length;
 
     slice.forEach((ev, i) => {
-      const cy  = startY + i*(cardH+gap);
-      const halfW = cardW/2 - 1;
-      const lx  = marg;
-      const rx  = marg + halfW + 2;
+      const cy = startY + i*(cardH+gap);
 
       const asgn  = ev.assignees ? Object.values(ev.assignees) : [];
       const vozP  = asgn.find(a=>a.rolEvento==='Voz Principal')||asgn.find(a=>a.cargo==='Voz'||a.role==='Cantante');
-      const voices= asgn.filter(a=>a.role==='Cantante'||a.cargo==='Voz'||(a.rolEvento&&(a.rolEvento.includes('Voz')||a.rolEvento.includes('Coro'))));
-      const mus   = asgn.filter(a=>!voices.includes(a));
+      const vozId = vozP ? (vozP.musId||vozP.id) : null;
+      // Get selected songs for voz principal
+      const heroSongs = vozId
+        ? Object.values(songs).filter(s=>(s.ownerId===vozId||s.ownerName===vozP?.name)&&s.selected===true)
+        : [];
 
-      // ── Left card ─────────────────────────────────────────────────────────
+      // ── Card outer — rounded, dark surface with gold left stripe ──────────
       doc.setFillColor(...SURF);
-      doc.roundedRect(lx, cy, halfW, cardH, 3, 3, 'F');
-      // Left accent stripe
+      doc.roundedRect(marg, cy, cardW, cardH, 4, 4, 'F');
+      // Gold left border stripe
       doc.setFillColor(...ACC);
-      doc.rect(lx, cy, 2, cardH, 'F');
+      doc.roundedRect(marg, cy, 2.5, cardH, 2, 2, 'F');
 
-      const lpad = 6, ico_size = 3.5;
-      let ly = cy + 6;
+      const pad = 8; // left padding after stripe
+      let ly = cy + 7;
 
-      // Event title
-      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...ACC);
-      const titleParts = doc.splitTextToSize(ev.title.toUpperCase(), halfW-lpad-2);
-      doc.text(titleParts, lx+lpad, ly);
-      ly += titleParts.length * 4.5 + 1.5;
+      // ── HEADER SECTION — badge + title + meta ─────────────────────────────
+      // Badge: "PRÓXIMO EVENTO" or date badge
+      const td = today();
+      const isToday = ev.date === td;
+      const badgeColor = isToday ? ACC2 : ACC;
+      doc.setFillColor(...badgeColor);
+      doc.roundedRect(marg+pad, ly-3.5, isToday?18:28, 4.5, 1, 1, 'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(4.5); doc.setTextColor(...DARK);
+      doc.text(isToday ? 'HOY' : 'PROXIMO EVENTO', marg+pad+1.5, ly-0.2);
+      ly += 3;
 
-      // Date  (use text label instead of emoji to avoid symbol corruption)
-      if(ly < cy+cardH-3) {
-        const evD = new Date(ev.date+'T12:00:00');
-        const [,em,ed] = ev.date.split('-');
-        const dateStr = `${DAYS[evD.getDay()]} ${parseInt(ed)} ${MONTHS[parseInt(em)-1]}`;
-        doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...MUT);
-        doc.text('[Fecha]', lx+lpad, ly);
-        doc.setTextColor(...WHT);
-        doc.text(dateStr, lx+lpad+13, ly);
-        ly += 5;
+      // Event title — big and bold like hero
+      doc.setFont('helvetica','bold'); doc.setFontSize(11);
+      doc.setTextColor(...WHT);
+      const titleParts = doc.splitTextToSize(ev.title.toUpperCase(), cardW-pad-6);
+      doc.text(titleParts, marg+pad, ly);
+      ly += titleParts.length * 6 + 1;
+
+      // Meta row: date | time | venue
+      doc.setFont('helvetica','normal'); doc.setFontSize(7);
+      doc.setTextColor(...MUT);
+      const [,em,ed] = ev.date.split('-');
+      const MNTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      const dateStr = `${parseInt(ed)} ${MNTHS[parseInt(em)-1]} ${ev.date.split('-')[0]}`;
+      let mx = marg+pad;
+
+      // Date chip
+      doc.setFillColor(...SURF2); doc.roundedRect(mx-1, ly-3.5, 22, 5, 1,1,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(...WHT);
+      doc.text(dateStr, mx, ly-0.2);
+      mx += 24;
+
+      if(ev.time){
+        doc.setFillColor(...SURF2); doc.roundedRect(mx-1, ly-3.5, 14, 5, 1,1,'F');
+        doc.text(ev.time, mx, ly-0.2); mx += 16;
       }
-
-      // Time
-      if(ev.time && ly < cy+cardH-3) {
-        doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...MUT);
-        doc.text('[Hora]', lx+lpad, ly);
-        doc.setTextColor(...WHT);
-        doc.text(ev.time, lx+lpad+11, ly);
-        ly += 5;
+      if(ev.venue){
+        doc.setFillColor(...SURF2);
+        const vw = Math.min(doc.getTextWidth(ev.venue)*0.9+4, cardW-mx+marg-6);
+        doc.roundedRect(mx-1, ly-3.5, vw, 5, 1,1,'F');
+        doc.setTextColor(...MUT);
+        const vt = doc.splitTextToSize(ev.venue, vw-2);
+        doc.text(vt[0], mx, ly-0.2);
       }
+      ly += 6;
 
-      // Venue
-      if(ev.venue && ly < cy+cardH-3) {
-        doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...MUT);
-        doc.text('[Lugar]', lx+lpad, ly);
-        doc.setTextColor(...WHT);
-        const vp = doc.splitTextToSize(ev.venue, halfW-lpad-13);
-        doc.text(vp, lx+lpad+13, ly);
-      }
+      // ── Divider ────────────────────────────────────────────────────────────
+      doc.setDrawColor(...BORD); doc.setLineWidth(0.2);
+      doc.line(marg+pad, ly, marg+cardW-2, ly); ly += 3;
 
-      // ── Right card ────────────────────────────────────────────────────────
-      doc.setFillColor(...SURF2);
-      doc.roundedRect(rx, cy, halfW, cardH, 3, 3, 'F');
-      doc.setFillColor(...ACC2);
-      doc.rect(rx, cy, 2, cardH, 'F');
+      // ── ENCARGADOS section ─────────────────────────────────────────────────
+      // Section label
+      doc.setFont('helvetica','bold'); doc.setFontSize(6);
+      doc.setTextColor(...BLU);
+      doc.text('ENCARGADOS', marg+pad, ly); ly += 4;
 
-      const rpad = 6;
-      let ry = cy + 5;
+      // Person pills — like the hero
+      let px = marg+pad;
+      asgn.forEach(a => {
+        if(px > marg+cardW-20) return;
+        const color = a.role==='Cantante'||a.cargo==='Voz' ? ACC
+                    : a.rolEvento==='Voz Principal' ? ACC
+                    : [160,160,170];
+        const sigla = getSigla(a);
+        const fname = a.name.split(' ')[0];
+        const pillW = doc.getTextWidth(`${fname} · ${sigla}`) + 12;
 
-      // Voz Principal header
-      if(vozP) {
-        doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...ACC);
-        const vpn = doc.splitTextToSize(vozP.name, halfW-rpad-2);
-        doc.text(vpn, rx+rpad, ry);
-        ry += vpn.length*4.2;
-        doc.setDrawColor(...ACC); doc.setLineWidth(0.4);
-        doc.line(rx+rpad, ry, rx+halfW-2, ry);
-        ry += 3;
-      }
+        // Pill background
+        doc.setFillColor(...SURF2); doc.roundedRect(px, ly-3.5, pillW, 5.5, 2,2,'F');
+        // Initials circle
+        doc.setFillColor(...color); doc.circle(px+3.5, ly-0.8, 2.5,'F');
+        doc.setFont('helvetica','bold'); doc.setFontSize(4); doc.setTextColor(...DARK);
+        const inits = (a.name.split(' ')[0][0]||'')+(a.name.split(' ')[1]?.[0]||'');
+        doc.text(inits, px+1.8, ly-0.1);
+        // Name + sigla
+        doc.setFont('helvetica','bold'); doc.setFontSize(6); doc.setTextColor(...WHT);
+        doc.text(fname, px+7.5, ly-0.2);
+        doc.setTextColor(...color);
+        doc.text(`· ${sigla}`, px+7.5+doc.getTextWidth(fname)+1, ly-0.2);
+        px += pillW + 2;
+      });
+      ly += 5;
 
-      // Two columns
-      const colW = (halfW-rpad-4)/2;
-      const c1x = rx+rpad, c2x = rx+rpad+colW+3;
-      let c1y = ry, c2y = ry;
+      // ── Divider ────────────────────────────────────────────────────────────
+      doc.setDrawColor(...BORD); doc.line(marg+pad, ly, marg+cardW-2, ly); ly += 3;
 
-      // VOCES
-      if(voices.length) {
-        doc.setFont('helvetica','bold'); doc.setFontSize(6); doc.setTextColor(...GRN);
-        doc.text('VOCES', c1x, c1y); c1y += 4;
-        voices.forEach(a => {
-          if(c1y > cy+cardH-2) return;
-          const sg = getSigla(a).slice(0,2);
-          doc.setFillColor(...GRN); doc.circle(c1x+1.8, c1y-1.2, 1.7,'F');
-          doc.setFont('helvetica','bold'); doc.setFontSize(3.5); doc.setTextColor(...DARK);
-          doc.text(sg, c1x+0.7, c1y-0.2);
-          doc.setFont('helvetica','normal'); doc.setFontSize(6); doc.setTextColor(...WHT);
-          doc.text(a.name.split(' ')[0], c1x+5, c1y);
-          c1y += 4;
+      // ── TEMAS section — songs list like hero ───────────────────────────────
+      const vozName = vozP ? vozP.name.split(' ')[0] : 'Voz Principal';
+      doc.setFont('helvetica','bold'); doc.setFontSize(6);
+      doc.setTextColor(...MUT);
+      doc.text(`TEMAS  —  ${vozName.toUpperCase()}`, marg+pad, ly); ly += 4;
+
+      if(heroSongs.length) {
+        heroSongs.forEach(s => {
+          if(ly > cy+cardH-3) return;
+          // Song row background
+          doc.setFillColor(...SURF2);
+          doc.roundedRect(marg+pad, ly-3, cardW-pad-4, 5.5, 1,1,'F');
+          // Music note
+          doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...MUT);
+          doc.text('J', marg+pad+1.5, ly+0.5);
+          // Song title
+          doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(...WHT);
+          const maxTitleW = cardW-pad-35;
+          const stitle = doc.splitTextToSize(s.title, maxTitleW);
+          doc.text(stitle[0], marg+pad+6, ly+0.5);
+          // Tono chip
+          if(s.tono){
+            const tw = doc.getTextWidth(s.tono)+4;
+            const tx = marg+cardW-2-tw-(s.bpm?16:2);
+            doc.setFillColor(240,180,41,0.3); doc.setFillColor(50,42,20);
+            doc.roundedRect(tx, ly-2, tw, 4, 1,1,'F');
+            doc.setFont('helvetica','bold'); doc.setFontSize(5.5); doc.setTextColor(...ACC);
+            doc.text(s.tono, tx+2, ly+0.8);
+          }
+          // BPM chip
+          if(s.bpm){
+            const bw = doc.getTextWidth(s.bpm+' BPM')+4;
+            const bx = marg+cardW-2-bw;
+            doc.setFillColor(20,30,42);
+            doc.roundedRect(bx, ly-2, bw, 4, 1,1,'F');
+            doc.setFont('helvetica','bold'); doc.setFontSize(5.5); doc.setTextColor(...BLU);
+            doc.text(`${s.bpm} BPM`, bx+2, ly+0.8);
+          }
+          ly += 6;
         });
-      }
-
-      // MUSICOS
-      if(mus.length) {
-        doc.setFont('helvetica','bold'); doc.setFontSize(6); doc.setTextColor(...BLU);
-        doc.text('MUSICOS', c2x, c2y); c2y += 4;
-        mus.forEach(a => {
-          if(c2y > cy+cardH-2) return;
-          const sg = getSigla(a).slice(0,2);
-          doc.setFillColor(...BLU); doc.circle(c2x+1.8, c2y-1.2, 1.7,'F');
-          doc.setFont('helvetica','bold'); doc.setFontSize(3.5); doc.setTextColor(...DARK);
-          doc.text(sg, c2x+0.7, c2y-0.2);
-          doc.setFont('helvetica','normal'); doc.setFontSize(6); doc.setTextColor(...WHT);
-          doc.text(a.name.split(' ')[0], c2x+5, c2y);
-          c2y += 4;
-        });
-      }
-
-      if(!asgn.length) {
+      } else {
         doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(...MUT);
-        doc.text('Sin encargados', rx+rpad, cy+cardH/2+2);
+        doc.text('Sin temas asignados', marg+pad+2, ly);
       }
     });
 
-    // ── Footer ────────────────────────────────────────────────────────────────
-    doc.setFillColor(...SURF);
-    doc.rect(0, H-8, W, 8, 'F');
-    doc.setFillColor(...ACC);
-    doc.rect(0, H-8, W, 0.6, 'F');
-    doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
-    doc.setTextColor(...ACC);
-    doc.text('@Ministerio Monte De Dios', W/2, H-2.5, {align:'center'});
+    // Footer
+    doc.setFillColor(...SURF); doc.rect(0,H-7,W,7,'F');
+    doc.setFillColor(...ACC);  doc.rect(0,H-7,W,0.5,'F');
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...ACC);
+    doc.text('@Ministerio Monte De Dios', W/2, H-1.8, {align:'center'});
   }
 
   const pdfBlob = doc.output('blob');
@@ -2536,7 +2597,12 @@ function checkReminders() {
 }
 
 function fireReminder(ev, when) {
-  // Use pushNotif for consistent sound + system notification behavior
+  // Broadcast reminder to ALL users
+  broadcastPushToAll(
+    `⏰ Recordatorio — ${when}`,
+    `"${ev.title}" ${ev.time?'a las '+ev.time:''}${ev.venue?' · '+ev.venue:''}`
+  );
+  // Also local push for this device
   pushNotif(
     `⏰ Recordatorio — ${when}`,
     `"${ev.title}" ${ev.time?'a las '+ev.time:''}${ev.venue?' · '+ev.venue:''}`
@@ -2740,6 +2806,8 @@ function doLogin() {
     if(err) err.style.display='none';
     toast(`¡Hola, ${u.nombres}! 👋`, 'success');
     enrichUserFromFirebase(u.id);
+    // Re-register FCM token for this user on login
+    setTimeout(setupFCM, 1000);
     // Force refresh songs and profile on every login
     renderSongsList();
     renderProfileSongs();
@@ -3880,7 +3948,7 @@ async function saveEditEvent() {
   if(!updated.title||!updated.date){ toast('Nombre y fecha son obligatorios','error'); return; }
   await fbUpdate(`events/${editEvId}`, updated);
   await logActivity('event','✏️',`Evento "${updated.title}" actualizado`);
-  pushNotif('✏️ Evento Actualizado', `"${updated.title}" fue modificado — ${fmtDate(updated.date)}${updated.time?' a las '+updated.time:''}`);
+  broadcastPushToAll('✏️ Evento Actualizado', `"${updated.title}" fue modificado — ${fmtDate(updated.date)}${updated.time?' a las '+updated.time:''}`);
   closeEditEvModal();
   toast('Evento guardado ✓','success');
   renderEL();
