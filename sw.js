@@ -1,5 +1,5 @@
 // Monte de Dios Service Worker v1.0
-const CACHE = 'montededios-v1';
+const CACHE = 'montededios-v2';
 const ASSETS = [
   '/',
   '/index.html',
