@@ -1523,14 +1523,11 @@ function renderNextEventHero(ev) {
   const isToday  = ev.date === td;
   const assignees = ev.assignees ? Object.values(ev.assignees) : [];
 
-  // ── Role abbreviations ────────────────────────────────────────────────────
-  const SIGLAS = {
-    'Voz Principal':'VP','Voz':'VOZ','Cantante':'VOZ','Coros':'COR','Coros 2':'COR2',
-    'Director':'DIR','Guitarrista':'GTR','Tecladista':'TCL','Bajista':'BJO',
-    'Baterista':'BAT','Percusionista':'PER','Trompetista':'TRP','Saxofonista':'SAX',
-    'Violinista':'VLN','Violonchelista':'VLC','Flautista':'FLT','Músico':'MUS','Líder':'LDR'
+  // Siglas = 3 primeras letras del rol asignado (rolEvento tiene prioridad)
+  const getSigla = a => {
+    const src = (a.rolEvento || a.role || '').trim();
+    return src.replace(/[^a-zA-ZáéíóúüñÁÉÍÓÚÜÑ]/g,'').slice(0,3).toUpperCase() || 'MIN';
   };
-  const getSigla = a => SIGLAS[a.rolEvento] || SIGLAS[a.role] || (a.role||'').slice(0,3).toUpperCase();
 
   // ── Encargados con siglas ─────────────────────────────────────────────────
   const peoplePills = assignees.length
@@ -1945,22 +1942,40 @@ function showMemberCard(musId) {
         font-size:10px;font-weight:600;">🚫 ${fmtDate(d)}</span>`).join('')
     : '<span style="font-size:12px;color:var(--success);">✅ Disponible siempre</span>';
 
-  // Their selected songs
-  const memberSongs = Object.values(songs).filter(s=>s.ownerId===musId && s.selected);
+  // ALL songs by this member (selected ones marked with star)
+  const memberSongs = Object.values(songs)
+    .filter(s=>s.ownerId===musId)
+    .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   const songList = memberSongs.length
-    ? memberSongs.map(s=>`
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;
-          padding:7px 10px;margin-bottom:5px;">
-          <div style="font-weight:600;font-size:12px;">${s.title} <span class="song-tono">${s.tono||''}</span></div>
-          <div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;">
-            ${s.ytLink?`<button class="song-btn play" style="font-size:10px;padding:3px 8px;" onclick="openSongLink('${s.ytLink}')">▶ Video</button>`:''}
-            ${(s.letraLink||s.letraData)?`<button class="song-btn" style="font-size:10px;padding:3px 8px;" onclick="${s.letraData?`downloadPDF('${s.letraData}','${s.letraName||'letras.pdf'}','Letras de ${s.title}')`:s.letraLink?`openSongLink('${s.letraLink}')`:''}">📄 Letras</button>`:''}
-            ${(s.chartLink||s.chartData)?`<button class="song-btn" style="font-size:10px;padding:3px 8px;" onclick="${s.chartData?`downloadPDF('${s.chartData}','${s.chartName||'chart.pdf'}','Chart de ${s.title}')`:s.chartLink?`openSongLink('${s.chartLink}')`:''}">🎼 Chart</button>`:''}
+    ? memberSongs.map(s=>{
+        const hasLetra = !!(s.letraFileId||s.letraLink);
+        const hasChart = !!(s.chartFileId||s.chartLink);
+        const hasYT    = !!s.ytLink;
+        return `
+        <div style="background:var(--surface2);border:1px solid ${s.selected?'var(--accent)':'var(--border)'};
+          border-radius:8px;padding:8px 11px;margin-bottom:6px;">
+          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:6px;">
+            <span style="font-size:12px;">${s.selected?'⭐':'🎵'}</span>
+            <span style="font-weight:600;font-size:12px;flex:1;">${s.title}</span>
+            ${s.tono?`<span style="background:rgba(240,180,41,.18);color:var(--accent);border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;">${s.tono}</span>`:''}
+            ${s.bpm?`<span style="background:rgba(92,168,224,.18);color:var(--info);border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;">${s.bpm} BPM</span>`:''}
           </div>
-        </div>`).join('')
-    : '<div style="font-size:11px;color:var(--muted);">Sin temas en lista</div>';
+          <div style="display:flex;gap:5px;flex-wrap:wrap;">
+            ${hasYT?`<button class="song-btn play" style="font-size:10px;padding:3px 8px;" onclick="openSongLink('${s.ytLink}')">▶ Video</button>`:''}
+            ${hasLetra?`<button class="song-btn" style="font-size:10px;padding:3px 8px;"
+              onclick="${s.letraFileId
+                ? 'downloadFromTelegram(\''+s.letraFileId+'\',\''+( s.letraFileName||'letras.pdf')+'\',\'Letras\')'
+                : s.letraLink ? 'openSongLink(\''+s.letraLink+'\')' : ''}">📄 Letras</button>`:''}
+            ${hasChart?`<button class="song-btn" style="font-size:10px;padding:3px 8px;"
+              onclick="${s.chartFileId
+                ? 'downloadFromTelegram(\''+s.chartFileId+'\',\''+( s.chartFileName||'chart.pdf')+'\',\'Chart\')'
+                : s.chartLink ? 'openSongLink(\''+s.chartLink+'\')' : ''}">🎼 Chart</button>`:''}
+          </div>
+        </div>`;
+      }).join('')
+    : '<div style="font-size:11px;color:var(--muted);">Sin temas subidos</div>';
 
-  const box = document.getElementById('member-card-content');
+const box = document.getElementById('member-card-content');
   box.innerHTML = `
     <button class="mcm-close" onclick="document.getElementById('modal-member').classList.add('hidden')">✕</button>
     <div class="mcm-header">
@@ -2182,13 +2197,11 @@ function _doExportCalendarPDF() {
   const allEvs = Object.values(events).sort((a,b)=>a.date.localeCompare(b.date));
   if(!allEvs.length){ toast('Sin eventos','warning'); return; }
 
-  const SIGLAS = {
-    'Voz Principal':'VP','Voz':'VO','Cantante':'VO','Coros':'CO','Coros 2':'C2',
-    'Director':'DI','Guitarrista':'GT','Tecladista':'TC','Bajista':'BJ',
-    'Baterista':'BA','Percusionista':'PE','Trompetista':'TR','Saxofonista':'SA',
-    'Violinista':'VI','Musico':'MU','Lider':'LD'
+  // Siglas = first 3 letters of role
+  const getSigla = a => {
+    const src = (a.rolEvento || a.role || '').trim();
+    return src.replace(/[^a-zA-Z]/g,'').slice(0,3).toUpperCase() || 'MIN';
   };
-  const getSigla = a => SIGLAS[a.rolEvento]||SIGLAS[a.role]||(a.role||'').slice(0,2).toUpperCase();
 
   // App colors — exact match to hero card
   const BG    = [13,13,15];
@@ -2217,9 +2230,11 @@ function _doExportCalendarPDF() {
     // Page header — matches app header style
     doc.setFillColor(...SURF); doc.rect(0,0,W,14,'F');
     doc.setFillColor(...ACC);  doc.rect(0,0,W,1.2,'F');
-    doc.setFont('helvetica','bold'); doc.setFontSize(10);
-    doc.setTextColor(...WHT);
-    doc.text('MONTE DE DIOS  —  Eventos', 8, 9);
+    doc.setFont('helvetica','bold'); doc.setFontSize(13);
+    doc.setTextColor(...ACC);
+    doc.text('PROXIMOS EVENTOS', W/2, 10, {align:'center'});
+    // Underline
+    doc.setFillColor(...ACC); doc.rect(50, 11.5, 110, 0.5, 'F');
     doc.setFont('helvetica','normal'); doc.setFontSize(7);
     doc.setTextColor(...MUT);
     doc.text(`${pg+1} / ${pages}  |  ${new Date().toLocaleDateString('es-PE')}`, W-6, 9, {align:'right'});
@@ -2227,7 +2242,7 @@ function _doExportCalendarPDF() {
     const slice  = allEvs.slice(pg*EPP, (pg+1)*EPP);
     const marg   = 6;
     const gap    = 4;
-    const startY = 17;
+    const startY = 21;
     const cardW  = W - marg*2;
     const usable = H - startY - 8;
     const cardH  = (usable - gap*(slice.length-1)) / slice.length;
@@ -2253,16 +2268,17 @@ function _doExportCalendarPDF() {
       const pad = 8; // left padding after stripe
       let ly = cy + 7;
 
-      // ── HEADER SECTION — badge + title + meta ─────────────────────────────
-      // Badge: "PRÓXIMO EVENTO" or date badge
+      // ── HEADER SECTION — title + meta (no badge per card) ─────────────────
       const td = today();
       const isToday = ev.date === td;
-      const badgeColor = isToday ? ACC2 : ACC;
-      doc.setFillColor(...badgeColor);
-      doc.roundedRect(marg+pad, ly-3.5, isToday?18:28, 4.5, 1, 1, 'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(4.5); doc.setTextColor(...DARK);
-      doc.text(isToday ? 'HOY' : 'PROXIMO EVENTO', marg+pad+1.5, ly-0.2);
-      ly += 3;
+      // Only show HOY badge if event is today
+      if(isToday) {
+        doc.setFillColor(...ACC2);
+        doc.roundedRect(marg+pad, ly-3.5, 14, 4.5, 1, 1, 'F');
+        doc.setFont('helvetica','bold'); doc.setFontSize(4.5); doc.setTextColor(...DARK);
+        doc.text('HOY', marg+pad+1.5, ly-0.2);
+        ly += 3;
+      }
 
       // Event title — big and bold like hero
       doc.setFont('helvetica','bold'); doc.setFontSize(11);
@@ -2274,30 +2290,45 @@ function _doExportCalendarPDF() {
       // Meta row: date | time | venue
       doc.setFont('helvetica','normal'); doc.setFontSize(7);
       doc.setTextColor(...MUT);
-      const [,em,ed] = ev.date.split('-');
-      const MNTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-      const dateStr = `${parseInt(ed)} ${MNTHS[parseInt(em)-1]} ${ev.date.split('-')[0]}`;
+      const [ey2,em,ed] = ev.date.split('-');
+      const MNTHS  = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      const DAYNAMES = ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
+      const evD2   = new Date(ev.date+'T12:00:00');
+      const dayN   = DAYNAMES[evD2.getDay()];
+      const dateStr = `${dayN} ${parseInt(ed)} ${MNTHS[parseInt(em)-1]} ${ey2}`;
+      // Convert time to 12h format
+      let timeStr = '';
+      if(ev.time){
+        const [hh,mm] = ev.time.split(':').map(Number);
+        const ampm = hh>=12?'PM':'AM';
+        const h12  = hh%12||12;
+        timeStr = `${h12}:${String(mm).padStart(2,'0')} ${ampm}`;
+      }
       let mx = marg+pad;
 
-      // Date chip
-      doc.setFillColor(...SURF2); doc.roundedRect(mx-1, ly-3.5, 22, 5, 1,1,'F');
+      // Date chip — full with day name
+      const dw = doc.getTextWidth(dateStr)+4;
+      doc.setFillColor(...SURF2); doc.roundedRect(mx-1, ly-3.5, dw+2, 5, 1,1,'F');
       doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(...WHT);
       doc.text(dateStr, mx, ly-0.2);
-      mx += 24;
+      mx += dw+4;
 
-      if(ev.time){
-        doc.setFillColor(...SURF2); doc.roundedRect(mx-1, ly-3.5, 14, 5, 1,1,'F');
-        doc.text(ev.time, mx, ly-0.2); mx += 16;
-      }
-      if(ev.venue){
-        doc.setFillColor(...SURF2);
-        const vw = Math.min(doc.getTextWidth(ev.venue)*0.9+4, cardW-mx+marg-6);
-        doc.roundedRect(mx-1, ly-3.5, vw, 5, 1,1,'F');
-        doc.setTextColor(...MUT);
-        const vt = doc.splitTextToSize(ev.venue, vw-2);
-        doc.text(vt[0], mx, ly-0.2);
+      if(timeStr){
+        const tw = doc.getTextWidth(timeStr)+4;
+        doc.setFillColor(...SURF2); doc.roundedRect(mx-1, ly-3.5, tw+2, 5, 1,1,'F');
+        doc.text(timeStr, mx, ly-0.2); mx += tw+4;
       }
       ly += 6;
+      // Venue — FULL text on its own line, no truncation
+      if(ev.venue && ly < cy+cardH-8){
+        const vparts = doc.splitTextToSize(ev.venue, cardW-pad-2);
+        const vH = vparts.length*4.5+2;
+        doc.setFillColor(...SURF2);
+        doc.roundedRect(marg+pad-1, ly-3.5, cardW-pad-1, vH+1, 1,1,'F');
+        doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(...MUT);
+        doc.text(vparts, marg+pad, ly-0.2);
+        ly += vH + 1;
+      }
 
       // ── Divider ────────────────────────────────────────────────────────────
       doc.setDrawColor(...BORD); doc.setLineWidth(0.2);
@@ -3237,6 +3268,69 @@ async function uploadSong() {
   const bpm   = document.getElementById('song-bpm-inp')?.value.trim();
   if(!title){ toast('Ingresa el nombre del tema','error'); return; }
 
+  // Check for duplicate song name (case-insensitive)
+  const titleLower = title.toLowerCase();
+  const duplicate = Object.values(songs).find(s => s.title.toLowerCase() === titleLower);
+  if(duplicate) {
+    // Show 3-option modal
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:3000;padding:16px;';
+    ov.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;
+        width:min(320px,100%);padding:22px;">
+        <div style="font-size:18px;margin-bottom:6px;">⚠️</div>
+        <div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;margin-bottom:8px;">
+          Tema ya existe
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:18px;">
+          "<strong style="color:var(--text);">${title}</strong>" ya está en la lista de canciones.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button onclick="this.closest('div[style*=fixed]').dataset.action='view'"
+            style="background:rgba(92,168,224,.15);border:1px solid var(--info);color:var(--info);
+            border-radius:9px;padding:10px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;">
+            🔍 Ver tema en Canciones
+          </button>
+          <button onclick="this.closest('div[style*=fixed]').dataset.action='continue'"
+            style="background:rgba(240,180,41,.15);border:1px solid var(--accent);color:var(--accent);
+            border-radius:9px;padding:10px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;">
+            ➕ Continuar y subir igual
+          </button>
+          <button onclick="this.closest('div[style*=fixed]').dataset.action='cancel'"
+            style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);
+            border-radius:9px;padding:10px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;">
+            ✕ Cancelar
+          </button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    // Wait for user choice
+    await new Promise(resolve => {
+      const check = setInterval(()=>{
+        const action = ov.dataset.action;
+        if(!action) return;
+        clearInterval(check);
+        ov.remove();
+        if(action === 'view') {
+          switchView('songs', document.querySelector('[data-view="songs"]'));
+          // Highlight the existing song
+          setTimeout(()=>{
+            const el = document.querySelector(`[data-song-row="${duplicate.id}"]`);
+            if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.style.boxShadow='0 0 0 2px var(--accent)'; setTimeout(()=>el.style.boxShadow='',2000); }
+          }, 300);
+          resolve('stop');
+        } else if(action === 'cancel') {
+          // Clear form
+          ['song-title-inp','song-tono-inp','song-bpm-inp','song-yt-inp','song-letra-link','song-chart-link']
+            .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+          ['song-letra-pdf','song-chart-pdf'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+          resolve('stop');
+        } else { resolve('go'); }
+      }, 100);
+    }).then(r => { if(r==='stop') return; });
+    if(ov.parentNode) return; // cancelled
+  }
+
   const saveBtn = document.querySelector('[onclick="uploadSong()"]');
   if(saveBtn){ saveBtn.disabled=true; saveBtn.textContent='Guardando…'; }
 
@@ -3272,6 +3366,7 @@ async function uploadSong() {
   songs[song.id] = song;
   await fbSet(`songs/${song.id}`, song);
   await logActivity('musician','🎵',`"${currentUser.fullName}" subió "${title}"`);
+  broadcastPushToAll('🎵 Nuevo Tema', `${currentUser.fullName} subió "${title}"${tono?' — '+tono:''}${bpm?' · '+bpm+' BPM':''}`);
 
   // ── Clear form ─────────────────────────────────────────────────────────────
   ['song-title-inp','song-tono-inp','song-bpm-inp','song-yt-inp','song-letra-link','song-chart-link']
@@ -3705,6 +3800,13 @@ function renderSongsList() {
         </div>
       </div>
       <div class="song-actions">
+        ${canStar?`<button class="song-btn" onclick="toggleSongSelected('${s.id}')"
+          style="font-size:15px;padding:3px 10px;
+            background:${s.selected&&isMyOwnSong?'rgba(240,180,41,.2)':'transparent'};
+            border-color:${s.selected&&isMyOwnSong?'var(--accent)':'var(--border)'};"
+          title="${s.selected&&isMyOwnSong?'Quitar de mi lista':'Agregar a mi lista'}">
+          ${s.selected&&isMyOwnSong?'⭐':'☆'}
+        </button>`:''}
         <button class="song-btn play ${!hasYT?'disabled':''}"
           onclick="${hasYT?`openSongLink('${s.ytLink}')`:''}">
           ▶ Video
