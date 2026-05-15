@@ -657,8 +657,8 @@ textarea{resize:vertical;min-height:64px;}
         <div style="display:flex;gap:7px;padding:10px 12px;border-bottom:1px solid var(--border);">
           <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center;"
             id="new-ev-btn" onclick="openNewEvForm()" disabled>＋ Nuevo Evento</button>
-          <button class="btn btn-ghost btn-sm" onclick="exportCalendarPDF()" title="Exportar calendario">📅 Calendario</button>
-          <button class="btn btn-ghost btn-sm" onclick="exportAllPDF()" title="Exportar lista">📄</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportCalendarPDF()" title="Exportar PDF de eventos">📅 PDF Eventos</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportBirthdayPDF()" title="Exportar cumpleaños">🎂</button>
         </div>
 
         <!-- ZONA C: LISTA DE EVENTOS -->
@@ -1279,6 +1279,12 @@ async function setupFCM() {
       const key = token.slice(-30).replace(/[^a-zA-Z0-9]/g,'_');
       await fbSet(`fcmTokens/${key}`, {token, uid: currentUser?.id||'anon', ts: Date.now()});
       console.log('FCM token registered');
+      // Tell SW the current timestamp so it only shows NEW notifications
+      if(navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'UPDATE_TIMESTAMP', ts: Date.now()
+        });
+      }
     }
     // Handle foreground messages
     onMessage(messaging, payload => {
@@ -1286,22 +1292,34 @@ async function setupFCM() {
       const body  = payload.notification?.body  || '';
       pushNotif(title, body);
     });
+    // Register Periodic Background Sync for closed-app notifications
+    if('periodicSync' in self.registration) {
+      navigator.serviceWorker.ready.then(async reg => {
+        try {
+          const status = await navigator.permissions.query({name:'periodic-background-sync'});
+          if(status.state === 'granted') {
+            await reg.periodicSync.register('montededios-sync', {minInterval: 30000});
+            console.log('Periodic sync registered');
+          }
+        } catch(e) { console.warn('periodicSync not supported:', e.message); }
+      });
+    }
   } catch(e) { console.warn('FCM setup error:', e.message); }
 }
 
 // Send push to ALL registered FCM tokens via Firebase
 // (called when creating/editing events)
 async function broadcastPushToAll(title, body) {
-  // Store notification in Firebase so all clients see it
-  // Each client's onValue listener on /notifications will trigger pushNotif locally
   if(!fbReady) return;
   const { db, ref, push } = window._fb;
   try {
+    // 1. Save to /notifications → triggers all OPEN clients via onValue
     await push(ref(db,'notifications'), {
-      title, body,
-      ts: Date.now(),
+      title, body, ts: Date.now(),
       from: currentUser?.displayName || 'Admin'
     });
+    // 2. Also play locally for the sender
+    pushNotif(title, body);
   } catch(e) { console.warn('broadcastPush:', e); }
 }
 
@@ -1523,14 +1541,11 @@ function renderNextEventHero(ev) {
   const isToday  = ev.date === td;
   const assignees = ev.assignees ? Object.values(ev.assignees) : [];
 
-  // ── Role abbreviations ────────────────────────────────────────────────────
-  const SIGLAS = {
-    'Voz Principal':'VP','Voz':'VOZ','Cantante':'VOZ','Coros':'COR','Coros 2':'COR2',
-    'Director':'DIR','Guitarrista':'GTR','Tecladista':'TCL','Bajista':'BJO',
-    'Baterista':'BAT','Percusionista':'PER','Trompetista':'TRP','Saxofonista':'SAX',
-    'Violinista':'VLN','Violonchelista':'VLC','Flautista':'FLT','Músico':'MUS','Líder':'LDR'
+  // Siglas = 3 primeras letras del rol asignado (rolEvento tiene prioridad)
+  const getSigla = a => {
+    const src = (a.rolEvento || a.role || '').trim();
+    return src.replace(/[^a-zA-ZáéíóúüñÁÉÍÓÚÜÑ]/g,'').slice(0,3).toUpperCase() || 'MIN';
   };
-  const getSigla = a => SIGLAS[a.rolEvento] || SIGLAS[a.role] || (a.role||'').slice(0,3).toUpperCase();
 
   // ── Encargados con siglas ─────────────────────────────────────────────────
   const peoplePills = assignees.length
@@ -1945,22 +1960,40 @@ function showMemberCard(musId) {
         font-size:10px;font-weight:600;">🚫 ${fmtDate(d)}</span>`).join('')
     : '<span style="font-size:12px;color:var(--success);">✅ Disponible siempre</span>';
 
-  // Their selected songs
-  const memberSongs = Object.values(songs).filter(s=>s.ownerId===musId && s.selected);
+  // ALL songs by this member (selected ones marked with star)
+  const memberSongs = Object.values(songs)
+    .filter(s=>s.ownerId===musId)
+    .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   const songList = memberSongs.length
-    ? memberSongs.map(s=>`
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;
-          padding:7px 10px;margin-bottom:5px;">
-          <div style="font-weight:600;font-size:12px;">${s.title} <span class="song-tono">${s.tono||''}</span></div>
-          <div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;">
-            ${s.ytLink?`<button class="song-btn play" style="font-size:10px;padding:3px 8px;" onclick="openSongLink('${s.ytLink}')">▶ Video</button>`:''}
-            ${(s.letraLink||s.letraData)?`<button class="song-btn" style="font-size:10px;padding:3px 8px;" onclick="${s.letraData?`downloadPDF('${s.letraData}','${s.letraName||'letras.pdf'}','Letras de ${s.title}')`:s.letraLink?`openSongLink('${s.letraLink}')`:''}">📄 Letras</button>`:''}
-            ${(s.chartLink||s.chartData)?`<button class="song-btn" style="font-size:10px;padding:3px 8px;" onclick="${s.chartData?`downloadPDF('${s.chartData}','${s.chartName||'chart.pdf'}','Chart de ${s.title}')`:s.chartLink?`openSongLink('${s.chartLink}')`:''}">🎼 Chart</button>`:''}
+    ? memberSongs.map(s=>{
+        const hasLetra = !!(s.letraFileId||s.letraLink);
+        const hasChart = !!(s.chartFileId||s.chartLink);
+        const hasYT    = !!s.ytLink;
+        return `
+        <div style="background:var(--surface2);border:1px solid ${s.selected?'var(--accent)':'var(--border)'};
+          border-radius:8px;padding:8px 11px;margin-bottom:6px;">
+          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:6px;">
+            <span style="font-size:12px;">${s.selected?'⭐':'🎵'}</span>
+            <span style="font-weight:600;font-size:12px;flex:1;">${s.title}</span>
+            ${s.tono?`<span style="background:rgba(240,180,41,.18);color:var(--accent);border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;">${s.tono}</span>`:''}
+            ${s.bpm?`<span style="background:rgba(92,168,224,.18);color:var(--info);border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;">${s.bpm} BPM</span>`:''}
           </div>
-        </div>`).join('')
-    : '<div style="font-size:11px;color:var(--muted);">Sin temas en lista</div>';
+          <div style="display:flex;gap:5px;flex-wrap:wrap;">
+            ${hasYT?`<button class="song-btn play" style="font-size:10px;padding:3px 8px;" onclick="openSongLink('${s.ytLink}')">▶ Video</button>`:''}
+            ${hasLetra?`<button class="song-btn" style="font-size:10px;padding:3px 8px;"
+              onclick="${s.letraFileId
+                ? 'downloadFromTelegram(\''+s.letraFileId+'\',\''+( s.letraFileName||'letras.pdf')+'\',\'Letras\')'
+                : s.letraLink ? 'openSongLink(\''+s.letraLink+'\')' : ''}">📄 Letras</button>`:''}
+            ${hasChart?`<button class="song-btn" style="font-size:10px;padding:3px 8px;"
+              onclick="${s.chartFileId
+                ? 'downloadFromTelegram(\''+s.chartFileId+'\',\''+( s.chartFileName||'chart.pdf')+'\',\'Chart\')'
+                : s.chartLink ? 'openSongLink(\''+s.chartLink+'\')' : ''}">🎼 Chart</button>`:''}
+          </div>
+        </div>`;
+      }).join('')
+    : '<div style="font-size:11px;color:var(--muted);">Sin temas subidos</div>';
 
-  const box = document.getElementById('member-card-content');
+const box = document.getElementById('member-card-content');
   box.innerHTML = `
     <button class="mcm-close" onclick="document.getElementById('modal-member').classList.add('hidden')">✕</button>
     <div class="mcm-header">
@@ -2173,6 +2206,88 @@ function renderActivity() {
 function exportEvPDF(id){ genPDF([events[id]].filter(Boolean)); }
 function exportAllPDF(){ if(!Object.keys(events).length){toast('Sin eventos','warning');return;} genPDF(Object.values(events)); }
 
+function exportBirthdayPDF() {
+  const {jsPDF} = window.jspdf;
+  // Collect all users with bday
+  const allUsers = Object.values(window._fbUsers||{}).concat(Object.values(musicians||{}));
+  // Deduplicate by id
+  const seen = new Set();
+  const people = allUsers.filter(u => {
+    if(!u.bday || seen.has(u.id)) return false;
+    seen.add(u.id); return true;
+  });
+  if(!people.length){ toast('Sin cumpleaños registrados','warning'); return; }
+
+  // Sort by next birthday (closest upcoming)
+  const today = new Date();
+  const getNextBday = bday => {
+    const [,m,d] = bday.split('-');
+    let next = new Date(today.getFullYear(), parseInt(m)-1, parseInt(d));
+    if(next < today) next.setFullYear(today.getFullYear()+1);
+    return next;
+  };
+  people.sort((a,b)=> getNextBday(a.bday) - getNextBday(b.bday));
+
+  const DAYS3 = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const MNTHS3= ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+  const BG  = [13,13,15], SURF=[22,22,26], SURF2=[30,30,36];
+  const ACC = [240,180,41], WHT=[240,237,232], MUT=[122,122,138], BLU=[92,168,224];
+
+  const doc = new jsPDF({unit:'mm', format:'a4'});
+  const W=210, H=297;
+  doc.setFillColor(...BG); doc.rect(0,0,W,H,'F');
+
+  // Header
+  doc.setFillColor(...SURF); doc.rect(0,0,W,22,'F');
+  doc.setFillColor(...ACC);  doc.rect(0,0,W,1.5,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(18);
+  doc.setTextColor(...ACC);
+  doc.text('FECHAS DE CUMPLEANOS', W/2, 13, {align:'center'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  doc.setTextColor(...MUT);
+  doc.text(`Monte de Dios  |  ${people.length} integrante${people.length!==1?'s':''}`, W/2, 19, {align:'center'});
+
+  let y = 28;
+  people.forEach((u, i) => {
+    if(y > H-15) { doc.addPage(); doc.setFillColor(...BG); doc.rect(0,0,W,H,'F'); y=15; }
+    const [yr,m,d] = u.bday.split('-');
+    const bdayObj = new Date(parseInt(yr), parseInt(m)-1, parseInt(d));
+    const dayName = DAYS3[bdayObj.getDay()];
+    const dateStr = `${dayName} ${parseInt(d)} de ${MNTHS3[parseInt(m)-1]}`;
+    const name    = u.fullName || u.name || 'Sin nombre';
+
+    // Row background
+    doc.setFillColor(...SURF);
+    doc.roundedRect(10, y-4, W-20, 10, 2,2,'F');
+    // Accent number
+    doc.setFillColor(...ACC);
+    doc.circle(16, y+1, 3.5, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(6); doc.setTextColor(...BG);
+    doc.text(`${i+1}`, 16, y+1.5, {align:'center'});
+    // Name
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...WHT);
+    doc.text(name, 23, y+1.5);
+    // Date
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...ACC);
+    doc.text(`- ${dateStr}`, 23 + doc.getTextWidth(name) + 3, y+1.5);
+    // Cargo
+    if(u.cargo || u.role) {
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...MUT);
+      doc.text(u.cargo||u.role||'', W-13, y+1.5, {align:'right'});
+    }
+    y += 12;
+  });
+
+  // Footer
+  doc.setFillColor(...SURF); doc.rect(0,H-8,W,8,'F');
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...ACC);
+  doc.text('@Ministerio Monte De Dios', W/2, H-2.5, {align:'center'});
+
+  const blob = doc.output('blob');
+  _downloadBlobPDF(blob, 'cumpleanos_monte_de_dios.pdf');
+}
+
 function exportCalendarPDF() {
   if(!Object.keys(events).length){ toast('Sin eventos para exportar','warning'); return; }
   _doExportCalendarPDF(); // _downloadBlobPDF inside handles the confirm dialog
@@ -2182,13 +2297,11 @@ function _doExportCalendarPDF() {
   const allEvs = Object.values(events).sort((a,b)=>a.date.localeCompare(b.date));
   if(!allEvs.length){ toast('Sin eventos','warning'); return; }
 
-  const SIGLAS = {
-    'Voz Principal':'VP','Voz':'VO','Cantante':'VO','Coros':'CO','Coros 2':'C2',
-    'Director':'DI','Guitarrista':'GT','Tecladista':'TC','Bajista':'BJ',
-    'Baterista':'BA','Percusionista':'PE','Trompetista':'TR','Saxofonista':'SA',
-    'Violinista':'VI','Musico':'MU','Lider':'LD'
+  // Siglas = first 3 letters of role
+  const getSigla = a => {
+    const src = (a.rolEvento || a.role || '').trim();
+    return src.replace(/[^a-zA-Z]/g,'').slice(0,3).toUpperCase() || 'MIN';
   };
-  const getSigla = a => SIGLAS[a.rolEvento]||SIGLAS[a.role]||(a.role||'').slice(0,2).toUpperCase();
 
   // App colors — exact match to hero card
   const BG    = [13,13,15];
@@ -2217,9 +2330,11 @@ function _doExportCalendarPDF() {
     // Page header — matches app header style
     doc.setFillColor(...SURF); doc.rect(0,0,W,14,'F');
     doc.setFillColor(...ACC);  doc.rect(0,0,W,1.2,'F');
-    doc.setFont('helvetica','bold'); doc.setFontSize(10);
-    doc.setTextColor(...WHT);
-    doc.text('MONTE DE DIOS  —  Eventos', 8, 9);
+    doc.setFont('helvetica','bold'); doc.setFontSize(13);
+    doc.setTextColor(...ACC);
+    doc.text('PROXIMOS EVENTOS', W/2, 10, {align:'center'});
+    // Underline
+    doc.setFillColor(...ACC); doc.rect(50, 11.5, 110, 0.5, 'F');
     doc.setFont('helvetica','normal'); doc.setFontSize(7);
     doc.setTextColor(...MUT);
     doc.text(`${pg+1} / ${pages}  |  ${new Date().toLocaleDateString('es-PE')}`, W-6, 9, {align:'right'});
@@ -2227,7 +2342,7 @@ function _doExportCalendarPDF() {
     const slice  = allEvs.slice(pg*EPP, (pg+1)*EPP);
     const marg   = 6;
     const gap    = 4;
-    const startY = 17;
+    const startY = 21;
     const cardW  = W - marg*2;
     const usable = H - startY - 8;
     const cardH  = (usable - gap*(slice.length-1)) / slice.length;
@@ -2253,16 +2368,11 @@ function _doExportCalendarPDF() {
       const pad = 8; // left padding after stripe
       let ly = cy + 7;
 
-      // ── HEADER SECTION — badge + title + meta ─────────────────────────────
-      // Badge: "PRÓXIMO EVENTO" or date badge
+      // ── HEADER SECTION — title + meta (no badge per card) ─────────────────
       const td = today();
       const isToday = ev.date === td;
-      const badgeColor = isToday ? ACC2 : ACC;
-      doc.setFillColor(...badgeColor);
-      doc.roundedRect(marg+pad, ly-3.5, isToday?18:28, 4.5, 1, 1, 'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(4.5); doc.setTextColor(...DARK);
-      doc.text(isToday ? 'HOY' : 'PROXIMO EVENTO', marg+pad+1.5, ly-0.2);
-      ly += 3;
+      // Only show HOY badge if event is today
+            // No per-card HOY badge
 
       // Event title — big and bold like hero
       doc.setFont('helvetica','bold'); doc.setFontSize(11);
@@ -2274,30 +2384,45 @@ function _doExportCalendarPDF() {
       // Meta row: date | time | venue
       doc.setFont('helvetica','normal'); doc.setFontSize(7);
       doc.setTextColor(...MUT);
-      const [,em,ed] = ev.date.split('-');
-      const MNTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-      const dateStr = `${parseInt(ed)} ${MNTHS[parseInt(em)-1]} ${ev.date.split('-')[0]}`;
+      const [ey2,em,ed] = ev.date.split('-');
+      const MNTHS  = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      const DAYNAMES = ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
+      const evD2   = new Date(ev.date+'T12:00:00');
+      const dayN   = DAYNAMES[evD2.getDay()];
+      const dateStr = `${dayN} ${parseInt(ed)} ${MNTHS[parseInt(em)-1]} ${ey2}`;
+      // Convert time to 12h format
+      let timeStr = '';
+      if(ev.time){
+        const [hh,mm] = ev.time.split(':').map(Number);
+        const ampm = hh>=12?'PM':'AM';
+        const h12  = hh%12||12;
+        timeStr = `${h12}:${String(mm).padStart(2,'0')} ${ampm}`;
+      }
       let mx = marg+pad;
 
-      // Date chip
-      doc.setFillColor(...SURF2); doc.roundedRect(mx-1, ly-3.5, 22, 5, 1,1,'F');
+      // Date chip — full with day name
+      const dw = doc.getTextWidth(dateStr)+4;
+      doc.setFillColor(...SURF2); doc.roundedRect(mx-1, ly-3.5, dw+2, 5, 1,1,'F');
       doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(...WHT);
       doc.text(dateStr, mx, ly-0.2);
-      mx += 24;
+      mx += dw+4;
 
-      if(ev.time){
-        doc.setFillColor(...SURF2); doc.roundedRect(mx-1, ly-3.5, 14, 5, 1,1,'F');
-        doc.text(ev.time, mx, ly-0.2); mx += 16;
-      }
-      if(ev.venue){
-        doc.setFillColor(...SURF2);
-        const vw = Math.min(doc.getTextWidth(ev.venue)*0.9+4, cardW-mx+marg-6);
-        doc.roundedRect(mx-1, ly-3.5, vw, 5, 1,1,'F');
-        doc.setTextColor(...MUT);
-        const vt = doc.splitTextToSize(ev.venue, vw-2);
-        doc.text(vt[0], mx, ly-0.2);
+      if(timeStr){
+        const tw = doc.getTextWidth(timeStr)+4;
+        doc.setFillColor(...SURF2); doc.roundedRect(mx-1, ly-3.5, tw+2, 5, 1,1,'F');
+        doc.text(timeStr, mx, ly-0.2); mx += tw+4;
       }
       ly += 6;
+      // Venue — FULL text on its own line, no truncation
+      if(ev.venue && ly < cy+cardH-8){
+        const vparts = doc.splitTextToSize(ev.venue, cardW-pad-2);
+        const vH = vparts.length*4.5+2;
+        doc.setFillColor(...SURF2);
+        doc.roundedRect(marg+pad-1, ly-3.5, cardW-pad-1, vH+1, 1,1,'F');
+        doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(...MUT);
+        doc.text(vparts, marg+pad, ly-0.2);
+        ly += vH + 1;
+      }
 
       // ── Divider ────────────────────────────────────────────────────────────
       doc.setDrawColor(...BORD); doc.setLineWidth(0.2);
@@ -2631,10 +2756,56 @@ function startReminderEngine() {
       if(p === 'granted') toast('🔔 Notificaciones activadas — recibirás recordatorios de eventos', 'success');
     });
   }
-  autoDeletePastEvents(); // borrar eventos pasados al iniciar
-  checkReminders();       // revisar recordatorios inmediatamente
-  setInterval(checkReminders, 60000);         // revisar cada minuto
-  setInterval(autoDeletePastEvents, 3600000); // revisar eventos pasados cada hora
+  autoDeletePastEvents();
+  checkReminders();
+  setTimeout(checkUpcomingBirthdays, 2000); // check birthdays after data loads
+  setInterval(checkReminders, 60000);
+  setInterval(autoDeletePastEvents, 3600000);
+}
+
+function checkUpcomingBirthdays() {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const allPeople = Object.values(musicians || {}).filter(m => m.bday && m.name);
+  const shown = new Set();
+
+  allPeople.forEach((m, idx) => {
+    const [,mo,d] = m.bday.split('-');
+    let next = new Date(today.getFullYear(), parseInt(mo)-1, parseInt(d));
+    if(next < today) next.setFullYear(today.getFullYear()+1);
+    const diffDays = Math.round((next - today) / (24*3600*1000));
+
+    if(diffDays <= 7 && diffDays >= 0 && !shown.has(m.id)) {
+      shown.add(m.id);
+      const MNTHS3=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      const dateStr = `${parseInt(d)} de ${MNTHS3[parseInt(mo)-1]}`;
+      const msgMain = diffDays === 0
+        ? `🎉 ¡Hoy es el cumpleaños de ${m.name}!`
+        : `🎂 Cumpleaños de ${m.name} en ${diffDays} día${diffDays!==1?'s':''} — ${dateStr}`;
+
+      setTimeout(()=>{
+        const al = document.createElement('div');
+        al.style.cssText = `position:fixed;top:60px;left:10px;right:10px;z-index:5000;
+          background:linear-gradient(135deg,var(--accent),var(--accent2));
+          color:#0d0d0f;padding:13px 16px;border-radius:14px;
+          display:flex;align-items:center;gap:12px;
+          font-family:'DM Sans',sans-serif;font-weight:700;font-size:13px;
+          box-shadow:0 6px 24px rgba(240,180,41,.45);cursor:pointer;animation:slideDown .3s ease;`;
+        al.innerHTML = `
+          <span style="font-size:24px;">${diffDays===0?'🎉':'🎂'}</span>
+          <div style="flex:1;">
+            <div>${msgMain}</div>
+            <div style="font-weight:400;font-size:11px;opacity:.75;margin-top:2px;">
+              ${diffDays===0?'¡Felicítale hoy!':'Faltan '+diffDays+' día'+(diffDays!==1?'s':'')+' 🎁'}
+            </div>
+          </div>
+          <span style="font-size:20px;opacity:.6;">✕</span>`;
+        al.onclick = ()=>al.remove();
+        document.body.appendChild(al);
+        setTimeout(()=>{ if(al.parentNode) al.remove(); }, 15000);
+      }, 2500 + idx*1200);
+    }
+  });
 }
 
 async function autoDeletePastEvents() {
@@ -2988,10 +3159,25 @@ function renderProfileModal() {
   const box = document.getElementById('prof-modal-content');
   if(!box || !currentUser) return;
   const u = currentUser;
+
+  // Always pull latest bday from Firebase musicians/users
+  const mRecord = musicians[u.id] || {};
+  if(mRecord.bday && !u.bday) {
+    u.bday = mRecord.bday;
+    currentUser.bday = mRecord.bday;
+    localStorage.setItem('mdios_user', JSON.stringify(currentUser));
+  }
+  // Also try window._fbUsers
+  const fbU = (window._fbUsers||{})[u.id];
+  if(fbU?.bday && !u.bday) {
+    u.bday = fbU.bday;
+    currentUser.bday = fbU.bday;
+    localStorage.setItem('mdios_user', JSON.stringify(currentUser));
+  }
+
   const color = u.cargo==='Voz'?'#f0b429':u.cargo==='Músico'?'#3ecf8e':'#5ca8e0';
   const cargoIco = {Músico:'🎸',Voz:'🎤',Líder:'👑'}[u.cargo]||'';
   const age = u.bday ? Math.floor((Date.now()-new Date(u.bday))/(365.25*24*3600*1000)) : '?';
-  const mRecord = musicians[u.id] || {};
   const unavailEntries = Object.entries(mRecord.unavailDates||{}).sort((a,b)=>a[1].localeCompare(b[1]));
   const mySongs = Object.values(songs).filter(s=>s.ownerId===u.id);
   const songRows = mySongs.length ? mySongs.map(s=>`
@@ -3113,7 +3299,11 @@ function renderProfile() { /* legacy — no-op, profile is now a modal */ }
 function renderProfileSongs() {
   const list = document.getElementById('prof-songs-list');
   if(!list || !currentUser) return;
-  const mySongs = Object.values(songs).filter(s=>s.ownerId===currentUser.id);
+  const allMySongs = Object.values(songs)
+    .filter(s=>s.ownerId===currentUser.id)
+    .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const mySongs = allMySongs.slice(0,6); // only last 6
+  const hiddenCount = Math.max(0, allMySongs.length - 6);
   list.innerHTML = mySongs.length
     ? mySongs.map(s=>`
         <div data-song-row="${s.id}"
@@ -3146,7 +3336,14 @@ function renderProfileSongs() {
               style="font-size:11px;padding:4px 8px;">🗑</button>
           </div>
         </div>`).join('')
-    : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Sin temas subidos aún</div>';
+    : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Sin temas subidos aún — toca ＋ Subir tema</div>';
+  // Show "see more" note
+  if(hiddenCount > 0) {
+    list.innerHTML += `<div style="font-size:11px;color:var(--muted);text-align:center;padding:6px;
+      border:1px dashed var(--border);border-radius:8px;margin-top:4px;">
+      +${hiddenCount} tema${hiddenCount!==1?'s':''} más en <strong style="color:var(--accent);">Canciones</strong>
+    </div>`;
+  }
 }
 
 
@@ -3237,6 +3434,69 @@ async function uploadSong() {
   const bpm   = document.getElementById('song-bpm-inp')?.value.trim();
   if(!title){ toast('Ingresa el nombre del tema','error'); return; }
 
+  // Check for duplicate song name (case-insensitive)
+  const titleLower = title.toLowerCase();
+  const duplicate = Object.values(songs).find(s => s.title.toLowerCase() === titleLower);
+  if(duplicate) {
+    // Show 3-option modal
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:3000;padding:16px;';
+    ov.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;
+        width:min(320px,100%);padding:22px;">
+        <div style="font-size:18px;margin-bottom:6px;">⚠️</div>
+        <div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;margin-bottom:8px;">
+          Tema ya existe
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:18px;">
+          "<strong style="color:var(--text);">${title}</strong>" ya está en la lista de canciones.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button onclick="this.closest('div[style*=fixed]').dataset.action='view'"
+            style="background:rgba(92,168,224,.15);border:1px solid var(--info);color:var(--info);
+            border-radius:9px;padding:10px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;">
+            🔍 Ver tema en Canciones
+          </button>
+          <button onclick="this.closest('div[style*=fixed]').dataset.action='continue'"
+            style="background:rgba(240,180,41,.15);border:1px solid var(--accent);color:var(--accent);
+            border-radius:9px;padding:10px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;">
+            ➕ Continuar y subir igual
+          </button>
+          <button onclick="this.closest('div[style*=fixed]').dataset.action='cancel'"
+            style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);
+            border-radius:9px;padding:10px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;">
+            ✕ Cancelar
+          </button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    // Wait for user choice
+    await new Promise(resolve => {
+      const check = setInterval(()=>{
+        const action = ov.dataset.action;
+        if(!action) return;
+        clearInterval(check);
+        ov.remove();
+        if(action === 'view') {
+          switchView('songs', document.querySelector('[data-view="songs"]'));
+          // Highlight the existing song
+          setTimeout(()=>{
+            const el = document.querySelector(`[data-song-row="${duplicate.id}"]`);
+            if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.style.boxShadow='0 0 0 2px var(--accent)'; setTimeout(()=>el.style.boxShadow='',2000); }
+          }, 300);
+          resolve('stop');
+        } else if(action === 'cancel') {
+          // Clear form
+          ['song-title-inp','song-tono-inp','song-bpm-inp','song-yt-inp','song-letra-link','song-chart-link']
+            .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+          ['song-letra-pdf','song-chart-pdf'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+          resolve('stop');
+        } else { resolve('go'); }
+      }, 100);
+    }).then(r => { if(r==='stop') return; });
+    if(ov.parentNode) return; // cancelled
+  }
+
   const saveBtn = document.querySelector('[onclick="uploadSong()"]');
   if(saveBtn){ saveBtn.disabled=true; saveBtn.textContent='Guardando…'; }
 
@@ -3272,6 +3532,7 @@ async function uploadSong() {
   songs[song.id] = song;
   await fbSet(`songs/${song.id}`, song);
   await logActivity('musician','🎵',`"${currentUser.fullName}" subió "${title}"`);
+  broadcastPushToAll('🎵 Nuevo Tema', `${currentUser.fullName} subió "${title}"${tono?' — '+tono:''}${bpm?' · '+bpm+' BPM':''}`);
 
   // ── Clear form ─────────────────────────────────────────────────────────────
   ['song-title-inp','song-tono-inp','song-bpm-inp','song-yt-inp','song-letra-link','song-chart-link']
@@ -3327,9 +3588,113 @@ async function deleteSong(songId) {
   toast('Tema eliminado','warning');
 }
 
+function showSongEventPicker(songId) {
+  const s = songs[songId];
+  if(!s) return;
+  const uid = currentUser?.id;
+  // Find events where this user is voz principal
+  const myEventsAsVP = Object.values(events).filter(ev => {
+    if(!ev.assignees) return false;
+    return Object.values(ev.assignees).some(a =>
+      (a.musId === uid || a.id === uid) &&
+      (a.rolEvento === 'Voz Principal' ||
+       a.rolEvento?.toLowerCase().includes('voz') ||
+       a.cargo === 'Voz' || a.role === 'Cantante')
+    );
+  }).sort((a,b)=>a.date.localeCompare(b.date));
+
+  const DAYS3 = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const MNTHS3= ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const fmt12 = t => { if(!t) return ''; const [h,m]=t.split(':').map(Number); return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`; };
+  const fmtEv = ev => { const [y,mo,d]=ev.date.split('-'); const dObj=new Date(ev.date+'T12:00:00'); return `${DAYS3[dObj.getDay()]} ${parseInt(d)} ${MNTHS3[parseInt(mo)-1]} ${y}${ev.time?' · '+fmt12(ev.time):''}${ev.venue?' · '+ev.venue:''}`; };
+
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:3000;padding:16px;';
+  ov.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;
+      width:min(360px,100%);max-height:80vh;overflow-y:auto;padding:22px;">
+      <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700;margin-bottom:4px;">⭐ Elegir tema</div>
+      <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:4px;">${s.title}</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">
+        ¿Para qué fecha usarás este tema como Voz Principal?
+      </div>
+      ${myEventsAsVP.length
+        ? `<div style="display:flex;flex-direction:column;gap:7px;">
+            ${myEventsAsVP.map(ev=>`
+              <button onclick="confirmSongForEvent('${songId}','${ev.id}',this.closest('div[style*=fixed]'))"
+                style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+                  padding:11px 14px;text-align:left;cursor:pointer;color:var(--text);
+                  font-family:'DM Sans',sans-serif;font-size:12px;transition:all .15s;"
+                onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+                onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)'">
+                <div style="font-weight:700;font-size:13px;margin-bottom:2px;">${ev.title}</div>
+                <div style="font-size:11px;color:var(--muted);">${fmtEv(ev)}</div>
+              </button>`).join('')}
+            <button onclick="confirmSongForEvent('${songId}',null,this.closest('div[style*=fixed]'))"
+              style="background:rgba(240,180,41,.08);border:1px solid rgba(240,180,41,.3);border-radius:10px;
+                padding:10px 14px;text-align:left;cursor:pointer;color:var(--accent);
+                font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;">
+              ⭐ Solo agregar a mi lista (sin evento específico)
+            </button>
+          </div>`
+        : `<div style="font-size:12px;color:var(--muted);padding:12px;text-align:center;">
+            No estás asignado como Voz Principal en ningún evento próximo.
+            <br><br>
+            <button onclick="confirmSongForEvent('${songId}',null,this.closest('div[style*=fixed]'))"
+              style="background:rgba(240,180,41,.12);border:1px solid var(--accent);border-radius:8px;
+                padding:8px 16px;cursor:pointer;color:var(--accent);font-family:'DM Sans',sans-serif;font-weight:600;">
+              Agregar a mi lista igual
+            </button>
+          </div>`}
+      <button onclick="this.closest('div[style*=fixed]').remove()"
+        style="margin-top:14px;width:100%;background:transparent;border:1px solid var(--border);
+          border-radius:9px;padding:9px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;">
+        Cancelar
+      </button>
+    </div>`;
+  document.body.appendChild(ov);
+}
+
+function confirmSongForEvent(songId, evId, overlay) {
+  if(overlay) overlay.remove();
+  // Now actually toggle the song selected state
+  const s = songs[songId];
+  if(!s) return;
+  // Flip to selected
+  s.selected = true;
+  songs[songId] = s;
+  // DOM update
+  document.querySelectorAll(`[data-song-id="${songId}"]`).forEach(btn => {
+    btn.innerHTML = '<span style="font-size:22px;line-height:1;">⭐</span>';
+    btn.style.background  = 'rgba(240,180,41,.2)';
+    btn.style.borderColor = 'var(--accent)';
+  });
+  document.querySelectorAll(`[data-song-row="${songId}"]`).forEach(row => {
+    row.style.borderColor = 'var(--accent)';
+    row.style.background  = 'rgba(240,180,41,.06)';
+  });
+  document.querySelectorAll(`[data-song-label="${songId}"]`).forEach(el => {
+    el.innerHTML = '<span style="color:var(--success);font-weight:700;">✅ En mi lista</span>';
+  });
+  toast(`⭐ "${s.title}" agregado a tu lista`, 'success');
+  // Save to Firebase
+  songs[songId]._pendingSelected = true;
+  fbSet(`songs/${songId}/selected`, true)
+    .then(()=>{ delete songs[songId]._pendingSelected; })
+    .catch(()=>{ s.selected=false; songs[songId]=s; delete songs[songId]._pendingSelected; renderProfileSongs(); });
+  logActivity('song','⭐',`"${currentUser?.fullName}" eligió "${s.title}"${evId?' para evento':''}`).catch(()=>{});
+  if(selEv && events[selEv]) renderNextEventHero(events[selEv]);
+}
+
 function toggleSongSelected(songId) {
   const s = songs[songId];
   if(!s || s.ownerId !== currentUser?.id) return;
+  // If selecting (not deselecting), show event date picker
+  if(!s.selected) {
+    showSongEventPicker(songId);
+    return;
+  }
+  // Deselecting — proceed directly
 
   // ── 1. Flip state IMMEDIATELY in memory ──────────────────────────────────
   s.selected = !s.selected;
@@ -3705,6 +4070,13 @@ function renderSongsList() {
         </div>
       </div>
       <div class="song-actions">
+        ${canStar?`<button class="song-btn" onclick="toggleSongSelected('${s.id}')"
+          style="font-size:15px;padding:3px 10px;
+            background:${s.selected&&isMyOwnSong?'rgba(240,180,41,.2)':'transparent'};
+            border-color:${s.selected&&isMyOwnSong?'var(--accent)':'var(--border)'};"
+          title="${s.selected&&isMyOwnSong?'Quitar de mi lista':'Agregar a mi lista'}">
+          ${s.selected&&isMyOwnSong?'⭐':'☆'}
+        </button>`:''}
         <button class="song-btn play ${!hasYT?'disabled':''}"
           onclick="${hasYT?`openSongLink('${s.ytLink}')`:''}">
           ▶ Video
@@ -3911,7 +4283,34 @@ function setEvPersonRole(musId, rol) {
         container.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:5px 0 2px;">Sin temas en lista</div>';
       } else {
         container.innerHTML = '<div style="font-size:10px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin:5px 0 5px;">🎵 Temas:</div>'
-          + personSongs.map(s=>`<div style="background:var(--surface2);border-radius:7px;padding:5px 9px;margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:11px;font-weight:600;">${s.title} <span class="song-tono">${s.tono||''}</span></span>${s.ytLink?`<button class="song-btn play" style="font-size:9px;padding:2px 6px;" onclick="openSongLink('${s.ytLink}')">▶</button>`:''}</div>`).join('');
+          + personSongs.map(s=>{
+            const hasL = !!(s.letraFileId||s.letraLink);
+            const hasC = !!(s.chartFileId||s.chartLink);
+            const letraOnclick = s.letraFileId
+              ? `downloadFromTelegram('${s.letraFileId}','${s.letraFileName||'letras.pdf'}','Letras')`
+              : s.letraLink ? `openSongLink('${s.letraLink}')` : '';
+            const chartOnclick = s.chartFileId
+              ? `downloadFromTelegram('${s.chartFileId}','${s.chartFileName||'chart.pdf'}','Chart')`
+              : s.chartLink ? `openSongLink('${s.chartLink}')` : '';
+            return `<div style="background:var(--surface2);border-radius:9px;padding:8px 10px;
+              margin-bottom:5px;">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+                <span style="font-size:12px;font-weight:700;flex:1;">${s.title}</span>
+                ${s.tono?`<span style="background:rgba(240,180,41,.15);color:var(--accent);
+                  border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">${s.tono}</span>`:''}
+                ${s.bpm?`<span style="background:rgba(92,168,224,.15);color:var(--info);
+                  border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">${s.bpm} BPM</span>`:''}
+              </div>
+              <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                ${s.ytLink?`<button class="song-btn play" style="font-size:10px;padding:3px 8px;"
+                  onclick="openSongLink('${s.ytLink}')">▶ Video</button>`:''}
+                ${hasL?`<button class="song-btn" style="font-size:10px;padding:3px 8px;"
+                  onclick="${letraOnclick}">📄 Letras</button>`:''}
+                ${hasC?`<button class="song-btn" style="font-size:10px;padding:3px 8px;"
+                  onclick="${chartOnclick}">🎼 Chart</button>`:''}
+              </div>
+            </div>`;
+          }).join('');
       }
     } else {
       container.innerHTML = '';
