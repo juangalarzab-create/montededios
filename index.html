@@ -657,8 +657,8 @@ textarea{resize:vertical;min-height:64px;}
         <div style="display:flex;gap:7px;padding:10px 12px;border-bottom:1px solid var(--border);">
           <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center;"
             id="new-ev-btn" onclick="openNewEvForm()" disabled>＋ Nuevo Evento</button>
-          <button class="btn btn-ghost btn-sm" onclick="exportCalendarPDF()" title="Exportar calendario">📅 Calendario</button>
-          <button class="btn btn-ghost btn-sm" onclick="exportAllPDF()" title="Exportar lista">📄</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportCalendarPDF()" title="Exportar PDF de eventos">📅 PDF Eventos</button>
+          <button class="btn btn-ghost btn-sm" onclick="openBirthdayPanel()" title="Cumpleaños">🎂</button>
         </div>
 
         <!-- ZONA C: LISTA DE EVENTOS -->
@@ -1289,67 +1289,65 @@ async function setupFCM() {
   } catch(e) { console.warn('FCM setup error:', e.message); }
 }
 
-// Send push to ALL registered FCM tokens via Firebase
-// (called when creating/editing events)
+// ══════════════════════════════════════════════════════════════════════════════
+// PUSH BROADCAST — envía a todos los dispositivos, incluso con app cerrada
+// ══════════════════════════════════════════════════════════════════════════════
 async function broadcastPushToAll(title, body) {
   if(!fbReady) return;
-  const { db, ref, push, set } = window._fb;
+  const { db, ref, push: fbPush } = window._fb;
 
-  // 1. Store in /notifications so open clients see it via onValue listener
+  // 1. Guardar en /notifications → clientes abiertos lo reciben via onValue
   try {
-    await push(ref(db,'notifications'), {
-      title, body,
-      ts: Date.now(),
+    await fbPush(ref(db,'notifications'), {
+      title, body, ts: Date.now(),
       from: currentUser?.displayName || 'Admin'
     });
-  } catch(e) { console.warn('broadcastPush write:', e); }
+  } catch(e) { console.warn('broadcastPush/notif:', e); }
 
-  // 2. Send real FCM push to ALL registered tokens so closed/locked devices get it
-  //    We use the Firebase Legacy HTTP API — works from browser without a server
+  // 2. Escribir en /pendingPush → el SW lo detecta y dispara notificación real
+  //    Esto funciona porque el Service Worker escucha Firebase en background
   try {
-    const tokSnap = await new Promise((res,rej)=>{
-      const {onValue:ov, ref:r} = window._fb;
-      ov(r(db,'fcmTokens'), snap=>res(snap), {onlyOnce:true});
+    await fbPush(ref(db,'pendingPush'), {
+      title, body, ts: Date.now(),
+      url: (location.origin + location.pathname)
     });
-    const tokenData = tokSnap.val ? tokSnap.val() : tokSnap;
+  } catch(e) {}
+
+  // 3. Enviar vía FCM Legacy HTTP API a todos los tokens registrados
+  //    → garantiza push real a dispositivos con app COMPLETAMENTE cerrada
+  try {
+    const {onValue:ov} = window._fb;
+    const tokenData = await new Promise(res => {
+      ov(ref(db,'fcmTokens'), snap => res(snap.val ? snap.val() : null), {onlyOnce:true});
+    });
     if(!tokenData) return;
     const tokens = Object.values(tokenData).map(t=>t.token).filter(Boolean);
     if(!tokens.length) return;
 
-    // Send via FCM batch — each token gets a real OS push
-    // Uses the project's server key stored in Firebase config
-    const fcmKey = await getFCMServerKey();
-    if(!fcmKey) return;
+    // Obtener server key guardada por el admin en Firebase config
+    const serverKey = await new Promise(res => {
+      ov(ref(db,'config/fcmServerKey'), snap => res(snap.val ? snap.val() : null), {onlyOnce:true});
+    });
+    if(!serverKey) return;
 
-    // Send in chunks of 500 (FCM limit)
+    // Enviar en bloques de 500 (límite FCM)
     for(let i=0; i<tokens.length; i+=500){
       const chunk = tokens.slice(i, i+500);
       fetch('https://fcm.googleapis.com/fcm/send', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json','Authorization':'key='+fcmKey},
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'key='+serverKey},
         body: JSON.stringify({
           registration_ids: chunk,
-          notification: { title, body },
-          data: { title, body, url: window.location.origin + window.location.pathname },
-          android: { priority:'high' },
-          apns: { headers: {'apns-priority':'10'} }
+          // notification block: FCM lo muestra directamente en el sistema
+          notification: { title, body, icon:'/icon-192.png', sound:'default' },
+          // data block: el SW también lo puede leer
+          data: { title, body, url: location.origin + location.pathname },
+          android: { priority:'high', notification:{ sound:'default', channel_id:'montededios' } },
+          apns: { payload:{ aps:{ sound:'default', badge:1 } } }
         })
       }).catch(()=>{});
     }
-  } catch(e) { console.warn('FCM batch send:', e); }
-}
-
-// Retrieve FCM server key from Firebase (stored by admin at setup)
-async function getFCMServerKey() {
-  try {
-    const { db, ref } = window._fb;
-    return await new Promise((res)=>{
-      const {onValue:ov} = window._fb;
-      ov(ref(db,'config/fcmServerKey'), snap=>{
-        res(snap.val ? snap.val() : snap);
-      }, {onlyOnce:true});
-    });
-  } catch(e) { return null; }
+  } catch(e) { console.warn('FCM send:', e); }
 }
 
 function sendPushNotification(msg) {
@@ -1476,6 +1474,8 @@ function openProfileModal() {
     document.getElementById('register-screen').style.opacity='1';
     return;
   }
+  // Siempre refrescar datos de Firebase antes de mostrar el perfil
+  enrichUserFromFirebase(currentUser.id);
   renderProfileModal();
   document.getElementById('modal-profile').classList.remove('hidden');
   document.getElementById('modal-profile').onclick = e => {
@@ -2224,6 +2224,166 @@ function renderActivity() {
 // PDF
 // ══════════════════════════════════════════════════════════════════════════════
 function exportEvPDF(id){ genPDF([events[id]].filter(Boolean)); }
+// ══════════════════════════════════════════════════════════════════════════════
+// PANEL DE CUMPLEAÑOS
+// ══════════════════════════════════════════════════════════════════════════════
+function openBirthdayPanel() {
+  const existing = document.getElementById('bday-panel-overlay');
+  if(existing) { existing.remove(); return; }
+
+  const bdayAlertsOn = localStorage.getItem('mdios_bday_alerts') !== 'off';
+
+  // Construir lista de todos los músicos con bday, ordenada por proximidad
+  const allMusicians = Object.values(musicians).filter(m => m.bday && m.displayName);
+  const today_d = new Date(); today_d.setHours(0,0,0,0);
+
+  const withNext = allMusicians.map(m => {
+    const [y, mo, d] = m.bday.split('-').map(Number);
+    let next = new Date(today_d.getFullYear(), mo-1, d);
+    if(next < today_d) next = new Date(today_d.getFullYear()+1, mo-1, d);
+    const daysLeft = Math.round((next - today_d) / 86400000);
+    return { ...m, nextBday: next, daysLeft };
+  }).sort((a,b) => a.daysLeft - b.daysLeft);
+
+  const DAYS_ES  = ['dom','lun','mar','mié','jue','vie','sáb'];
+  const MNTHS_ES = ['enero','feb','mar','abr','mayo','jun','jul','ago','sep','oct','nov','dic'];
+
+  const fmtBday = bday => {
+    if(!bday) return '—';
+    const [,mo,d] = bday.split('-').map(Number);
+    const next = withNext.find(m=>m.bday===bday);
+    const dayName = next ? DAYS_ES[next.nextBday.getDay()] : '';
+    return `${dayName} ${d} ${MNTHS_ES[mo-1]}`;
+  };
+
+  const rows = withNext.length
+    ? withNext.map(m => {
+        const isToday = m.daysLeft === 0;
+        const isSoon  = m.daysLeft <= 7 && m.daysLeft > 0;
+        return `<div style="display:flex;align-items:center;justify-content:space-between;
+          padding:9px 12px;border-radius:10px;margin-bottom:5px;
+          background:${isToday?'rgba(240,180,41,.12)':isSoon?'rgba(62,207,142,.07)':'var(--surface2)'};
+          border:1px solid ${isToday?'var(--accent)':isSoon?'var(--success)':'var(--border)'};">
+          <div>
+            <div style="font-weight:700;font-size:13px;">${m.fullName||m.displayName}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">
+              ${isToday?'🎂 ¡HOY es su cumpleaños!':isSoon?`🔔 En ${m.daysLeft} día${m.daysLeft>1?'s':''}`:fmtBday(m.bday)}
+            </div>
+          </div>
+          <div style="font-size:20px;">${isToday?'🎉':isSoon?'⏳':''}</div>
+        </div>`;
+      }).join('')
+    : '<div style="font-size:13px;color:var(--muted);padding:10px 0;text-align:center;">Sin datos de cumpleaños registrados</div>';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'bday-panel-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:3500;padding:20px;';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;
+      width:min(380px,100%);max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
+      <!-- Header -->
+      <div style="padding:18px 18px 12px;border-bottom:1px solid var(--border);flex-shrink:0;">
+        <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;
+          margin-bottom:2px;">🎂 FECHAS DE CUMPLEAÑOS</div>
+        <div style="font-size:11px;color:var(--muted);">Ordenados por proximidad</div>
+      </div>
+      <!-- Switch avisos -->
+      <div style="padding:10px 18px;border-bottom:1px solid var(--border);flex-shrink:0;
+        display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:13px;font-weight:600;">🔔 Avisos de cumpleaños</div>
+        <label style="position:relative;display:inline-block;width:42px;height:22px;cursor:pointer;">
+          <input type="checkbox" id="bday-switch" ${bdayAlertsOn?'checked':''} onchange="toggleBdayAlerts(this.checked)"
+            style="opacity:0;width:0;height:0;">
+          <span style="position:absolute;inset:0;background:${bdayAlertsOn?'var(--accent)':'var(--surface2)'};
+            border-radius:22px;transition:.3s;border:1px solid var(--border);" id="bday-switch-track"></span>
+          <span style="position:absolute;top:3px;left:${bdayAlertsOn?'22':'3'}px;width:16px;height:16px;
+            background:#fff;border-radius:50%;transition:.3s;" id="bday-switch-thumb"></span>
+        </label>
+      </div>
+      <!-- Lista -->
+      <div style="overflow-y:auto;padding:12px 14px;flex:1;">${rows}</div>
+      <!-- Botones -->
+      <div style="padding:12px 14px;border-top:1px solid var(--border);flex-shrink:0;display:flex;gap:8px;">
+        <button onclick="exportBirthdayPDF()"
+          style="flex:1;background:linear-gradient(135deg,var(--accent),var(--accent2));
+          color:#0d0d0f;border:none;border-radius:10px;padding:11px;
+          font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">
+          📄 Exportar nombres
+        </button>
+        <button onclick="document.getElementById('bday-panel-overlay')?.remove()"
+          style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+          padding:11px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);cursor:pointer;">
+          Aceptar
+        </button>
+      </div>
+    </div>`;
+  overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+}
+
+function toggleBdayAlerts(on) {
+  localStorage.setItem('mdios_bday_alerts', on ? 'on' : 'off');
+  const track = document.getElementById('bday-switch-track');
+  const thumb = document.getElementById('bday-switch-thumb');
+  if(track) track.style.background = on ? 'var(--accent)' : 'var(--surface2)';
+  if(thumb) thumb.style.left = on ? '22px' : '3px';
+  toast(on ? '🔔 Avisos de cumpleaños activados' : '🔕 Avisos desactivados', on?'success':'warning');
+}
+
+function exportBirthdayPDF() {
+  if(!window.jspdf?.jsPDF){ toast('jsPDF no cargado','error'); return; }
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
+  const W = doc.internal.pageSize.getWidth();
+
+  const DARK=[13,13,15], WHT=[255,255,255], ACC=[240,180,41], MUT=[120,120,130], SURF=[24,24,28];
+  const MNTHS_ES=['enero','feb','mar','abr','mayo','jun','jul','ago','sep','oct','nov','dic'];
+  const DAYS_ES=['dom','lun','mar','mié','jue','vie','sáb'];
+
+  const allM = Object.values(musicians).filter(m=>m.bday&&m.displayName);
+  const today_d = new Date(); today_d.setHours(0,0,0,0);
+  const sorted = allM.map(m => {
+    const [,mo,d] = m.bday.split('-').map(Number);
+    let next = new Date(today_d.getFullYear(), mo-1, d);
+    if(next < today_d) next = new Date(today_d.getFullYear()+1, mo-1, d);
+    return { name: m.fullName||m.displayName, bday: m.bday, next,
+             daysLeft: Math.round((next-today_d)/86400000) };
+  }).sort((a,b)=>a.daysLeft-b.daysLeft);
+
+  // Header
+  doc.setFillColor(...DARK); doc.rect(0,0,W,297,'F');
+  doc.setFillColor(...ACC); doc.rect(0,0,W,24,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(...DARK);
+  doc.text('FECHAS DE CUMPLEAÑOS', W/2, 15, {align:'center'});
+
+  let y = 34;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...MUT);
+  doc.text(`Total: ${sorted.length} integrantes · ${new Date().toLocaleDateString('es-PE')}`, W/2, y, {align:'center'});
+  y += 10;
+
+  sorted.forEach((m,i) => {
+    if(y > 275) { doc.addPage(); doc.setFillColor(...DARK); doc.rect(0,0,W,297,'F'); y=20; }
+    const [,mo,d] = m.bday.split('-').map(Number);
+    const dayName = DAYS_ES[m.next.getDay()];
+    const label = `${dayName} ${d} ${MNTHS_ES[mo-1]}`;
+    const isEven = i%2===0;
+    doc.setFillColor(...(isEven?[24,24,28]:[20,20,24]));
+    doc.roundedRect(12, y-5, W-24, 10, 2, 2, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...WHT);
+    doc.text(m.name, 17, y);
+    doc.setFont('helvetica','normal'); doc.setTextColor(...MUT);
+    doc.text(label, W-17, y, {align:'right'});
+    if(m.daysLeft<=7){
+      doc.setFillColor(...ACC); doc.roundedRect(W-48,y-4,16,5,1,1,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(...DARK);
+      doc.text(m.daysLeft===0?'HOY':`${m.daysLeft}d`, W-40, y-0.5, {align:'center'});
+    }
+    y += 12;
+  });
+
+  doc.save('cumpleanos-monte-de-dios.pdf');
+}
+
 function exportAllPDF(){ if(!Object.keys(events).length){toast('Sin eventos','warning');return;} genPDF(Object.values(events)); }
 
 function exportCalendarPDF() {
@@ -2693,6 +2853,99 @@ function fireReminder(ev, when) {
   logActivity('event','⏰',`Recordatorio: "${ev.title}" — ${when}`);
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// AVISOS DE CUMPLEAÑOS — alerta urgente al abrir la app (hasta 7 días antes)
+// ══════════════════════════════════════════════════════════════════════════════
+function checkBirthdayAlerts() {
+  // Solo si los avisos están activos para este usuario
+  if(localStorage.getItem('mdios_bday_alerts') === 'off') return;
+
+  // Ya hay un banner visible → no apilar otro
+  if(document.getElementById('bday-alert-banner')) return;
+
+  const today_d = new Date(); today_d.setHours(0,0,0,0);
+  const MNTHS_ES = ['enero','feb','mar','abr','mayo','jun','jul','ago','sep','oct','nov','dic'];
+  const DAYS_ES  = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+
+  // _bdaySessionDismissed: set en memoria — se vacía cada vez que se abre la app
+  // Solo persiste mientras la app está abierta; al cerrar y volver a entrar se reinicia
+  if(!window._bdaySessionDismissed) window._bdaySessionDismissed = new Set();
+
+  // Calcular próximo cumpleaños de cada músico
+  const upcoming = Object.values(musicians)
+    .filter(m => m.bday && (m.fullName || m.displayName))
+    .map(m => {
+      const [,mo,d] = m.bday.split('-').map(Number);
+      let next = new Date(today_d.getFullYear(), mo-1, d);
+      if(next < today_d) next = new Date(today_d.getFullYear()+1, mo-1, d);
+      const daysLeft = Math.round((next - today_d) / 86400000);
+      return { ...m, next, daysLeft };
+    })
+    .filter(m => m.daysLeft >= 0 && m.daysLeft <= 7)
+    .sort((a,b) => a.daysLeft - b.daysLeft);
+
+  // Filtrar los que el usuario ya aceptó EN ESTA sesión
+  const toShow = upcoming.filter(m => !window._bdaySessionDismissed.has(m.id||m.displayName));
+
+  if(!toShow.length) return;
+
+  // Mostrar el más próximo
+  const m = toShow[0];
+  const isToday  = m.daysLeft === 0;
+  const [,mo,d]  = m.bday.split('-').map(Number);
+  const dayName  = DAYS_ES[m.next.getDay()];
+  const dateLabel = `${dayName} ${d} de ${MNTHS_ES[mo-1]}`;
+  const uid = m.id || m.displayName;
+
+  const banner = document.createElement('div');
+  banner.id = 'bday-alert-banner';
+  banner.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;z-index:5000;padding:20px;animation:fadeIn .3s ease;';
+  banner.innerHTML = `
+    <div style="background:var(--surface);border:2px solid var(--accent);border-radius:20px;
+      width:min(360px,100%);padding:28px 24px;text-align:center;
+      box-shadow:0 0 40px rgba(240,180,41,.3);">
+      <div style="font-size:54px;margin-bottom:10px;">${isToday?'🎂':'🎉'}</div>
+      <div style="font-family:'Playfair Display',serif;font-size:19px;font-weight:700;
+        color:var(--accent);margin-bottom:6px;">
+        ${isToday ? '¡Hoy es su cumpleaños!' : `Cumpleaños en ${m.daysLeft} día${m.daysLeft>1?'s':''}`}
+      </div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px;color:var(--text);">
+        ${m.fullName||m.displayName}
+      </div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:24px;">📅 ${dateLabel}</div>
+      <div style="display:flex;gap:10px;">
+        <button id="bday-accept-btn"
+          style="flex:1;background:linear-gradient(135deg,var(--accent),var(--accent2));
+          color:#0d0d0f;border:none;border-radius:12px;padding:13px;
+          font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;">
+          Aceptar
+        </button>
+        <button id="bday-deact-btn"
+          style="flex:1;background:var(--surface2);border:1px solid var(--border);
+          border-radius:12px;padding:13px;color:var(--muted);cursor:pointer;
+          font-family:'DM Sans',sans-serif;font-size:13px;">
+          Desactivar
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(banner);
+
+  // Aceptar — solo oculta en esta sesión; al volver a abrir la app aparece de nuevo
+  document.getElementById('bday-accept-btn').onclick = () => {
+    window._bdaySessionDismissed.add(uid);
+    banner.remove();
+    // Si hay más cumpleaños pendientes, mostrar el siguiente
+    setTimeout(checkBirthdayAlerts, 350);
+  };
+
+  // Desactivar — guarda en localStorage, ya no aparece hasta que lo reactive desde 🎂
+  document.getElementById('bday-deact-btn').onclick = () => {
+    localStorage.setItem('mdios_bday_alerts', 'off');
+    banner.remove();
+    toast('🔕 Avisos desactivados — reactívalos tocando 🎂', 'warning');
+  };
+}
+
 // Ask permission and start checking
 function startReminderEngine() {
   if('Notification' in window && Notification.permission === 'default') {
@@ -2700,10 +2953,11 @@ function startReminderEngine() {
       if(p === 'granted') toast('🔔 Notificaciones activadas — recibirás recordatorios de eventos', 'success');
     });
   }
-  autoDeletePastEvents(); // borrar eventos pasados al iniciar
-  checkReminders();       // revisar recordatorios inmediatamente
-  setInterval(checkReminders, 60000);         // revisar cada minuto
-  setInterval(autoDeletePastEvents, 3600000); // revisar eventos pasados cada hora
+  autoDeletePastEvents();
+  checkReminders();
+  checkBirthdayAlerts(); // ← revisar cumpleaños al abrir
+  setInterval(checkReminders, 60000);
+  setInterval(autoDeletePastEvents, 3600000);
 }
 
 async function autoDeletePastEvents() {
@@ -2839,11 +3093,8 @@ async function finishRegister() {
     renderSongsList();
     renderProfileSongs();
     setTimeout(startReminderEngine, 500);
+    _loadMySelections(currentUser?.id);
     setTimeout(()=>{ renderSongsList(); renderProfileSongs(); renderEL(); }, 1500);
-  });
-}
-
-function showRegSuccess(user, cb) {
   // Flash green success overlay on step 3 box
   const box = document.querySelector('.reg-box');
   const orig = box.innerHTML;
@@ -2874,8 +3125,11 @@ function doLogin() {
     updateUserUI();
     if(err) err.style.display='none';
     toast(`¡Hola, ${u.nombres}! 👋`, 'success');
-    enrichUserFromFirebase(u.id);
-    // Re-register FCM token for this user on login
+  enrichUserFromFirebase(u.id);
+  // Cargar selecciones personales del usuario desde Firebase
+  _loadMySelections(u.id);
+  // Re-register FCM token for this user on login
+  setTimeout(setupFCM, 1000);
     setTimeout(setupFCM, 1000);
     // Force refresh songs and profile on every login
     renderSongsList();
@@ -2931,6 +3185,42 @@ function doLogin() {
     : 'Usuario no encontrado — ¿ya te registraste?');
 }
 
+
+// ── Cargar selecciones personales del catálogo desde Firebase ────────────────
+function _loadMySelections(userId) {
+  if(!userId || !fbReady) return;
+  const { db, ref, onValue:ov } = window._fb;
+  ov(ref(db, `selections/${userId}`), snap => {
+    window._mySelections = snap.val ? (snap.val() || {}) : {};
+    // Refrescar el catálogo para mostrar las estrellas correctas
+    renderSongsList();
+  }, { onlyOnce: true });
+}
+
+// ── Enriquecer datos de usuario desde Firebase (bday, nombres, cargo) ────────
+// Se llama en cada login para que el perfil siempre muestre datos actualizados
+function enrichUserFromFirebase(userId) {
+  if(!userId || !fbReady) return;
+  const { db, ref, onValue:ov } = window._fb;
+  // Leer desde /musicians (fuente de verdad para todos los campos del usuario)
+  ov(ref(db, `musicians/${userId}`), snap => {
+    const data = snap.val ? snap.val() : snap;
+    if(!data || !currentUser || currentUser.id !== userId) return;
+    // Actualizar currentUser con campos frescos de Firebase
+    if(data.bday)      currentUser.bday      = data.bday;
+    if(data.nombres)   currentUser.nombres   = data.nombres;
+    if(data.apellidos) currentUser.apellidos = data.apellidos;
+    if(data.fullName)  currentUser.fullName  = data.fullName;
+    if(data.cargo)     currentUser.cargo     = data.cargo;
+    if(data.role)      currentUser.role      = data.role;
+    // Persistir localmente
+    localStorage.setItem('mdios_user', JSON.stringify(currentUser));
+    // Refrescar perfil si está abierto
+    if(!document.getElementById('modal-profile')?.classList.contains('hidden')) {
+      renderProfileModal();
+    }
+  }, { onlyOnce: true });
+}
 
 function hideRegister() {
   const scr = document.getElementById('register-screen');
@@ -3062,7 +3352,10 @@ function renderProfileModal() {
   const age = u.bday ? Math.floor((Date.now()-new Date(u.bday))/(365.25*24*3600*1000)) : '?';
   const mRecord = musicians[u.id] || {};
   const unavailEntries = Object.entries(mRecord.unavailDates||{}).sort((a,b)=>a[1].localeCompare(b[1]));
-  const mySongs = Object.values(songs).filter(s=>s.ownerId===u.id);
+  const mySongs = Object.values(songs)
+    .filter(s=>s.ownerId===u.id)
+    .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))
+    .slice(0,6); // últimos 6 subidos
   const songRows = mySongs.length ? mySongs.map(s=>`
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:9px;
       padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
@@ -3125,7 +3418,7 @@ function renderProfileModal() {
       </div>
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:13px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);">🎵 Mis Temas</div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);">🎵 Mis Temas <span style="font-weight:400;text-transform:none;font-size:10px;">(últimos 6)</span></div>
           <button class="btn btn-ghost btn-sm" onclick="toggleUploadForm()" id="upload-toggle-btn">＋ Subir tema</button>
         </div>
         <div id="song-upload-form" style="display:none;background:var(--surface);border:1px solid var(--border);
@@ -3169,6 +3462,14 @@ function renderProfileModal() {
           </div>
         </div>
         <div id="prof-songs-list">${songRows}</div>
+        ${Object.values(songs).filter(s=>s.ownerId===u.id).length > 6
+          ? `<div style="text-align:center;margin-top:6px;">
+              <button onclick="closeProfileModal();switchView('songs',document.querySelector('[onclick*=songs]'))"
+                style="background:none;border:none;color:var(--accent);font-size:12px;
+                cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline;">
+                Ver todos mis temas en Canciones →
+              </button>
+            </div>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;gap:7px;">
         <button class="btn btn-ghost" style="width:100%;justify-content:center;" onclick="showChangePass()">🔑 Cambiar contraseña</button>
@@ -3182,7 +3483,10 @@ function renderProfile() { /* legacy — no-op, profile is now a modal */ }
 function renderProfileSongs() {
   const list = document.getElementById('prof-songs-list');
   if(!list || !currentUser) return;
-  const mySongs = Object.values(songs).filter(s=>s.ownerId===currentUser.id);
+  const mySongs = Object.values(songs)
+    .filter(s=>s.ownerId===currentUser.id)
+    .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))
+    .slice(0,6);
   list.innerHTML = mySongs.length
     ? mySongs.map(s=>`
         <div data-song-row="${s.id}"
@@ -3471,62 +3775,142 @@ function toggleSongSelected(songId) {
   const s = songs[songId];
   if(!s || s.ownerId !== currentUser?.id) return;
 
-  // ── 1. Flip state IMMEDIATELY in memory ──────────────────────────────────
-  s.selected = !s.selected;
+  // Si ya está seleccionado → deseleccionar directamente (sin modal)
+  if(s.selected) {
+    _doSetSongSelected(songId, false, null);
+    return;
+  }
+
+  // Si va a seleccionarse → mostrar cardview con fechas donde soy Voz Principal
+  const myId = currentUser.id;
+  const td   = today();
+  const myEvents = Object.values(events)
+    .filter(ev => {
+      if(ev.date < td) return false; // solo futuros/hoy
+      const asgn = ev.assignees ? Object.values(ev.assignees) : [];
+      return asgn.some(a => a.musId === myId && a.rolEvento === 'Voz Principal');
+    })
+    .sort((a,b) => a.date.localeCompare(b.date));
+
+  if(!myEvents.length) {
+    // Sin eventos asignados → seleccionar sin fecha
+    _doSetSongSelected(songId, true, null);
+    return;
+  }
+
+  // Mostrar modal de selección de fecha
+  const overlay = document.createElement('div');
+  overlay.id = 'song-date-picker';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:4000;padding:20px;';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;
+      width:min(360px,100%);max-height:80vh;overflow:hidden;display:flex;flex-direction:column;">
+      <div style="padding:20px 20px 12px;border-bottom:1px solid var(--border);">
+        <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700;margin-bottom:4px;">
+          ⭐ ¿Para qué fecha?
+        </div>
+        <div style="font-size:12px;color:var(--muted);">
+          "${s.title}" — Elige el evento donde usarás este tema
+        </div>
+      </div>
+      <div style="overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:7px;">
+        ${myEvents.map(ev => `
+          <button onclick="window._pickSongDate('${songId}','${ev.id}')"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:11px;
+            padding:12px 14px;text-align:left;cursor:pointer;color:var(--text);
+            font-family:'DM Sans',sans-serif;transition:border-color .15s;"
+            onmouseover="this.style.borderColor='var(--accent)'"
+            onmouseout="this.style.borderColor='var(--border)'">
+            <div style="font-weight:700;font-size:13px;">${ev.title}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px;">
+              📅 ${fmtDate(ev.date)}${ev.time?' · ⏰ '+ev.time:''}${ev.venue?' · 📍 '+ev.venue:''}
+            </div>
+          </button>`).join('')}
+        <button onclick="window._pickSongDate('${songId}',null)"
+          style="background:transparent;border:1px solid var(--border);border-radius:11px;
+          padding:10px 14px;text-align:center;cursor:pointer;color:var(--muted);
+          font-family:'DM Sans',sans-serif;font-size:12px;margin-top:4px;">
+          ☆ Agregar sin fecha específica
+        </button>
+      </div>
+      <div style="padding:12px 16px;border-top:1px solid var(--border);">
+        <button onclick="document.getElementById('song-date-picker')?.remove()"
+          style="width:100%;background:transparent;border:1px solid var(--border);
+          border-radius:10px;padding:9px;color:var(--muted);cursor:pointer;
+          font-family:'DM Sans',sans-serif;font-size:13px;">
+          Cancelar
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  window._pickSongDate = (sId, evId) => {
+    document.getElementById('song-date-picker')?.remove();
+    delete window._pickSongDate;
+    _doSetSongSelected(sId, true, evId);
+  };
+}
+
+function _doSetSongSelected(songId, val, evId) {
+  const s = songs[songId];
+  if(!s) return;
+
+  s.selected  = val;
+  s.eventId   = evId || s.eventId || null; // guarda la fecha elegida
   songs[songId] = s;
 
-  // ── 2. Update DOM instantly — no await, no re-render ─────────────────────
-  // Botón estrella
+  // Actualizar DOM — botones estrella
   document.querySelectorAll(`[data-song-id="${songId}"]`).forEach(btn => {
-    btn.innerHTML = s.selected
+    btn.innerHTML = val
       ? '<span style="font-size:22px;line-height:1;">⭐</span>'
       : '<span style="font-size:22px;line-height:1;opacity:.3;">☆</span>';
-    btn.style.background  = s.selected ? 'rgba(240,180,41,.2)'  : 'transparent';
-    btn.style.borderColor = s.selected ? 'var(--accent)' : 'var(--border)';
-    btn.style.boxShadow   = s.selected ? '0 0 8px rgba(240,180,41,.4)' : 'none';
+    btn.style.background  = val ? 'rgba(240,180,41,.2)'  : 'transparent';
+    btn.style.borderColor = val ? 'var(--accent)' : 'var(--border)';
+    btn.style.boxShadow   = val ? '0 0 8px rgba(240,180,41,.4)' : 'none';
   });
 
-  // Etiqueta de estado
   document.querySelectorAll(`[data-song-label="${songId}"]`).forEach(el => {
-    el.innerHTML = s.selected
+    el.innerHTML = val
       ? '<span style="color:var(--success);font-weight:700;">✅ En mi lista</span>'
       : '<span style="color:var(--muted);">☆ No en lista</span>';
   });
 
-  // Fila completa
   document.querySelectorAll(`[data-song-row="${songId}"]`).forEach(row => {
     row.style.transition  = 'border-color .2s, background .2s, box-shadow .2s';
-    row.style.borderColor = s.selected ? 'var(--accent)' : 'var(--border)';
-    row.style.background  = s.selected ? 'rgba(240,180,41,.06)' : 'var(--surface)';
-    row.style.boxShadow   = s.selected ? '0 0 12px rgba(240,180,41,.15)' : 'none';
+    row.style.borderColor = val ? 'var(--accent)' : 'var(--border)';
+    row.style.background  = val ? 'rgba(240,180,41,.06)' : 'var(--surface)';
+    row.style.boxShadow   = val ? '0 0 12px rgba(240,180,41,.15)' : 'none';
   });
 
-  // Flash visual en la fila
+  // Flash visual
   document.querySelectorAll(`[data-song-row="${songId}"]`).forEach(row => {
     row.style.position = 'relative';
     const flash = document.createElement('div');
-    flash.style.cssText = `
-      position:absolute;inset:0;border-radius:9px;pointer-events:none;
-      background:${s.selected ? 'rgba(240,180,41,.25)' : 'rgba(224,92,92,.15)'};
+    flash.style.cssText = `position:absolute;inset:0;border-radius:9px;pointer-events:none;
+      background:${val ? 'rgba(240,180,41,.25)' : 'rgba(224,92,92,.15)'};
       animation:flashFade .6s ease forwards;z-index:1;`;
     row.appendChild(flash);
     setTimeout(()=>flash.remove(), 600);
   });
 
-  // ── 3. Toast inmediato ────────────────────────────────────────────────────
-  toast(s.selected ? `⭐ "${s.title}" en tu lista` : `☆ "${s.title}" quitado`,
-        s.selected ? 'success' : 'warning');
+  toast(val ? `⭐ "${s.title}" en tu lista` : `☆ "${s.title}" quitado`,
+        val ? 'success' : 'warning');
 
-  // ── 4. Save to Firebase in background (no await = no UI block) ────────────
-  songs[songId]._pendingSelected = s.selected;
-  fbSet(`songs/${songId}/selected`, s.selected)
+  // Guardar en Firebase
+  songs[songId]._pendingSelected = val;
+  const updates = {selected: val};
+  if(evId !== undefined) updates.eventId = evId;
+  fbUpdate ? fbUpdate(`songs/${songId}`, updates)
     .then(()=>{ delete songs[songId]._pendingSelected; })
-    .catch(()=>{ s.selected=!s.selected; songs[songId]=s; delete songs[songId]._pendingSelected; renderProfileSongs(); });
-  logActivity('song', s.selected?'⭐':'☆',
-    `"${currentUser?.fullName}" ${s.selected?'agregó':'quitó'} "${s.title}" de su lista`
+    .catch(()=>{ s.selected=!val; songs[songId]=s; delete songs[songId]._pendingSelected; renderProfileSongs(); })
+  : fbSet(`songs/${songId}/selected`, val)
+    .then(()=>{ delete songs[songId]._pendingSelected; })
+    .catch(()=>{ s.selected=!val; songs[songId]=s; delete songs[songId]._pendingSelected; renderProfileSongs(); });
+
+  logActivity('song', val?'⭐':'☆',
+    `"${currentUser?.fullName}" ${val?'agregó':'quitó'} "${s.title}" de su lista`
   ).catch(()=>{});
 
-  // Refresh hero if needed
   if(selEv && events[selEv]) renderNextEventHero(events[selEv]);
 }
 
@@ -3819,7 +4203,6 @@ function renderSongsList() {
   const container = document.getElementById('songs-list');
   const countEl   = document.getElementById('songs-count');
   if(!container) return;
-  // Sort newest first
   const all = Object.values(songs).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   if(countEl) countEl.textContent = `${all.length} tema${all.length!==1?'s':''}`;
   const filtered = songsSearchQ
@@ -3829,50 +4212,38 @@ function renderSongsList() {
     container.innerHTML = `<div class="empty-s"><div class="ei">🎵</div>${all.length?'Sin resultados':'Aún no hay canciones'}</div>`;
     return;
   }
+
+  // Selecciones personales del usuario actual (cargadas desde Firebase al login)
+  const mySelections = window._mySelections || {};
+
   container.innerHTML = filtered.map(s=>{
-    const hasYT     = !!s.ytLink;
-    const hasLetra  = !!(s.letraLink||s.letraFileId);
-    const hasChart  = !!(s.chartLink||s.chartFileId);
+    const hasYT    = !!s.ytLink;
+    const hasLetra = !!(s.letraLink||s.letraFileId);
+    const hasChart = !!(s.chartLink||s.chartFileId);
 
-    // Determine if current user can use the star selection on this song
-    // Allowed: Voz, Voz Principal, Coros, Cantante, Líder, Admin — NOT Músico
-    const userCargo = currentUser?.cargo || '';
-    const userRole  = currentUser?.role  || '';
-    const canUseStar = currentUser && (
-      isAdmin ||
-      userCargo === 'Voz' || userCargo === 'Líder' ||
-      userRole === 'Cantante' || userRole === 'Líder' ||
-      userRole.toLowerCase().includes('voz') ||
-      userRole.toLowerCase().includes('coro')
-    );
+    // CUALQUIER usuario logueado puede elegir cualquier tema del catálogo
+    const canStar  = !!currentUser;
+    const isChosen = canStar && !!mySelections[s.id];
 
-    // Check if this song is already selected by the current user (as if from their profile)
-    const isSelectedByMe = canUseStar && s.ownerId === currentUser?.id && !!s.selected;
-    // For songs owned by others: current user can add them to their own list
-    // We use a separate field: song._mySelection_[userId] if we want cross-user selection
-    // But to keep it simple and match profile behavior: only own songs can be starred
-    // The requirement says "same as if choosing from profile" — so same toggleSongSelected logic
-    const isMySong = canUseStar && s.ownerId === currentUser?.id;
-
-    const starBtn = isMySong ? `
-      <button data-song-id="${s.id}"
-        onclick="toggleSongSelected('${s.id}')"
-        style="background:${s.selected?'rgba(240,180,41,.2)':'transparent'};
-          border:1px solid ${s.selected?'var(--accent)':'var(--border)'};
+    const starBtn = canStar ? `
+      <button data-catalog-star="${s.id}"
+        onclick="toggleCatalogStar('${s.id}')"
+        style="background:${isChosen?'rgba(240,180,41,.2)':'transparent'};
+          border:1px solid ${isChosen?'var(--accent)':'var(--border)'};
           border-radius:8px;padding:5px 9px;cursor:pointer;
-          box-shadow:${s.selected?'0 0 8px rgba(240,180,41,.4)':'none'};
+          box-shadow:${isChosen?'0 0 8px rgba(240,180,41,.4)':'none'};
           display:flex;align-items:center;justify-content:center;
           transition:all .2s;flex-shrink:0;"
-        title="${s.selected?'Quitar de mi lista':'Agregar a mi lista'}">
-        ${s.selected
+        title="${isChosen?'Quitar de mi lista':'Agregar a mi lista'}">
+        ${isChosen
           ? '<span style="font-size:18px;line-height:1;">⭐</span>'
           : '<span style="font-size:18px;line-height:1;opacity:.35;">☆</span>'}
       </button>` : '';
 
     return `<div class="song-card" data-song-row="${s.id}"
-      style="border-color:${isMySong && s.selected?'var(--accent)':'var(--border)'};
-        background:${isMySong && s.selected?'rgba(240,180,41,.06)':'var(--surface)'};
-        box-shadow:${isMySong && s.selected?'0 0 12px rgba(240,180,41,.15)':'none'};
+      style="border-color:${isChosen?'var(--accent)':'var(--border)'};
+        background:${isChosen?'rgba(240,180,41,.06)':'var(--surface)'};
+        box-shadow:${isChosen?'0 0 12px rgba(240,180,41,.15)':'none'};
         transition:border-color .2s,background .2s,box-shadow .2s;">
       <div class="song-card-top">
         <div class="song-thumb">🎵</div>
@@ -3882,8 +4253,8 @@ function renderSongsList() {
             ${s.bpm?`<span style="background:rgba(92,168,224,.12);color:var(--info);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;">${s.bpm} BPM</span>`:''}
           </div>
           <div class="song-meta">${s.ownerName||''}</div>
-          ${isMySong?`<div data-song-label="${s.id}" style="font-size:10px;margin-top:2px;">
-            ${s.selected
+          ${canStar?`<div data-catalog-label="${s.id}" style="font-size:10px;margin-top:2px;">
+            ${isChosen
               ? '<span style="color:var(--success);font-weight:700;">✅ En mi lista</span>'
               : '<span style="color:var(--muted);">☆ No en lista</span>'}
           </div>`:''}
@@ -3892,24 +4263,144 @@ function renderSongsList() {
       </div>
       <div class="song-actions">
         <button class="song-btn play ${!hasYT?'disabled':''}"
-          onclick="${hasYT?`openSongLink('${s.ytLink}')`:''}">
-          ▶ Video
-        </button>
+          onclick="${hasYT?`openSongLink('${s.ytLink}')`:''}">▶ Video</button>
         <button class="song-btn ${!(s.letraFileId||s.letraLink)?'disabled':''}"
           onclick="${s.letraFileId
             ? `downloadFromTelegram('${s.letraFileId}','${s.letraFileName||s.title+'_letras.pdf'}','Letras de ${s.title}')`
-            : s.letraLink?`openSongLink('${s.letraLink}')`:''}" >
-          📄 Letras
-        </button>
+            : s.letraLink?`openSongLink('${s.letraLink}')`:''}" >📄 Letras</button>
         <button class="song-btn ${!(s.chartFileId||s.chartLink)?'disabled':''}"
           onclick="${s.chartFileId
             ? `downloadFromTelegram('${s.chartFileId}','${s.chartFileName||s.title+'_chart.pdf'}','Chart de ${s.title}')`
-            : s.chartLink?`openSongLink('${s.chartLink}')`:''}" >
-          🎼 Chart
-        </button>
+            : s.chartLink?`openSongLink('${s.chartLink}')`:''}" >🎼 Chart</button>
       </div>
     </div>`;
   }).join('');
+}
+
+// ── Elegir / quitar un tema del catálogo — CUALQUIER usuario logueado ─────────
+// Guarda en Firebase: selections/{userId}/{songId}
+function toggleCatalogStar(songId) {
+  if(!currentUser) { toast('Inicia sesión para elegir temas','warning'); return; }
+  const mySelections = window._mySelections || {};
+  const isChosen = !!mySelections[songId];
+
+  if(isChosen) {
+    _doSetCatalogStar(songId, false, null);
+    return;
+  }
+
+  // Mostrar selector de fecha (eventos donde soy Voz Principal)
+  const myId = currentUser.id;
+  const td   = today();
+  const myEvents = Object.values(events)
+    .filter(ev => {
+      if(ev.date < td) return false;
+      const asgn = ev.assignees ? Object.values(ev.assignees) : [];
+      return asgn.some(a => a.musId === myId && a.rolEvento === 'Voz Principal');
+    })
+    .sort((a,b) => a.date.localeCompare(b.date));
+
+  const s = songs[songId] || {};
+
+  if(!myEvents.length) {
+    _doSetCatalogStar(songId, true, null);
+    return;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'catalog-date-picker';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:4000;padding:20px;';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;
+      width:min(360px,100%);max-height:80vh;overflow:hidden;display:flex;flex-direction:column;">
+      <div style="padding:20px 20px 12px;border-bottom:1px solid var(--border);">
+        <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700;margin-bottom:4px;">⭐ ¿Para qué fecha?</div>
+        <div style="font-size:12px;color:var(--muted);">"${s.title||songId}" — Elige el evento donde usarás este tema</div>
+      </div>
+      <div style="overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:7px;">
+        ${myEvents.map(ev=>`
+          <button onclick="window._catalogPickDate('${songId}','${ev.id}')"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:11px;
+            padding:12px 14px;text-align:left;cursor:pointer;color:var(--text);
+            font-family:'DM Sans',sans-serif;transition:border-color .15s;"
+            onmouseover="this.style.borderColor='var(--accent)'"
+            onmouseout="this.style.borderColor='var(--border)'">
+            <div style="font-weight:700;font-size:13px;">${ev.title}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px;">
+              📅 ${fmtDate(ev.date)}${ev.time?' · ⏰ '+ev.time:''}${ev.venue?' · 📍 '+ev.venue:''}
+            </div>
+          </button>`).join('')}
+        <button onclick="window._catalogPickDate('${songId}',null)"
+          style="background:transparent;border:1px solid var(--border);border-radius:11px;
+          padding:10px 14px;text-align:center;cursor:pointer;color:var(--muted);
+          font-family:'DM Sans',sans-serif;font-size:12px;margin-top:4px;">
+          ☆ Agregar sin fecha específica
+        </button>
+      </div>
+      <div style="padding:12px 16px;border-top:1px solid var(--border);">
+        <button onclick="document.getElementById('catalog-date-picker')?.remove()"
+          style="width:100%;background:transparent;border:1px solid var(--border);
+          border-radius:10px;padding:9px;color:var(--muted);cursor:pointer;
+          font-family:'DM Sans',sans-serif;font-size:13px;">Cancelar</button>
+      </div>
+    </div>`;
+  overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+
+  window._catalogPickDate = (sId, evId) => {
+    document.getElementById('catalog-date-picker')?.remove();
+    delete window._catalogPickDate;
+    _doSetCatalogStar(sId, true, evId);
+  };
+}
+
+function _doSetCatalogStar(songId, val, evId) {
+  if(!currentUser) return;
+  const uid = currentUser.id;
+  if(!window._mySelections) window._mySelections = {};
+  const s = songs[songId] || {};
+
+  if(val) {
+    window._mySelections[songId] = { songId, eventId: evId||null, ts: Date.now() };
+  } else {
+    delete window._mySelections[songId];
+  }
+
+  // Actualizar DOM
+  document.querySelectorAll(`[data-catalog-star="${songId}"]`).forEach(btn => {
+    btn.innerHTML = val
+      ? '<span style="font-size:18px;line-height:1;">⭐</span>'
+      : '<span style="font-size:18px;line-height:1;opacity:.35;">☆</span>';
+    btn.style.background  = val ? 'rgba(240,180,41,.2)'  : 'transparent';
+    btn.style.borderColor = val ? 'var(--accent)' : 'var(--border)';
+    btn.style.boxShadow   = val ? '0 0 8px rgba(240,180,41,.4)' : 'none';
+    btn.title = val ? 'Quitar de mi lista' : 'Agregar a mi lista';
+  });
+  document.querySelectorAll(`[data-catalog-label="${songId}"]`).forEach(el => {
+    el.innerHTML = val
+      ? '<span style="color:var(--success);font-weight:700;">✅ En mi lista</span>'
+      : '<span style="color:var(--muted);">☆ No en lista</span>';
+  });
+  document.querySelectorAll(`[data-song-row="${songId}"]`).forEach(row => {
+    row.style.borderColor = val ? 'var(--accent)' : 'var(--border)';
+    row.style.background  = val ? 'rgba(240,180,41,.06)' : 'var(--surface)';
+    row.style.boxShadow   = val ? '0 0 12px rgba(240,180,41,.15)' : 'none';
+  });
+
+  toast(val ? `⭐ "${s.title||songId}" en tu lista` : `☆ "${s.title||songId}" quitado`,
+        val ? 'success' : 'warning');
+
+  // Guardar en Firebase: selections/{userId}/{songId}
+  if(fbReady) {
+    const { db, ref, set: fbS, remove: fbRm } = window._fb;
+    if(val) {
+      fbS(ref(db, `selections/${uid}/${songId}`),
+        { songId, eventId: evId||null, songTitle: s.title||'', ts: Date.now() }
+      ).catch(()=>{});
+    } else {
+      fbRm(ref(db, `selections/${uid}/${songId}`)).catch(()=>{});
+    }
+  }
 }
 
 function showChangePass() {
