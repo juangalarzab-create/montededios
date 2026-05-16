@@ -1292,17 +1292,64 @@ async function setupFCM() {
 // Send push to ALL registered FCM tokens via Firebase
 // (called when creating/editing events)
 async function broadcastPushToAll(title, body) {
-  // Store notification in Firebase so all clients see it
-  // Each client's onValue listener on /notifications will trigger pushNotif locally
   if(!fbReady) return;
-  const { db, ref, push } = window._fb;
+  const { db, ref, push, set } = window._fb;
+
+  // 1. Store in /notifications so open clients see it via onValue listener
   try {
     await push(ref(db,'notifications'), {
       title, body,
       ts: Date.now(),
       from: currentUser?.displayName || 'Admin'
     });
-  } catch(e) { console.warn('broadcastPush:', e); }
+  } catch(e) { console.warn('broadcastPush write:', e); }
+
+  // 2. Send real FCM push to ALL registered tokens so closed/locked devices get it
+  //    We use the Firebase Legacy HTTP API — works from browser without a server
+  try {
+    const tokSnap = await new Promise((res,rej)=>{
+      const {onValue:ov, ref:r} = window._fb;
+      ov(r(db,'fcmTokens'), snap=>res(snap), {onlyOnce:true});
+    });
+    const tokenData = tokSnap.val ? tokSnap.val() : tokSnap;
+    if(!tokenData) return;
+    const tokens = Object.values(tokenData).map(t=>t.token).filter(Boolean);
+    if(!tokens.length) return;
+
+    // Send via FCM batch — each token gets a real OS push
+    // Uses the project's server key stored in Firebase config
+    const fcmKey = await getFCMServerKey();
+    if(!fcmKey) return;
+
+    // Send in chunks of 500 (FCM limit)
+    for(let i=0; i<tokens.length; i+=500){
+      const chunk = tokens.slice(i, i+500);
+      fetch('https://fcm.googleapis.com/fcm/send', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','Authorization':'key='+fcmKey},
+        body: JSON.stringify({
+          registration_ids: chunk,
+          notification: { title, body },
+          data: { title, body, url: window.location.origin + window.location.pathname },
+          android: { priority:'high' },
+          apns: { headers: {'apns-priority':'10'} }
+        })
+      }).catch(()=>{});
+    }
+  } catch(e) { console.warn('FCM batch send:', e); }
+}
+
+// Retrieve FCM server key from Firebase (stored by admin at setup)
+async function getFCMServerKey() {
+  try {
+    const { db, ref } = window._fb;
+    return await new Promise((res)=>{
+      const {onValue:ov} = window._fb;
+      ov(ref(db,'config/fcmServerKey'), snap=>{
+        res(snap.val ? snap.val() : snap);
+      }, {onlyOnce:true});
+    });
+  } catch(e) { return null; }
 }
 
 function sendPushNotification(msg) {
@@ -1523,14 +1570,12 @@ function renderNextEventHero(ev) {
   const isToday  = ev.date === td;
   const assignees = ev.assignees ? Object.values(ev.assignees) : [];
 
-  // ── Role abbreviations ────────────────────────────────────────────────────
-  const SIGLAS = {
-    'Voz Principal':'VP','Voz':'VOZ','Cantante':'VOZ','Coros':'COR','Coros 2':'COR2',
-    'Director':'DIR','Guitarrista':'GTR','Tecladista':'TCL','Bajista':'BJO',
-    'Baterista':'BAT','Percusionista':'PER','Trompetista':'TRP','Saxofonista':'SAX',
-    'Violinista':'VLN','Violonchelista':'VLC','Flautista':'FLT','Músico':'MUS','Líder':'LDR'
+  // ── Role abbreviations — primeras 3 letras del rol asignado en el evento ────
+  const getSigla = a => {
+    const src = a.rolEvento || a.role || '';
+    // Remove accents and take first 3 letters uppercase
+    return src.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().slice(0,3);
   };
-  const getSigla = a => SIGLAS[a.rolEvento] || SIGLAS[a.role] || (a.role||'').slice(0,3).toUpperCase();
 
   // ── Encargados con siglas ─────────────────────────────────────────────────
   const peoplePills = assignees.length
@@ -1951,11 +1996,19 @@ function showMemberCard(musId) {
     ? memberSongs.map(s=>`
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;
           padding:7px 10px;margin-bottom:5px;">
-          <div style="font-weight:600;font-size:12px;">${s.title} <span class="song-tono">${s.tono||''}</span></div>
+          <div style="font-weight:600;font-size:12px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+            <span>${s.title}</span>
+            ${s.tono?`<span class="song-tono">${s.tono}</span>`:''}
+            ${s.bpm?`<span style="background:rgba(92,168,224,.12);color:var(--info);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;">${s.bpm} BPM</span>`:''}
+          </div>
           <div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;">
             ${s.ytLink?`<button class="song-btn play" style="font-size:10px;padding:3px 8px;" onclick="openSongLink('${s.ytLink}')">▶ Video</button>`:''}
-            ${(s.letraLink||s.letraData)?`<button class="song-btn" style="font-size:10px;padding:3px 8px;" onclick="${s.letraData?`downloadPDF('${s.letraData}','${s.letraName||'letras.pdf'}','Letras de ${s.title}')`:s.letraLink?`openSongLink('${s.letraLink}')`:''}">📄 Letras</button>`:''}
-            ${(s.chartLink||s.chartData)?`<button class="song-btn" style="font-size:10px;padding:3px 8px;" onclick="${s.chartData?`downloadPDF('${s.chartData}','${s.chartName||'chart.pdf'}','Chart de ${s.title}')`:s.chartLink?`openSongLink('${s.chartLink}')`:''}">🎼 Chart</button>`:''}
+            ${s.letraFileId?`<button class="song-btn" style="font-size:10px;padding:3px 8px;" onclick="downloadFromTelegram('${s.letraFileId}','${(s.letraFileName||s.title+'_letras.pdf').replace(/'/g,"\\'")}','Letras de ${s.title.replace(/'/g,"\\'")}')">📄 Letras</button>`
+              : s.letraLink?`<button class="song-btn" style="font-size:10px;padding:3px 8px;" onclick="openSongLink('${s.letraLink}')">📄 Letras</button>`
+              : s.letraData?`<button class="song-btn" style="font-size:10px;padding:3px 8px;" onclick="downloadPDF('${s.letraData}','${s.letraName||'letras.pdf'}','Letras de ${s.title.replace(/'/g,"\\'")}')">📄 Letras</button>`:''}
+            ${s.chartFileId?`<button class="song-btn" style="font-size:10px;padding:3px 8px;" onclick="downloadFromTelegram('${s.chartFileId}','${(s.chartFileName||s.title+'_chart.pdf').replace(/'/g,"\\'")}','Chart de ${s.title.replace(/'/g,"\\'")}')">🎼 Chart</button>`
+              : s.chartLink?`<button class="song-btn" style="font-size:10px;padding:3px 8px;" onclick="openSongLink('${s.chartLink}')">🎼 Chart</button>`
+              : s.chartData?`<button class="song-btn" style="font-size:10px;padding:3px 8px;" onclick="downloadPDF('${s.chartData}','${s.chartName||'chart.pdf'}','Chart de ${s.title.replace(/'/g,"\\'")}')">🎼 Chart</button>`:''}
           </div>
         </div>`).join('')
     : '<div style="font-size:11px;color:var(--muted);">Sin temas en lista</div>';
@@ -2182,13 +2235,32 @@ function _doExportCalendarPDF() {
   const allEvs = Object.values(events).sort((a,b)=>a.date.localeCompare(b.date));
   if(!allEvs.length){ toast('Sin eventos','warning'); return; }
 
-  const SIGLAS = {
-    'Voz Principal':'VP','Voz':'VO','Cantante':'VO','Coros':'CO','Coros 2':'C2',
-    'Director':'DI','Guitarrista':'GT','Tecladista':'TC','Bajista':'BJ',
-    'Baterista':'BA','Percusionista':'PE','Trompetista':'TR','Saxofonista':'SA',
-    'Violinista':'VI','Musico':'MU','Lider':'LD'
+  // Sigla: primeras 3 letras del rolEvento o rol
+  const getSigla = a => {
+    const src = a.rolEvento || a.role || '';
+    return src.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().slice(0,3);
   };
-  const getSigla = a => SIGLAS[a.rolEvento]||SIGLAS[a.role]||(a.role||'').slice(0,2).toUpperCase();
+
+  // Formato de fecha con nombre del día: "sab 17 mayo 2026"
+  const DAYS  = ['dom','lun','mar','mié','jue','vie','sáb'];
+  const MNTHS_FULL = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const fmtDatePDF = s => {
+    if(!s) return '—';
+    const [y,m,d] = s.split('-');
+    const dt = new Date(parseInt(y), parseInt(m)-1, parseInt(d));
+    const dayName = DAYS[dt.getDay()];
+    return `${dayName} ${parseInt(d)} ${MNTHS_FULL[parseInt(m)-1]} ${y}`;
+  };
+
+  // Formato hora 12h con AM/PM
+  const fmtTime12h = t => {
+    if(!t) return '';
+    const [hh,mm] = t.split(':');
+    let h = parseInt(hh);
+    const ampm = h >= 12 ? 'pm' : 'am';
+    h = h % 12 || 12;
+    return `${h}:${mm} ${ampm}`;
+  };
 
   // App colors — exact match to hero card
   const BG    = [13,13,15];
@@ -2224,10 +2296,15 @@ function _doExportCalendarPDF() {
     doc.setTextColor(...MUT);
     doc.text(`${pg+1} / ${pages}  |  ${new Date().toLocaleDateString('es-PE')}`, W-6, 9, {align:'right'});
 
+    // Section title: PRÓXIMO EVENTO (as page-level heading, not per-card badge)
+    doc.setFont('helvetica','bold'); doc.setFontSize(7);
+    doc.setTextColor(...ACC);
+    doc.text('PRÓXIMO EVENTO', 8, 16);
+
     const slice  = allEvs.slice(pg*EPP, (pg+1)*EPP);
     const marg   = 6;
     const gap    = 4;
-    const startY = 17;
+    const startY = 20;
     const cardW  = W - marg*2;
     const usable = H - startY - 8;
     const cardH  = (usable - gap*(slice.length-1)) / slice.length;
@@ -2251,19 +2328,9 @@ function _doExportCalendarPDF() {
       doc.roundedRect(marg, cy, 2.5, cardH, 2, 2, 'F');
 
       const pad = 8; // left padding after stripe
-      let ly = cy + 7;
+      let ly = cy + 6;
 
-      // ── HEADER SECTION — badge + title + meta ─────────────────────────────
-      // Badge: "PRÓXIMO EVENTO" or date badge
-      const td = today();
-      const isToday = ev.date === td;
-      const badgeColor = isToday ? ACC2 : ACC;
-      doc.setFillColor(...badgeColor);
-      doc.roundedRect(marg+pad, ly-3.5, isToday?18:28, 4.5, 1, 1, 'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(4.5); doc.setTextColor(...DARK);
-      doc.text(isToday ? 'HOY' : 'PROXIMO EVENTO', marg+pad+1.5, ly-0.2);
-      ly += 3;
-
+      // ── HEADER SECTION — title + meta (sin badge por tarjeta) ────────────
       // Event title — big and bold like hero
       doc.setFont('helvetica','bold'); doc.setFontSize(11);
       doc.setTextColor(...WHT);
@@ -2271,31 +2338,33 @@ function _doExportCalendarPDF() {
       doc.text(titleParts, marg+pad, ly);
       ly += titleParts.length * 6 + 1;
 
-      // Meta row: date | time | venue
-      doc.setFont('helvetica','normal'); doc.setFontSize(7);
-      doc.setTextColor(...MUT);
-      const [,em,ed] = ev.date.split('-');
-      const MNTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-      const dateStr = `${parseInt(ed)} ${MNTHS[parseInt(em)-1]} ${ev.date.split('-')[0]}`;
+      // Meta row: fecha completa con día semana | hora 12h | lugar completo
+      const dateStr = fmtDatePDF(ev.date);
+      const timeStr = fmtTime12h(ev.time);
       let mx = marg+pad;
 
-      // Date chip
-      doc.setFillColor(...SURF2); doc.roundedRect(mx-1, ly-3.5, 22, 5, 1,1,'F');
+      // Date chip — full date with day name
+      const dateChipW = doc.getTextWidth(dateStr) + 6;
+      doc.setFillColor(...SURF2); doc.roundedRect(mx-1, ly-3.5, dateChipW, 5, 1,1,'F');
       doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(...WHT);
       doc.text(dateStr, mx, ly-0.2);
-      mx += 24;
+      mx += dateChipW + 2;
 
-      if(ev.time){
-        doc.setFillColor(...SURF2); doc.roundedRect(mx-1, ly-3.5, 14, 5, 1,1,'F');
-        doc.text(ev.time, mx, ly-0.2); mx += 16;
+      if(timeStr){
+        const timeChipW = doc.getTextWidth(timeStr) + 6;
+        doc.setFillColor(...SURF2); doc.roundedRect(mx-1, ly-3.5, timeChipW, 5, 1,1,'F');
+        doc.text(timeStr, mx, ly-0.2); mx += timeChipW + 2;
       }
       if(ev.venue){
+        // Lugar completo — puede wrappear en múltiples líneas
         doc.setFillColor(...SURF2);
-        const vw = Math.min(doc.getTextWidth(ev.venue)*0.9+4, cardW-mx+marg-6);
-        doc.roundedRect(mx-1, ly-3.5, vw, 5, 1,1,'F');
+        const remainW = marg+cardW-2 - mx - 1;
+        const venueLines = doc.splitTextToSize(ev.venue, remainW > 10 ? remainW : cardW-pad-6);
+        const venueH = venueLines.length * 3.8 + 2;
+        doc.roundedRect(mx-1, ly-3.5, remainW > 10 ? remainW : cardW-pad-6, venueH, 1,1,'F');
         doc.setTextColor(...MUT);
-        const vt = doc.splitTextToSize(ev.venue, vw-2);
-        doc.text(vt[0], mx, ly-0.2);
+        venueLines.forEach((vl, vi) => doc.text(vl, mx, ly - 0.2 + vi * 3.8));
+        if(venueLines.length > 1) ly += (venueLines.length - 1) * 3.8;
       }
       ly += 6;
 
@@ -3237,6 +3306,77 @@ async function uploadSong() {
   const bpm   = document.getElementById('song-bpm-inp')?.value.trim();
   if(!title){ toast('Ingresa el nombre del tema','error'); return; }
 
+  // ── Verificar duplicados (case-insensitive) ───────────────────────────────
+  const titleNorm = title.toLowerCase().trim();
+  const duplicate = Object.values(songs).find(s => s.title.toLowerCase().trim() === titleNorm);
+  if(duplicate) {
+    // Show options: ver tema | continuar de todas formas | cancelar
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:3000;padding:20px;';
+    overlay.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--accent);border-radius:16px;
+        width:min(340px,100%);padding:24px;text-align:center;">
+        <div style="font-size:28px;margin-bottom:10px;">⚠️</div>
+        <div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--accent);">
+          Este tema ya existe
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:20px;">
+          "<strong style="color:var(--text);">${duplicate.title}</strong>" ya está en el catálogo de canciones.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button id="dup-view"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+            padding:11px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
+            color:var(--text);cursor:pointer;">
+            🔍 Ver tema
+          </button>
+          <button id="dup-continue"
+            style="background:linear-gradient(135deg,var(--accent),var(--accent2));color:#0d0d0f;
+            border:none;border-radius:10px;padding:11px;font-family:'DM Sans',sans-serif;
+            font-size:13px;font-weight:700;cursor:pointer;">
+            ➕ Continuar y subir igual
+          </button>
+          <button id="dup-cancel"
+            style="background:transparent;border:1px solid var(--border);border-radius:10px;
+            padding:11px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--muted);cursor:pointer;">
+            ✕ Cancelar y corregir
+          </button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    document.getElementById('dup-view').onclick = () => {
+      overlay.remove();
+      // Switch to songs view and highlight the song
+      switchView('songs', document.querySelector('[onclick*="songs"]'));
+      setTimeout(() => {
+        const searchEl = document.getElementById('songs-search');
+        if(searchEl){ searchEl.value = duplicate.title; songsSearchQ = duplicate.title.toLowerCase(); renderSongsList(); }
+      }, 100);
+    };
+    document.getElementById('dup-continue').onclick = () => {
+      overlay.remove();
+      _doUploadSong(title, tono, bpm); // proceed with upload
+    };
+    document.getElementById('dup-cancel').onclick = () => {
+      overlay.remove();
+      // Clear all fields so user can start fresh
+      ['song-title-inp','song-tono-inp','song-bpm-inp','song-yt-inp','song-letra-link','song-chart-link']
+        .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+      ['song-letra-pdf','song-chart-pdf']
+        .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+      ['letra-preview','chart-preview']
+        .forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=''; });
+      document.getElementById('song-title-inp')?.focus();
+    };
+    return; // wait for user choice
+  }
+
+  // No duplicate — proceed directly
+  await _doUploadSong(title, tono, bpm);
+}
+
+async function _doUploadSong(title, tono, bpm) {
   const saveBtn = document.querySelector('[onclick="uploadSong()"]');
   if(saveBtn){ saveBtn.disabled=true; saveBtn.textContent='Guardando…'; }
 
@@ -3693,7 +3833,47 @@ function renderSongsList() {
     const hasYT     = !!s.ytLink;
     const hasLetra  = !!(s.letraLink||s.letraFileId);
     const hasChart  = !!(s.chartLink||s.chartFileId);
-    return `<div class="song-card">
+
+    // Determine if current user can use the star selection on this song
+    // Allowed: Voz, Voz Principal, Coros, Cantante, Líder, Admin — NOT Músico
+    const userCargo = currentUser?.cargo || '';
+    const userRole  = currentUser?.role  || '';
+    const canUseStar = currentUser && (
+      isAdmin ||
+      userCargo === 'Voz' || userCargo === 'Líder' ||
+      userRole === 'Cantante' || userRole === 'Líder' ||
+      userRole.toLowerCase().includes('voz') ||
+      userRole.toLowerCase().includes('coro')
+    );
+
+    // Check if this song is already selected by the current user (as if from their profile)
+    const isSelectedByMe = canUseStar && s.ownerId === currentUser?.id && !!s.selected;
+    // For songs owned by others: current user can add them to their own list
+    // We use a separate field: song._mySelection_[userId] if we want cross-user selection
+    // But to keep it simple and match profile behavior: only own songs can be starred
+    // The requirement says "same as if choosing from profile" — so same toggleSongSelected logic
+    const isMySong = canUseStar && s.ownerId === currentUser?.id;
+
+    const starBtn = isMySong ? `
+      <button data-song-id="${s.id}"
+        onclick="toggleSongSelected('${s.id}')"
+        style="background:${s.selected?'rgba(240,180,41,.2)':'transparent'};
+          border:1px solid ${s.selected?'var(--accent)':'var(--border)'};
+          border-radius:8px;padding:5px 9px;cursor:pointer;
+          box-shadow:${s.selected?'0 0 8px rgba(240,180,41,.4)':'none'};
+          display:flex;align-items:center;justify-content:center;
+          transition:all .2s;flex-shrink:0;"
+        title="${s.selected?'Quitar de mi lista':'Agregar a mi lista'}">
+        ${s.selected
+          ? '<span style="font-size:18px;line-height:1;">⭐</span>'
+          : '<span style="font-size:18px;line-height:1;opacity:.35;">☆</span>'}
+      </button>` : '';
+
+    return `<div class="song-card" data-song-row="${s.id}"
+      style="border-color:${isMySong && s.selected?'var(--accent)':'var(--border)'};
+        background:${isMySong && s.selected?'rgba(240,180,41,.06)':'var(--surface)'};
+        box-shadow:${isMySong && s.selected?'0 0 12px rgba(240,180,41,.15)':'none'};
+        transition:border-color .2s,background .2s,box-shadow .2s;">
       <div class="song-card-top">
         <div class="song-thumb">🎵</div>
         <div style="flex:1;min-width:0;">
@@ -3702,7 +3882,13 @@ function renderSongsList() {
             ${s.bpm?`<span style="background:rgba(92,168,224,.12);color:var(--info);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;">${s.bpm} BPM</span>`:''}
           </div>
           <div class="song-meta">${s.ownerName||''}</div>
+          ${isMySong?`<div data-song-label="${s.id}" style="font-size:10px;margin-top:2px;">
+            ${s.selected
+              ? '<span style="color:var(--success);font-weight:700;">✅ En mi lista</span>'
+              : '<span style="color:var(--muted);">☆ No en lista</span>'}
+          </div>`:''}
         </div>
+        ${starBtn}
       </div>
       <div class="song-actions">
         <button class="song-btn play ${!hasYT?'disabled':''}"
