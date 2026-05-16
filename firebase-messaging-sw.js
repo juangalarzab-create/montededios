@@ -1,5 +1,4 @@
 // firebase-messaging-sw.js — Monte de Dios
-// Handles background push notifications via Firebase Cloud Messaging
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
@@ -15,70 +14,53 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Handle background messages (app closed, screen locked, or backgrounded)
-// This fires when FCM sends a push to this device and the app is NOT in foreground
+// ── 1. FCM SDK background handler (app cerrada / minimizada) ─────────────────
 messaging.onBackgroundMessage(payload => {
-  console.log('[firebase-messaging-sw] Background message received:', payload);
-
   const title = payload.notification?.title || payload.data?.title || 'Monte de Dios';
   const body  = payload.notification?.body  || payload.data?.body  || 'Hay cambios en el ministerio';
-  const url   = payload.fcmOptions?.link || payload.data?.url || '/';
-
-  // Always show system notification — this appears even when device is locked
+  const url   = payload.fcmOptions?.link    || payload.data?.url   || self.registration.scope;
   return self.registration.showNotification(title, {
-    body,
-    icon:               '/icon-192.png',
-    badge:              '/icon-192.png',
-    vibrate:            [300, 100, 300, 100, 300],
-    tag:                'montededios-msg',  // same tag = replaces previous instead of stacking
-    renotify:           true,               // still rings/vibrates even if replacing
-    silent:             false,
-    requireInteraction: false,
-    data:               { url }
+    body, icon:'/icon-192.png', badge:'/icon-192.png',
+    vibrate:[300,100,300,100,300],
+    tag:'montededios-bg', renotify:true, silent:false,
+    requireInteraction:false, data:{url}
   });
 });
 
-// Handle raw push events (fallback for data-only messages without notification field)
-// This ensures notifications show even for push events FCM SDK might not intercept
+// ── 2. Raw push event — captura TODO push, incluyendo data-only ──────────────
+//    Esto garantiza que llegue incluso si el SDK FCM no lo intercepta
 self.addEventListener('push', event => {
-  let data = {}, notif = {};
-  try {
-    const raw = event.data ? event.data.json() : {};
-    data  = raw.data || raw;
-    notif = raw.notification || {};
-  } catch(e) {}
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch(e) {}
+  const notif = payload.notification || {};
+  const data  = payload.data || {};
 
-  // Only handle if firebase SDK hasn't already handled it (avoid doubles)
-  // We check if this is a "data-only" message (no notification block)
-  if(!notif.title && !notif.body) {
-    const title = data.title || 'Monte de Dios';
-    const body  = data.body  || 'Tienes un nuevo aviso';
-    const url   = data.url   || '/';
+  // Solo mostrar si no tiene notification block (data-only) para evitar duplicados
+  // El SDK maneja los que tienen notification block; nosotros manejamos los data-only
+  if(notif.title || notif.body) return; // ya lo maneja onBackgroundMessage
 
-    event.waitUntil(
-      self.registration.showNotification(title, {
-        body,
-        icon:               '/icon-192.png',
-        badge:              '/icon-192.png',
-        vibrate:            [300, 100, 300, 100, 300],
-        tag:                'montededios-push',
-        renotify:           true,
-        silent:             false,
-        requireInteraction: false,
-        data:               { url }
-      })
-    );
-  }
+  const title = data.title || 'Monte de Dios';
+  const body  = data.body  || 'Tienes un nuevo aviso';
+  const url   = data.url   || self.registration.scope;
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body, icon:'/icon-192.png', badge:'/icon-192.png',
+      vibrate:[300,100,300,100,300],
+      tag:'montededios-data', renotify:true, silent:false,
+      requireInteraction:false, data:{url}
+    })
+  );
 });
 
-// Click on notification opens the app
+// ── 3. Clic en notificación abre/enfoca la app ───────────────────────────────
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const url = event.notification.data?.url || '/';
+  const url = event.notification.data?.url || self.registration.scope;
   event.waitUntil(
     clients.matchAll({type:'window', includeUncontrolled:true}).then(list => {
-      for(const client of list) {
-        if('focus' in client) return client.focus();
+      for(const c of list){
+        if(c.url.includes(self.registration.scope) && 'focus' in c) return c.focus();
       }
       return clients.openWindow(url);
     })
