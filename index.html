@@ -2857,23 +2857,24 @@ function fireReminder(ev, when) {
 // AVISOS DE CUMPLEAÑOS — alerta urgente al abrir la app (hasta 7 días antes)
 // ══════════════════════════════════════════════════════════════════════════════
 function checkBirthdayAlerts() {
-  // Solo si los avisos están activos para este usuario
+  // Si el usuario tiene los avisos desactivados → no mostrar
   if(localStorage.getItem('mdios_bday_alerts') === 'off') return;
-
-  // Ya hay un banner visible → no apilar otro
-  if(document.getElementById('bday-alert-banner')) return;
 
   const today_d = new Date(); today_d.setHours(0,0,0,0);
   const MNTHS_ES = ['enero','feb','mar','abr','mayo','jun','jul','ago','sep','oct','nov','dic'];
   const DAYS_ES  = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 
-  // _bdaySessionDismissed: set en memoria — se vacía cada vez que se abre la app
-  // Solo persiste mientras la app está abierta; al cerrar y volver a entrar se reinicia
-  if(!window._bdaySessionDismissed) window._bdaySessionDismissed = new Set();
+  // Clave para saber qué alertas ya se aceptaron HOY para este usuario
+  const dismissKey = `mdios_bday_dismiss_${currentUser?.id||'guest'}`;
+  let dismissed = [];
+  try { dismissed = JSON.parse(localStorage.getItem(dismissKey)||'[]'); } catch(e) {}
+  // Limpiar dismissed de días anteriores (solo valen para hoy)
+  const todayStr = today_d.toISOString().split('T')[0];
+  dismissed = dismissed.filter(k => k.startsWith(todayStr));
 
-  // Calcular próximo cumpleaños de cada músico
+  // Buscar músicos con cumpleaños en los próximos 7 días (incluyendo hoy)
   const upcoming = Object.values(musicians)
-    .filter(m => m.bday && (m.fullName || m.displayName))
+    .filter(m => m.bday && m.displayName)
     .map(m => {
       const [,mo,d] = m.bday.split('-').map(Number);
       let next = new Date(today_d.getFullYear(), mo-1, d);
@@ -2884,22 +2885,31 @@ function checkBirthdayAlerts() {
     .filter(m => m.daysLeft >= 0 && m.daysLeft <= 7)
     .sort((a,b) => a.daysLeft - b.daysLeft);
 
-  // Filtrar los que el usuario ya aceptó EN ESTA sesión
-  const toShow = upcoming.filter(m => !window._bdaySessionDismissed.has(m.id||m.displayName));
+  // Filtrar los que ya fueron aceptados hoy
+  const toShow = upcoming.filter(m => {
+    const key = `${todayStr}_${m.id||m.displayName}`;
+    return !dismissed.includes(key);
+  });
 
   if(!toShow.length) return;
 
-  // Mostrar el más próximo
+  // Mostrar banner de alerta urgente (uno por vez, el más próximo)
   const m = toShow[0];
-  const isToday  = m.daysLeft === 0;
-  const [,mo,d]  = m.bday.split('-').map(Number);
-  const dayName  = DAYS_ES[m.next.getDay()];
+  const dismissKey2 = `${todayStr}_${m.id||m.displayName}`;
+  const isToday = m.daysLeft === 0;
+  const [,mo,d] = m.bday.split('-').map(Number);
+  const dayName = DAYS_ES[m.next.getDay()];
   const dateLabel = `${dayName} ${d} de ${MNTHS_ES[mo-1]}`;
-  const uid = m.id || m.displayName;
+
+  // Verificar si la alerta ya existe en el DOM
+  if(document.getElementById('bday-alert-banner')) return;
 
   const banner = document.createElement('div');
   banner.id = 'bday-alert-banner';
-  banner.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;z-index:5000;padding:20px;animation:fadeIn .3s ease;';
+  banner.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,.8);
+    display:flex;align-items:center;justify-content:center;
+    z-index:5000;padding:20px;animation:fadeIn .3s ease;`;
   banner.innerHTML = `
     <div style="background:var(--surface);border:2px solid var(--accent);border-radius:20px;
       width:min(360px,100%);padding:28px 24px;text-align:center;
@@ -2912,15 +2922,17 @@ function checkBirthdayAlerts() {
       <div style="font-size:16px;font-weight:700;margin-bottom:4px;color:var(--text);">
         ${m.fullName||m.displayName}
       </div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:24px;">📅 ${dateLabel}</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:24px;">
+        📅 ${dateLabel}
+      </div>
       <div style="display:flex;gap:10px;">
-        <button id="bday-accept-btn"
+        <button onclick="window._bdayDismiss('${dismissKey2}',false)"
           style="flex:1;background:linear-gradient(135deg,var(--accent),var(--accent2));
           color:#0d0d0f;border:none;border-radius:12px;padding:13px;
           font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;">
           Aceptar
         </button>
-        <button id="bday-deact-btn"
+        <button onclick="window._bdayDismiss('${dismissKey2}',true)"
           style="flex:1;background:var(--surface2);border:1px solid var(--border);
           border-radius:12px;padding:13px;color:var(--muted);cursor:pointer;
           font-family:'DM Sans',sans-serif;font-size:13px;">
@@ -2930,19 +2942,20 @@ function checkBirthdayAlerts() {
     </div>`;
   document.body.appendChild(banner);
 
-  // Aceptar — solo oculta en esta sesión; al volver a abrir la app aparece de nuevo
-  document.getElementById('bday-accept-btn').onclick = () => {
-    window._bdaySessionDismissed.add(uid);
+  window._bdayDismiss = (key, deactivate) => {
+    delete window._bdayDismiss;
     banner.remove();
-    // Si hay más cumpleaños pendientes, mostrar el siguiente
-    setTimeout(checkBirthdayAlerts, 350);
-  };
-
-  // Desactivar — guarda en localStorage, ya no aparece hasta que lo reactive desde 🎂
-  document.getElementById('bday-deact-btn').onclick = () => {
-    localStorage.setItem('mdios_bday_alerts', 'off');
-    banner.remove();
-    toast('🔕 Avisos desactivados — reactívalos tocando 🎂', 'warning');
+    if(deactivate) {
+      // Desactivar avisos de cumpleaños para este usuario
+      localStorage.setItem('mdios_bday_alerts','off');
+      toast('🔕 Avisos de cumpleaños desactivados — reactívalos desde 🎂','warning');
+    } else {
+      // Solo ocultar hoy — mañana vuelve a aparecer
+      dismissed.push(key);
+      localStorage.setItem(dismissKey, JSON.stringify(dismissed));
+      // Mostrar el siguiente si hay más
+      setTimeout(checkBirthdayAlerts, 400);
+    }
   };
 }
 
