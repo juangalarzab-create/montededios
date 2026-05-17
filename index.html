@@ -1037,7 +1037,7 @@ function setupFirebase() {
         // Clear all local data
         localStorage.removeItem('mdios_user');
         localStorage.removeItem('mdios_uid');
-        sessionStorage.removeItem('mdios_session');
+        localStorage.removeItem('mdios_active_session');
         currentUser = null; isAdmin = false; songs = {};
         // Show register screen
         document.getElementById('role-btn').textContent = '👤 Invitado';
@@ -1146,6 +1146,8 @@ function setupFirebase() {
   setRTIndicator('live');
   document.getElementById('fb-banner')?.classList.remove('show');
   setupFCM();
+  // Auto-login después de que Firebase está listo — valida contra Firebase
+  setTimeout(checkAutoLogin, 300);
   setTimeout(syncDemoAdminToFirebase, 2000);
 }
 
@@ -2857,24 +2859,23 @@ function fireReminder(ev, when) {
 // AVISOS DE CUMPLEAÑOS — alerta urgente al abrir la app (hasta 7 días antes)
 // ══════════════════════════════════════════════════════════════════════════════
 function checkBirthdayAlerts() {
-  // Si el usuario tiene los avisos desactivados → no mostrar
+  // Solo si los avisos están activos para este usuario
   if(localStorage.getItem('mdios_bday_alerts') === 'off') return;
+
+  // Ya hay un banner visible → no apilar otro
+  if(document.getElementById('bday-alert-banner')) return;
 
   const today_d = new Date(); today_d.setHours(0,0,0,0);
   const MNTHS_ES = ['enero','feb','mar','abr','mayo','jun','jul','ago','sep','oct','nov','dic'];
   const DAYS_ES  = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 
-  // Clave para saber qué alertas ya se aceptaron HOY para este usuario
-  const dismissKey = `mdios_bday_dismiss_${currentUser?.id||'guest'}`;
-  let dismissed = [];
-  try { dismissed = JSON.parse(localStorage.getItem(dismissKey)||'[]'); } catch(e) {}
-  // Limpiar dismissed de días anteriores (solo valen para hoy)
-  const todayStr = today_d.toISOString().split('T')[0];
-  dismissed = dismissed.filter(k => k.startsWith(todayStr));
+  // _bdaySessionDismissed: set en memoria — se vacía cada vez que se abre la app
+  // Solo persiste mientras la app está abierta; al cerrar y volver a entrar se reinicia
+  if(!window._bdaySessionDismissed) window._bdaySessionDismissed = new Set();
 
-  // Buscar músicos con cumpleaños en los próximos 7 días (incluyendo hoy)
+  // Calcular próximo cumpleaños de cada músico
   const upcoming = Object.values(musicians)
-    .filter(m => m.bday && m.displayName)
+    .filter(m => m.bday && (m.fullName || m.displayName))
     .map(m => {
       const [,mo,d] = m.bday.split('-').map(Number);
       let next = new Date(today_d.getFullYear(), mo-1, d);
@@ -2885,31 +2886,22 @@ function checkBirthdayAlerts() {
     .filter(m => m.daysLeft >= 0 && m.daysLeft <= 7)
     .sort((a,b) => a.daysLeft - b.daysLeft);
 
-  // Filtrar los que ya fueron aceptados hoy
-  const toShow = upcoming.filter(m => {
-    const key = `${todayStr}_${m.id||m.displayName}`;
-    return !dismissed.includes(key);
-  });
+  // Filtrar los que el usuario ya aceptó EN ESTA sesión
+  const toShow = upcoming.filter(m => !window._bdaySessionDismissed.has(m.id||m.displayName));
 
   if(!toShow.length) return;
 
-  // Mostrar banner de alerta urgente (uno por vez, el más próximo)
+  // Mostrar el más próximo
   const m = toShow[0];
-  const dismissKey2 = `${todayStr}_${m.id||m.displayName}`;
-  const isToday = m.daysLeft === 0;
-  const [,mo,d] = m.bday.split('-').map(Number);
-  const dayName = DAYS_ES[m.next.getDay()];
+  const isToday  = m.daysLeft === 0;
+  const [,mo,d]  = m.bday.split('-').map(Number);
+  const dayName  = DAYS_ES[m.next.getDay()];
   const dateLabel = `${dayName} ${d} de ${MNTHS_ES[mo-1]}`;
-
-  // Verificar si la alerta ya existe en el DOM
-  if(document.getElementById('bday-alert-banner')) return;
+  const uid = m.id || m.displayName;
 
   const banner = document.createElement('div');
   banner.id = 'bday-alert-banner';
-  banner.style.cssText = `
-    position:fixed;inset:0;background:rgba(0,0,0,.8);
-    display:flex;align-items:center;justify-content:center;
-    z-index:5000;padding:20px;animation:fadeIn .3s ease;`;
+  banner.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;z-index:5000;padding:20px;animation:fadeIn .3s ease;';
   banner.innerHTML = `
     <div style="background:var(--surface);border:2px solid var(--accent);border-radius:20px;
       width:min(360px,100%);padding:28px 24px;text-align:center;
@@ -2922,17 +2914,15 @@ function checkBirthdayAlerts() {
       <div style="font-size:16px;font-weight:700;margin-bottom:4px;color:var(--text);">
         ${m.fullName||m.displayName}
       </div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:24px;">
-        📅 ${dateLabel}
-      </div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:24px;">📅 ${dateLabel}</div>
       <div style="display:flex;gap:10px;">
-        <button onclick="window._bdayDismiss('${dismissKey2}',false)"
+        <button id="bday-accept-btn"
           style="flex:1;background:linear-gradient(135deg,var(--accent),var(--accent2));
           color:#0d0d0f;border:none;border-radius:12px;padding:13px;
           font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;">
           Aceptar
         </button>
-        <button onclick="window._bdayDismiss('${dismissKey2}',true)"
+        <button id="bday-deact-btn"
           style="flex:1;background:var(--surface2);border:1px solid var(--border);
           border-radius:12px;padding:13px;color:var(--muted);cursor:pointer;
           font-family:'DM Sans',sans-serif;font-size:13px;">
@@ -2942,20 +2932,19 @@ function checkBirthdayAlerts() {
     </div>`;
   document.body.appendChild(banner);
 
-  window._bdayDismiss = (key, deactivate) => {
-    delete window._bdayDismiss;
+  // Aceptar — solo oculta en esta sesión; al volver a abrir la app aparece de nuevo
+  document.getElementById('bday-accept-btn').onclick = () => {
+    window._bdaySessionDismissed.add(uid);
     banner.remove();
-    if(deactivate) {
-      // Desactivar avisos de cumpleaños para este usuario
-      localStorage.setItem('mdios_bday_alerts','off');
-      toast('🔕 Avisos de cumpleaños desactivados — reactívalos desde 🎂','warning');
-    } else {
-      // Solo ocultar hoy — mañana vuelve a aparecer
-      dismissed.push(key);
-      localStorage.setItem(dismissKey, JSON.stringify(dismissed));
-      // Mostrar el siguiente si hay más
-      setTimeout(checkBirthdayAlerts, 400);
-    }
+    // Si hay más cumpleaños pendientes, mostrar el siguiente
+    setTimeout(checkBirthdayAlerts, 350);
+  };
+
+  // Desactivar — guarda en localStorage, ya no aparece hasta que lo reactive desde 🎂
+  document.getElementById('bday-deact-btn').onclick = () => {
+    localStorage.setItem('mdios_bday_alerts', 'off');
+    banner.remove();
+    toast('🔕 Avisos desactivados — reactívalos tocando 🎂', 'warning');
   };
 }
 
@@ -3099,7 +3088,7 @@ async function finishRegister() {
   currentUser = user;
   // Show success banner then enter main app
   showRegSuccess(user, ()=>{
-    sessionStorage.setItem('mdios_session','1');
+    localStorage.setItem('mdios_active_session','1');
     hideRegister();
     updateUserUI();
     switchView('events', document.querySelector('.bnav-btn'));
@@ -3133,22 +3122,17 @@ function doLogin() {
   function enterApp(u) {
     currentUser = u;
     localStorage.setItem('mdios_user', JSON.stringify(u));
-    sessionStorage.setItem('mdios_session','1');
+    localStorage.setItem('mdios_active_session', '1');
     hideRegister();
     updateUserUI();
-    if(err) err.style.display='none';
+    if(err) err.style.display = 'none';
     toast(`¡Hola, ${u.nombres}! 👋`, 'success');
-  enrichUserFromFirebase(u.id);
-  // Cargar selecciones personales del usuario desde Firebase
-  _loadMySelections(u.id);
-  // Re-register FCM token for this user on login
-  setTimeout(setupFCM, 1000);
+    enrichUserFromFirebase(u.id);
+    _loadMySelections(u.id);
     setTimeout(setupFCM, 1000);
-    // Force refresh songs and profile on every login
     renderSongsList();
     renderProfileSongs();
-    setTimeout(startReminderEngine, 500);
-    // Also refresh after a short delay to catch Firebase data
+    setTimeout(startReminderEngine, 500); // incluye checkBirthdayAlerts
     setTimeout(()=>{ renderSongsList(); renderProfileSongs(); renderEL(); }, 1500);
   }
 
@@ -3321,19 +3305,44 @@ function clearSavedUser() {
 }
 
 function checkAutoLogin() {
-  const saved   = localStorage.getItem('mdios_user');
-  const session = sessionStorage.getItem('mdios_session');
-  if(saved && session==='1') {
+  const saved  = localStorage.getItem('mdios_user');
+  const active = localStorage.getItem('mdios_active_session'); // permanente, no sessionStorage
+  if(saved && active === '1') {
     try {
       const u = JSON.parse(saved);
-      currentUser = u;
-      hideRegister();
-      updateUserUI();
-      setTimeout(startReminderEngine, 800);
-      return true;
+      // Verificar que el usuario aún existe en Firebase antes de entrar
+      if(fbReady && u.id && u.id !== 'demo-admin-001') {
+        const { db, ref, onValue:ov } = window._fb;
+        ov(ref(db, `musicians/${u.id}`), snap => {
+          const data = snap.val ? snap.val() : null;
+          if(data) {
+            // Usuario válido en Firebase → entrar directo
+            currentUser = { ...u, ...data };
+            localStorage.setItem('mdios_user', JSON.stringify(currentUser));
+            hideRegister();
+            updateUserUI();
+            _loadMySelections(currentUser.id);
+            enrichUserFromFirebase(currentUser.id);
+            setTimeout(setupFCM, 800);
+            setTimeout(startReminderEngine, 800); // incluye checkBirthdayAlerts
+          } else {
+            // Usuario eliminado de Firebase → mostrar login
+            localStorage.removeItem('mdios_active_session');
+            buildLoginSection();
+          }
+        }, { onlyOnce: true });
+        return true; // se resuelve async
+      } else if(saved && active === '1') {
+        // Demo mode o admin
+        currentUser = JSON.parse(saved);
+        hideRegister();
+        updateUserUI();
+        setTimeout(startReminderEngine, 800);
+        return true;
+      }
     } catch(e){}
   }
-  // No active session — show login with pre-filled name
+  // No hay sesión activa → mostrar login
   buildLoginSection();
   return false;
 }
@@ -3486,7 +3495,8 @@ function renderProfileModal() {
       </div>
       <div style="display:flex;flex-direction:column;gap:7px;">
         <button class="btn btn-ghost" style="width:100%;justify-content:center;" onclick="showChangePass()">🔑 Cambiar contraseña</button>
-        <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="logoutUser()">Cerrar sesión</button>
+        <button class="btn btn-ghost" style="width:100%;justify-content:center;" onclick="switchAccount()">🔄 Cambiar cuenta</button>
+        <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="logoutUser()">🚪 Cerrar sesión y eliminar datos</button>
       </div>
     </div>`;
 }
@@ -4454,35 +4464,84 @@ async function editUserCargo() {
 }
 
 async function logoutUser() {
-  if(!confirm('¿Cerrar sesión? Tu perfil se eliminará de la lista del ministerio hasta que vuelvas a ingresar.')) return;
-  const uid = currentUser?.id;
+  const confirmMsg = '⚠️ CERRAR SESIÓN\n\nEsto eliminará tu perfil, todas tus canciones y datos de la app.\n\n¿Estás seguro?';
+  if(!confirm(confirmMsg)) return;
+
+  const uid  = currentUser?.id;
   const name = currentUser?.fullName;
-  // Remove from Firebase musicians list
-  if(uid && uid !== 'demo-admin-001') {
-    await fbRemove(`musicians/${uid}`);
-    await logActivity('musician','👋',`"${name}" cerró sesión y salió del ministerio`);
+
+  if(uid && uid !== 'demo-admin-001' && fbReady) {
+    try {
+      // Borrar todas las canciones subidas por este usuario
+      const mySongs = Object.values(songs).filter(s => s.ownerId === uid);
+      for(const s of mySongs) {
+        await fbRemove(`songs/${s.id}`);
+      }
+      // Borrar sus selecciones personales del catálogo
+      await fbRemove(`selections/${uid}`);
+      // Borrar su token FCM
+      await fbRemove(`fcmTokens/${uid}`);
+      // Borrar de la lista de músicos
+      await fbRemove(`musicians/${uid}`);
+      // Borrar de users (login lookup)
+      await fbRemove(`users/${uid}`);
+      await logActivity('musician','🚪',`"${name}" cerró sesión y eliminó su cuenta`);
+    } catch(e) { console.warn('logout cleanup:', e); }
   }
-  currentUser = null; isAdmin = false;
-  localStorage.removeItem('mdios_user');
-  localStorage.removeItem('mdios_uid');
-  sessionStorage.removeItem('mdios_session');
-  songs = {};
-  document.getElementById('role-btn').textContent='👤 Invitado';
-  document.getElementById('role-btn').className='role-pill viewer';
+
+  // Limpiar TODO en local
+  currentUser = null; isAdmin = false; songs = {};
+  window._mySelections = {};
+  const keysToRemove = ['mdios_user','mdios_uid','mdios_active_session',
+    'mdios_bday_alerts','gm_ev','gm_mu','gm_ac','gm_songs'];
+  keysToRemove.forEach(k => localStorage.removeItem(k));
+  // Limpiar sessionStorage también
+  sessionStorage.clear();
+
+  // Resetear UI
+  document.getElementById('role-btn').textContent = '👤 Invitado';
+  document.getElementById('role-btn').className = 'role-pill viewer';
   updateAdminUI();
   renderSongsList();
-  // Reset register to step 1
+  closeProfileModal();
+
+  // Volver al registro paso 1
   document.querySelectorAll('.reg-step').forEach(s=>s.classList.remove('active'));
   document.getElementById('reg-step-1')?.classList.add('active');
-  ['sd1','sd2','sd3'].forEach((id,i)=>{const el=document.getElementById(id);if(el)el.classList.toggle('done',i===0);});
+  ['sd1','sd2','sd3'].forEach((id,i)=>{
+    const el=document.getElementById(id); if(el) el.classList.toggle('done',i===0);
+  });
+  buildLoginSection();
   const scr = document.getElementById('register-screen');
   scr.style.display='flex'; scr.style.opacity='1';
-  buildLoginSection();
+  toast('Sesión cerrada y datos eliminados','success');
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// EVENT CARD MODAL (new event)
-// ══════════════════════════════════════════════════════════════════════════════
+// Cambiar cuenta — solo limpia la sesión local, NO borra datos de Firebase
+// El usuario puede volver a ingresar con su misma cuenta o con otra
+function switchAccount() {
+  currentUser = null; isAdmin = false;
+  window._mySelections = {};
+  // Solo borrar la sesión activa, NO los datos
+  localStorage.removeItem('mdios_active_session');
+  localStorage.removeItem('mdios_user');
+  localStorage.removeItem('mdios_uid');
+
+  document.getElementById('role-btn').textContent = '👤 Invitado';
+  document.getElementById('role-btn').className = 'role-pill viewer';
+  updateAdminUI();
+  closeProfileModal();
+
+  // Mostrar pantalla de login (no registro)
+  document.querySelectorAll('.reg-step').forEach(s=>s.classList.remove('active'));
+  document.getElementById('reg-step-1')?.classList.add('active');
+  ['sd1','sd2','sd3'].forEach((id,i)=>{
+    const el=document.getElementById(id); if(el) el.classList.toggle('done',i===0);
+  });
+  buildLoginSection();
+  const scr = document.getElementById('register-screen');
+  scr.style.display='flex'; scr.style.opacity='1';
+}
 function openEvModal() {
   if(!isAdmin){ toast('Solo el líder puede crear eventos','warning'); return; }
   newEvSelPeople = {};
@@ -4659,7 +4718,26 @@ musicians[DEMO_ADMIN.id] = {
 };
 
 document.getElementById('view-events').classList.add('active');
-buildLoginSection();  // shows AdminLider card with password field
+
+// ── Intentar auto-login inmediato desde localStorage ─────────────────────────
+// Si hay sesión guardada → entrar directo sin mostrar login
+// setupFirebase/checkAutoLogin lo validará contra Firebase después
+(function tryInstantLogin() {
+  const saved  = localStorage.getItem('mdios_user');
+  const active = localStorage.getItem('mdios_active_session');
+  if(saved && active === '1') {
+    try {
+      const u = JSON.parse(saved);
+      currentUser = u;
+      hideRegister();
+      updateUserUI();
+      // Firebase validará y enriquecerá los datos cuando esté listo
+    } catch(e) { buildLoginSection(); }
+  } else {
+    buildLoginSection();
+  }
+})();
+
 initApp();
 setTimeout(startReminderEngine, 2000);
 </script>
