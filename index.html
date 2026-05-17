@@ -1591,30 +1591,35 @@ function renderNextEventHero(ev) {
       }).join('')
     : '<span style="font-size:11px;color:var(--muted);">Sin encargados asignados</span>';
 
-  // ── Voz Principal → sus temas elegidos ───────────────────────────────────
+  // ── Voz Principal → sus temas elegidos (desde selections/{vozId} en Firebase) ─
   const vozP = assignees.find(a => a.rolEvento === 'Voz Principal')
              || assignees.find(a => a.cargo === 'Voz' || a.role === 'Cantante');
   const vozId = vozP ? (vozP.musId || vozP.id) : null;
 
-  // Match by ownerId, then by ownerName as fallback
-  const allSongs = Object.values(songs);
-  let heroSongs = vozId
-    ? allSongs.filter(s => s.ownerId === vozId && s.selected === true)
-    : [];
-  if(!heroSongs.length && vozP) {
-    heroSongs = allSongs.filter(s => s.ownerName === vozP.name && s.selected === true);
-  }
+  // Render inmediato con datos en memoria
+  const renderHeroSongs = (selectedIds) => {
+    const allSongs = Object.values(songs);
+    let heroSongs = selectedIds && vozId
+      ? allSongs.filter(s => selectedIds[s.id])
+      : vozId
+        ? allSongs.filter(s => s.ownerId === vozId && s.selected === true)
+        : [];
+    if(!heroSongs.length && vozP && !selectedIds) {
+      heroSongs = allSongs.filter(s => s.ownerName === vozP.name && s.selected === true);
+    }
+    return heroSongs.length
+      ? heroSongs.map(s => `
+          <div class="ev-hero-song">
+            <span class="st">🎵 ${s.title}</span>
+            ${s.tono ? `<span class="tag tono-tag">${s.tono}</span>` : ''}
+            ${s.bpm  ? `<span class="tag bpm-tag">${s.bpm} BPM</span>` : ''}
+          </div>`).join('')
+      : `<span style="font-size:11px;color:var(--muted);">${
+          vozP ? `${vozP.name.split(' ')[0]} no tiene temas elegidos aún` : 'Sin voz principal asignada'
+        }</span>`;
+  };
 
-  const songsList = heroSongs.length
-    ? heroSongs.map(s => `
-        <div class="ev-hero-song">
-          <span class="st">🎵 ${s.title}</span>
-          ${s.tono ? `<span class="tag tono-tag">${s.tono}</span>` : ''}
-          ${s.bpm  ? `<span class="tag bpm-tag">${s.bpm} BPM</span>` : ''}
-        </div>`).join('')
-    : `<span style="font-size:11px;color:var(--muted);">${
-        vozP ? `${vozP.name.split(' ')[0]} no tiene temas elegidos aún` : 'Sin voz principal asignada'
-      }</span>`;
+  const songsList = renderHeroSongs(null);
 
   // ── Render ────────────────────────────────────────────────────────────────
   hero.innerHTML = `
@@ -1634,9 +1639,21 @@ function renderNextEventHero(ev) {
       </div>
       <div class="ev-hero-section">
         <div class="ev-hero-sec-title">🎤 Temas — ${vozP ? vozP.name.split(' ')[0] : 'Voz Principal'}</div>
-        <div class="ev-hero-songs">${songsList}</div>
+        <div class="ev-hero-songs" id="hero-songs-${ev.id}">${songsList}</div>
       </div>
     </div>`;
+
+  // Suscripción en tiempo real a las selecciones de la Voz Principal en Firebase
+  if(vozId && fbReady) {
+    const { db, ref, onValue:ov } = window._fb;
+    // Cancelar suscripción anterior si existe
+    if(window._heroSongsUnsub) { try { window._heroSongsUnsub(); } catch(e){} }
+    window._heroSongsUnsub = ov(ref(db, `selections/${vozId}`), snap => {
+      const sel = snap.val ? snap.val() : null;
+      const el = document.getElementById(`hero-songs-${ev.id}`);
+      if(el) el.innerHTML = renderHeroSongs(sel || {});
+    });
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -2151,7 +2168,11 @@ async function askDelM(id) {
       for(const [evId, ev] of Object.entries(events)) {
         if(ev.assignees?.[id]) await fbRemove(`events/${evId}/assignees/${id}`);
       }
-      // 3. Remove from musicians, users
+      // 3. Delete their personal selections
+      await fbRemove(`selections/${id}`);
+      // 4. Delete FCM token
+      await fbRemove(`fcmTokens/${id}`);
+      // 5. Remove from musicians, users
       await fbRemove(`musicians/${id}`);
       await fbRemove(`users/${id}`);
       await logActivity('musician','🗑️',`Admin eliminó a "${m.name}" completamente`);
@@ -2857,82 +2878,83 @@ function fireReminder(ev, when) {
 // AVISOS DE CUMPLEAÑOS — alerta urgente al abrir la app (hasta 7 días antes)
 // ══════════════════════════════════════════════════════════════════════════════
 function checkBirthdayAlerts() {
-  // Si el usuario tiene los avisos desactivados → no mostrar
   if(localStorage.getItem('mdios_bday_alerts') === 'off') return;
+  if(document.getElementById('bday-alert-banner')) return;
 
   const today_d = new Date(); today_d.setHours(0,0,0,0);
   const MNTHS_ES = ['enero','feb','mar','abr','mayo','jun','jul','ago','sep','oct','nov','dic'];
-  const DAYS_ES  = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const DAYS_ES  = ['dom','lun','mar','mié','jue','vie','sáb'];
 
-  // Clave para saber qué alertas ya se aceptaron HOY para este usuario
-  const dismissKey = `mdios_bday_dismiss_${currentUser?.id||'guest'}`;
-  let dismissed = [];
-  try { dismissed = JSON.parse(localStorage.getItem(dismissKey)||'[]'); } catch(e) {}
-  // Limpiar dismissed de días anteriores (solo valen para hoy)
-  const todayStr = today_d.toISOString().split('T')[0];
-  dismissed = dismissed.filter(k => k.startsWith(todayStr));
+  // _bdaySessionDismissed: en memoria — se reinicia cada vez que se abre la app
+  // Al cerrar sesión y volver a entrar, se vacía → el aviso vuelve a aparecer
+  if(!window._bdaySessionDismissed) window._bdaySessionDismissed = false;
+  if(window._bdaySessionDismissed) return;
 
-  // Buscar músicos con cumpleaños en los próximos 7 días (incluyendo hoy)
+  // Calcular próximos 7 cumpleaños (dentro de los próximos 365 días)
   const upcoming = Object.values(musicians)
-    .filter(m => m.bday && m.displayName)
+    .filter(m => m.bday && (m.fullName || m.displayName))
     .map(m => {
-      const [,mo,d] = m.bday.split('-').map(Number);
-      let next = new Date(today_d.getFullYear(), mo-1, d);
-      if(next < today_d) next = new Date(today_d.getFullYear()+1, mo-1, d);
+      const parts = String(m.bday).split('-');
+      const mo = parseInt(parts[1]||parts[0]||1)-1;
+      const d  = parseInt(parts[2]||parts[1]||1);
+      let next = new Date(today_d.getFullYear(), mo, d);
+      if(next < today_d) next = new Date(today_d.getFullYear()+1, mo, d);
       const daysLeft = Math.round((next - today_d) / 86400000);
-      return { ...m, next, daysLeft };
+      return { name: m.fullName||m.displayName, bday: m.bday, next, daysLeft };
     })
-    .filter(m => m.daysLeft >= 0 && m.daysLeft <= 7)
-    .sort((a,b) => a.daysLeft - b.daysLeft);
+    .sort((a,b) => a.daysLeft - b.daysLeft)
+    .slice(0, 7); // los 7 más próximos
 
-  // Filtrar los que ya fueron aceptados hoy
-  const toShow = upcoming.filter(m => {
-    const key = `${todayStr}_${m.id||m.displayName}`;
-    return !dismissed.includes(key);
-  });
+  if(!upcoming.length) return;
 
-  if(!toShow.length) return;
-
-  // Mostrar banner de alerta urgente (uno por vez, el más próximo)
-  const m = toShow[0];
-  const dismissKey2 = `${todayStr}_${m.id||m.displayName}`;
-  const isToday = m.daysLeft === 0;
-  const [,mo,d] = m.bday.split('-').map(Number);
-  const dayName = DAYS_ES[m.next.getDay()];
-  const dateLabel = `${dayName} ${d} de ${MNTHS_ES[mo-1]}`;
-
-  // Verificar si la alerta ya existe en el DOM
-  if(document.getElementById('bday-alert-banner')) return;
+  const rows = upcoming.map(m => {
+    const isToday = m.daysLeft === 0;
+    const isSoon  = m.daysLeft <= 7;
+    const dayName = DAYS_ES[m.next.getDay()];
+    const [,mo,d] = String(m.bday).split('-');
+    const dateLabel = `${dayName} ${parseInt(d)} ${MNTHS_ES[parseInt(mo)-1]}`;
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;
+        padding:9px 12px;border-radius:10px;margin-bottom:5px;
+        background:${isToday?'rgba(240,180,41,.15)':isSoon?'rgba(62,207,142,.07)':'var(--surface2)'};
+        border:1px solid ${isToday?'var(--accent)':isSoon?'rgba(62,207,142,.3)':'var(--border)'};">
+        <div>
+          <div style="font-weight:700;font-size:13px;color:var(--text);">${m.name}</div>
+          <div style="font-size:11px;color:${isToday?'var(--accent)':isSoon?'var(--success)':'var(--muted)'};margin-top:1px;">
+            ${isToday ? '🎂 ¡HOY!' : `📅 ${dateLabel}`}
+          </div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:${isToday?'var(--accent)':isSoon?'var(--success)':'var(--muted)'};">
+          ${isToday ? '🎉' : m.daysLeft === 1 ? 'mañana' : `en ${m.daysLeft}d`}
+        </div>
+      </div>`;
+  }).join('');
 
   const banner = document.createElement('div');
   banner.id = 'bday-alert-banner';
-  banner.style.cssText = `
-    position:fixed;inset:0;background:rgba(0,0,0,.8);
-    display:flex;align-items:center;justify-content:center;
-    z-index:5000;padding:20px;animation:fadeIn .3s ease;`;
+  banner.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;z-index:5000;padding:20px;animation:fadeIn .3s ease;';
   banner.innerHTML = `
     <div style="background:var(--surface);border:2px solid var(--accent);border-radius:20px;
-      width:min(360px,100%);padding:28px 24px;text-align:center;
-      box-shadow:0 0 40px rgba(240,180,41,.3);">
-      <div style="font-size:54px;margin-bottom:10px;">${isToday?'🎂':'🎉'}</div>
-      <div style="font-family:'Playfair Display',serif;font-size:19px;font-weight:700;
-        color:var(--accent);margin-bottom:6px;">
-        ${isToday ? '¡Hoy es su cumpleaños!' : `Cumpleaños en ${m.daysLeft} día${m.daysLeft>1?'s':''}`}
+      width:min(380px,100%);max-height:88vh;display:flex;flex-direction:column;
+      box-shadow:0 0 40px rgba(240,180,41,.25);">
+      <!-- Header -->
+      <div style="padding:20px 20px 14px;text-align:center;flex-shrink:0;">
+        <div style="font-size:42px;margin-bottom:8px;">🎂</div>
+        <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;
+          color:var(--accent);margin-bottom:4px;">Próximos Cumpleaños</div>
+        <div style="font-size:11px;color:var(--muted);">Los 7 más cercanos del ministerio</div>
       </div>
-      <div style="font-size:16px;font-weight:700;margin-bottom:4px;color:var(--text);">
-        ${m.fullName||m.displayName}
-      </div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:24px;">
-        📅 ${dateLabel}
-      </div>
-      <div style="display:flex;gap:10px;">
-        <button onclick="window._bdayDismiss('${dismissKey2}',false)"
+      <!-- Lista -->
+      <div style="overflow-y:auto;padding:0 16px;flex:1;">${rows}</div>
+      <!-- Botones -->
+      <div style="padding:16px;display:flex;gap:8px;flex-shrink:0;border-top:1px solid var(--border);margin-top:10px;">
+        <button id="bday-accept-btn"
           style="flex:1;background:linear-gradient(135deg,var(--accent),var(--accent2));
           color:#0d0d0f;border:none;border-radius:12px;padding:13px;
           font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;">
           Aceptar
         </button>
-        <button onclick="window._bdayDismiss('${dismissKey2}',true)"
+        <button id="bday-deact-btn"
           style="flex:1;background:var(--surface2);border:1px solid var(--border);
           border-radius:12px;padding:13px;color:var(--muted);cursor:pointer;
           font-family:'DM Sans',sans-serif;font-size:13px;">
@@ -2942,20 +2964,18 @@ function checkBirthdayAlerts() {
     </div>`;
   document.body.appendChild(banner);
 
-  window._bdayDismiss = (key, deactivate) => {
-    delete window._bdayDismiss;
+  // Aceptar — oculta durante esta sesión; al ingresar de nuevo vuelve a aparecer
+  document.getElementById('bday-accept-btn').onclick = () => {
+    window._bdaySessionDismissed = true;
     banner.remove();
-    if(deactivate) {
-      // Desactivar avisos de cumpleaños para este usuario
-      localStorage.setItem('mdios_bday_alerts','off');
-      toast('🔕 Avisos de cumpleaños desactivados — reactívalos desde 🎂','warning');
-    } else {
-      // Solo ocultar hoy — mañana vuelve a aparecer
-      dismissed.push(key);
-      localStorage.setItem(dismissKey, JSON.stringify(dismissed));
-      // Mostrar el siguiente si hay más
-      setTimeout(checkBirthdayAlerts, 400);
-    }
+  };
+
+  // Desactivar — guarda en localStorage, no vuelve hasta que lo reactive desde 🎂
+  document.getElementById('bday-deact-btn').onclick = () => {
+    localStorage.setItem('mdios_bday_alerts','off');
+    window._bdaySessionDismissed = true;
+    banner.remove();
+    toast('🔕 Avisos desactivados — reactívalos desde 🎂','warning');
   };
 }
 
@@ -3106,8 +3126,11 @@ async function finishRegister() {
     renderSongsList();
     renderProfileSongs();
     setTimeout(startReminderEngine, 500);
-    _loadMySelections(currentUser?.id);
     setTimeout(()=>{ renderSongsList(); renderProfileSongs(); renderEL(); }, 1500);
+  });
+}
+
+function showRegSuccess(user, cb) {
   // Flash green success overlay on step 3 box
   const box = document.querySelector('.reg-box');
   const orig = box.innerHTML;
@@ -3138,17 +3161,14 @@ function doLogin() {
     updateUserUI();
     if(err) err.style.display='none';
     toast(`¡Hola, ${u.nombres}! 👋`, 'success');
-  enrichUserFromFirebase(u.id);
-  // Cargar selecciones personales del usuario desde Firebase
-  _loadMySelections(u.id);
-  // Re-register FCM token for this user on login
-  setTimeout(setupFCM, 1000);
+    enrichUserFromFirebase(u.id);
+    _loadMySelections(u.id);
+    // Reset birthday alert so it shows on every new login
+    window._bdaySessionDismissed = false;
     setTimeout(setupFCM, 1000);
-    // Force refresh songs and profile on every login
     renderSongsList();
     renderProfileSongs();
     setTimeout(startReminderEngine, 500);
-    // Also refresh after a short delay to catch Firebase data
     setTimeout(()=>{ renderSongsList(); renderProfileSongs(); renderEL(); }, 1500);
   }
 
@@ -3199,19 +3219,19 @@ function doLogin() {
 }
 
 
-// ── Cargar selecciones personales del catálogo desde Firebase ────────────────
+// ── Enriquecer datos de usuario desde Firebase (bday, nombres, cargo) ────────
+// Se llama en cada login para que el perfil siempre muestre datos actualizados
+// Cargar selecciones personales del usuario desde Firebase al login
 function _loadMySelections(userId) {
   if(!userId || !fbReady) return;
   const { db, ref, onValue:ov } = window._fb;
   ov(ref(db, `selections/${userId}`), snap => {
     window._mySelections = snap.val ? (snap.val() || {}) : {};
-    // Refrescar el catálogo para mostrar las estrellas correctas
     renderSongsList();
+    renderProfileSongs();
   }, { onlyOnce: true });
 }
 
-// ── Enriquecer datos de usuario desde Firebase (bday, nombres, cargo) ────────
-// Se llama en cada login para que el perfil siempre muestre datos actualizados
 function enrichUserFromFirebase(userId) {
   if(!userId || !fbReady) return;
   const { db, ref, onValue:ov } = window._fb;
@@ -3785,33 +3805,37 @@ async function deleteSong(songId) {
 }
 
 function toggleSongSelected(songId) {
+  if(!currentUser) { toast('Inicia sesión para elegir temas','warning'); return; }
   const s = songs[songId];
-  if(!s || s.ownerId !== currentUser?.id) return;
+  if(!s) return;
 
-  // Si ya está seleccionado → deseleccionar directamente (sin modal)
-  if(s.selected) {
+  // Selecciones personales del usuario actual (en memoria, cargadas desde Firebase)
+  if(!window._mySelections) window._mySelections = {};
+  const isChosen = !!window._mySelections[songId];
+
+  if(isChosen) {
+    // Quitar de lista → directo
     _doSetSongSelected(songId, false, null);
     return;
   }
 
-  // Si va a seleccionarse → mostrar cardview con fechas donde soy Voz Principal
+  // Agregar → mostrar selector de fecha (eventos futuros donde soy Voz Principal)
   const myId = currentUser.id;
   const td   = today();
   const myEvents = Object.values(events)
     .filter(ev => {
-      if(ev.date < td) return false; // solo futuros/hoy
+      if(ev.date < td) return false;
       const asgn = ev.assignees ? Object.values(ev.assignees) : [];
       return asgn.some(a => a.musId === myId && a.rolEvento === 'Voz Principal');
     })
     .sort((a,b) => a.date.localeCompare(b.date));
 
   if(!myEvents.length) {
-    // Sin eventos asignados → seleccionar sin fecha
     _doSetSongSelected(songId, true, null);
     return;
   }
 
-  // Mostrar modal de selección de fecha
+  // Modal selector de fecha
   const overlay = document.createElement('div');
   overlay.id = 'song-date-picker';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:4000;padding:20px;';
@@ -3855,6 +3879,7 @@ function toggleSongSelected(songId) {
         </button>
       </div>
     </div>`;
+  overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
   document.body.appendChild(overlay);
 
   window._pickSongDate = (sId, evId) => {
@@ -3865,24 +3890,31 @@ function toggleSongSelected(songId) {
 }
 
 function _doSetSongSelected(songId, val, evId) {
+  if(!currentUser) return;
   const s = songs[songId];
   if(!s) return;
+  if(!window._mySelections) window._mySelections = {};
 
-  s.selected  = val;
-  s.eventId   = evId || s.eventId || null; // guarda la fecha elegida
-  songs[songId] = s;
+  // Actualizar selección personal en memoria
+  if(val) {
+    window._mySelections[songId] = { songId, eventId: evId||null, songTitle: s.title, ts: Date.now() };
+  } else {
+    delete window._mySelections[songId];
+  }
 
-  // Actualizar DOM — botones estrella
-  document.querySelectorAll(`[data-song-id="${songId}"]`).forEach(btn => {
-    btn.innerHTML = val
-      ? '<span style="font-size:22px;line-height:1;">⭐</span>'
-      : '<span style="font-size:22px;line-height:1;opacity:.3;">☆</span>';
-    btn.style.background  = val ? 'rgba(240,180,41,.2)'  : 'transparent';
-    btn.style.borderColor = val ? 'var(--accent)' : 'var(--border)';
-    btn.style.boxShadow   = val ? '0 0 8px rgba(240,180,41,.4)' : 'none';
+  // Actualizar DOM — botones estrella (data-song-id = perfil, data-catalog-star = catálogo)
+  [`[data-song-id="${songId}"]`, `[data-catalog-star="${songId}"]`].forEach(sel => {
+    document.querySelectorAll(sel).forEach(btn => {
+      btn.innerHTML = val
+        ? '<span style="font-size:22px;line-height:1;">⭐</span>'
+        : '<span style="font-size:22px;line-height:1;opacity:.3;">☆</span>';
+      btn.style.background  = val ? 'rgba(240,180,41,.2)'  : 'transparent';
+      btn.style.borderColor = val ? 'var(--accent)' : 'var(--border)';
+      btn.style.boxShadow   = val ? '0 0 8px rgba(240,180,41,.4)' : 'none';
+    });
   });
 
-  document.querySelectorAll(`[data-song-label="${songId}"]`).forEach(el => {
+  document.querySelectorAll(`[data-song-label="${songId}"], [data-catalog-label="${songId}"]`).forEach(el => {
     el.innerHTML = val
       ? '<span style="color:var(--success);font-weight:700;">✅ En mi lista</span>'
       : '<span style="color:var(--muted);">☆ No en lista</span>';
@@ -3893,38 +3925,38 @@ function _doSetSongSelected(songId, val, evId) {
     row.style.borderColor = val ? 'var(--accent)' : 'var(--border)';
     row.style.background  = val ? 'rgba(240,180,41,.06)' : 'var(--surface)';
     row.style.boxShadow   = val ? '0 0 12px rgba(240,180,41,.15)' : 'none';
-  });
-
-  // Flash visual
-  document.querySelectorAll(`[data-song-row="${songId}"]`).forEach(row => {
+    // Flash
     row.style.position = 'relative';
     const flash = document.createElement('div');
     flash.style.cssText = `position:absolute;inset:0;border-radius:9px;pointer-events:none;
-      background:${val ? 'rgba(240,180,41,.25)' : 'rgba(224,92,92,.15)'};
+      background:${val?'rgba(240,180,41,.25)':'rgba(224,92,92,.15)'};
       animation:flashFade .6s ease forwards;z-index:1;`;
     row.appendChild(flash);
     setTimeout(()=>flash.remove(), 600);
   });
 
-  toast(val ? `⭐ "${s.title}" en tu lista` : `☆ "${s.title}" quitado`,
-        val ? 'success' : 'warning');
+  toast(val ? `⭐ "${s.title}" en tu lista` : `☆ "${s.title}" quitado`, val?'success':'warning');
 
-  // Guardar en Firebase
-  songs[songId]._pendingSelected = val;
-  const updates = {selected: val};
-  if(evId !== undefined) updates.eventId = evId;
-  fbUpdate ? fbUpdate(`songs/${songId}`, updates)
-    .then(()=>{ delete songs[songId]._pendingSelected; })
-    .catch(()=>{ s.selected=!val; songs[songId]=s; delete songs[songId]._pendingSelected; renderProfileSongs(); })
-  : fbSet(`songs/${songId}/selected`, val)
-    .then(()=>{ delete songs[songId]._pendingSelected; })
-    .catch(()=>{ s.selected=!val; songs[songId]=s; delete songs[songId]._pendingSelected; renderProfileSongs(); });
+  // Guardar en Firebase: selections/{userId}/{songId} — selección personal por usuario
+  if(fbReady) {
+    const { db, ref, set: fbS, remove: fbRm } = window._fb;
+    const uid = currentUser.id;
+    if(val) {
+      fbS(ref(db, `selections/${uid}/${songId}`),
+        { songId, eventId: evId||null, songTitle: s.title, ts: Date.now() }
+      ).catch(()=>{});
+    } else {
+      fbRm(ref(db, `selections/${uid}/${songId}`)).catch(()=>{});
+    }
+  }
 
   logActivity('song', val?'⭐':'☆',
-    `"${currentUser?.fullName}" ${val?'agregó':'quitó'} "${s.title}" de su lista`
+    `"${currentUser?.fullName}" ${val?'eligió':'quitó'} "${s.title}" de su lista`
   ).catch(()=>{});
 
+  // Si soy Voz Principal en algún evento → reflejar en tiempo real en el hero del evento
   if(selEv && events[selEv]) renderNextEventHero(events[selEv]);
+  renderProfileSongs();
 }
 
 function openSongLink(url) {
@@ -4226,7 +4258,7 @@ function renderSongsList() {
     return;
   }
 
-  // Selecciones personales del usuario actual (cargadas desde Firebase al login)
+  // Selecciones personales del usuario actual
   const mySelections = window._mySelections || {};
 
   container.innerHTML = filtered.map(s=>{
@@ -4234,13 +4266,13 @@ function renderSongsList() {
     const hasLetra = !!(s.letraLink||s.letraFileId);
     const hasChart = !!(s.chartLink||s.chartFileId);
 
-    // CUALQUIER usuario logueado puede elegir cualquier tema del catálogo
+    // CUALQUIER usuario logueado puede elegir cualquier tema
     const canStar  = !!currentUser;
     const isChosen = canStar && !!mySelections[s.id];
 
     const starBtn = canStar ? `
       <button data-catalog-star="${s.id}"
-        onclick="toggleCatalogStar('${s.id}')"
+        onclick="toggleSongSelected('${s.id}')"
         style="background:${isChosen?'rgba(240,180,41,.2)':'transparent'};
           border:1px solid ${isChosen?'var(--accent)':'var(--border)'};
           border-radius:8px;padding:5px 9px;cursor:pointer;
@@ -4290,132 +4322,6 @@ function renderSongsList() {
   }).join('');
 }
 
-// ── Elegir / quitar un tema del catálogo — CUALQUIER usuario logueado ─────────
-// Guarda en Firebase: selections/{userId}/{songId}
-function toggleCatalogStar(songId) {
-  if(!currentUser) { toast('Inicia sesión para elegir temas','warning'); return; }
-  const mySelections = window._mySelections || {};
-  const isChosen = !!mySelections[songId];
-
-  if(isChosen) {
-    _doSetCatalogStar(songId, false, null);
-    return;
-  }
-
-  // Mostrar selector de fecha (eventos donde soy Voz Principal)
-  const myId = currentUser.id;
-  const td   = today();
-  const myEvents = Object.values(events)
-    .filter(ev => {
-      if(ev.date < td) return false;
-      const asgn = ev.assignees ? Object.values(ev.assignees) : [];
-      return asgn.some(a => a.musId === myId && a.rolEvento === 'Voz Principal');
-    })
-    .sort((a,b) => a.date.localeCompare(b.date));
-
-  const s = songs[songId] || {};
-
-  if(!myEvents.length) {
-    _doSetCatalogStar(songId, true, null);
-    return;
-  }
-
-  const overlay = document.createElement('div');
-  overlay.id = 'catalog-date-picker';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:4000;padding:20px;';
-  overlay.innerHTML = `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;
-      width:min(360px,100%);max-height:80vh;overflow:hidden;display:flex;flex-direction:column;">
-      <div style="padding:20px 20px 12px;border-bottom:1px solid var(--border);">
-        <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700;margin-bottom:4px;">⭐ ¿Para qué fecha?</div>
-        <div style="font-size:12px;color:var(--muted);">"${s.title||songId}" — Elige el evento donde usarás este tema</div>
-      </div>
-      <div style="overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:7px;">
-        ${myEvents.map(ev=>`
-          <button onclick="window._catalogPickDate('${songId}','${ev.id}')"
-            style="background:var(--surface2);border:1px solid var(--border);border-radius:11px;
-            padding:12px 14px;text-align:left;cursor:pointer;color:var(--text);
-            font-family:'DM Sans',sans-serif;transition:border-color .15s;"
-            onmouseover="this.style.borderColor='var(--accent)'"
-            onmouseout="this.style.borderColor='var(--border)'">
-            <div style="font-weight:700;font-size:13px;">${ev.title}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:3px;">
-              📅 ${fmtDate(ev.date)}${ev.time?' · ⏰ '+ev.time:''}${ev.venue?' · 📍 '+ev.venue:''}
-            </div>
-          </button>`).join('')}
-        <button onclick="window._catalogPickDate('${songId}',null)"
-          style="background:transparent;border:1px solid var(--border);border-radius:11px;
-          padding:10px 14px;text-align:center;cursor:pointer;color:var(--muted);
-          font-family:'DM Sans',sans-serif;font-size:12px;margin-top:4px;">
-          ☆ Agregar sin fecha específica
-        </button>
-      </div>
-      <div style="padding:12px 16px;border-top:1px solid var(--border);">
-        <button onclick="document.getElementById('catalog-date-picker')?.remove()"
-          style="width:100%;background:transparent;border:1px solid var(--border);
-          border-radius:10px;padding:9px;color:var(--muted);cursor:pointer;
-          font-family:'DM Sans',sans-serif;font-size:13px;">Cancelar</button>
-      </div>
-    </div>`;
-  overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
-  document.body.appendChild(overlay);
-
-  window._catalogPickDate = (sId, evId) => {
-    document.getElementById('catalog-date-picker')?.remove();
-    delete window._catalogPickDate;
-    _doSetCatalogStar(sId, true, evId);
-  };
-}
-
-function _doSetCatalogStar(songId, val, evId) {
-  if(!currentUser) return;
-  const uid = currentUser.id;
-  if(!window._mySelections) window._mySelections = {};
-  const s = songs[songId] || {};
-
-  if(val) {
-    window._mySelections[songId] = { songId, eventId: evId||null, ts: Date.now() };
-  } else {
-    delete window._mySelections[songId];
-  }
-
-  // Actualizar DOM
-  document.querySelectorAll(`[data-catalog-star="${songId}"]`).forEach(btn => {
-    btn.innerHTML = val
-      ? '<span style="font-size:18px;line-height:1;">⭐</span>'
-      : '<span style="font-size:18px;line-height:1;opacity:.35;">☆</span>';
-    btn.style.background  = val ? 'rgba(240,180,41,.2)'  : 'transparent';
-    btn.style.borderColor = val ? 'var(--accent)' : 'var(--border)';
-    btn.style.boxShadow   = val ? '0 0 8px rgba(240,180,41,.4)' : 'none';
-    btn.title = val ? 'Quitar de mi lista' : 'Agregar a mi lista';
-  });
-  document.querySelectorAll(`[data-catalog-label="${songId}"]`).forEach(el => {
-    el.innerHTML = val
-      ? '<span style="color:var(--success);font-weight:700;">✅ En mi lista</span>'
-      : '<span style="color:var(--muted);">☆ No en lista</span>';
-  });
-  document.querySelectorAll(`[data-song-row="${songId}"]`).forEach(row => {
-    row.style.borderColor = val ? 'var(--accent)' : 'var(--border)';
-    row.style.background  = val ? 'rgba(240,180,41,.06)' : 'var(--surface)';
-    row.style.boxShadow   = val ? '0 0 12px rgba(240,180,41,.15)' : 'none';
-  });
-
-  toast(val ? `⭐ "${s.title||songId}" en tu lista` : `☆ "${s.title||songId}" quitado`,
-        val ? 'success' : 'warning');
-
-  // Guardar en Firebase: selections/{userId}/{songId}
-  if(fbReady) {
-    const { db, ref, set: fbS, remove: fbRm } = window._fb;
-    if(val) {
-      fbS(ref(db, `selections/${uid}/${songId}`),
-        { songId, eventId: evId||null, songTitle: s.title||'', ts: Date.now() }
-      ).catch(()=>{});
-    } else {
-      fbRm(ref(db, `selections/${uid}/${songId}`)).catch(()=>{});
-    }
-  }
-}
-
 function showChangePass() {
   const np = prompt('Nueva contraseña (mín. 4 caracteres):');
   if(!np || np.length < 4){ toast('Contraseña muy corta','error'); return; }
@@ -4454,30 +4360,59 @@ async function editUserCargo() {
 }
 
 async function logoutUser() {
-  if(!confirm('¿Cerrar sesión? Tu perfil se eliminará de la lista del ministerio hasta que vuelvas a ingresar.')) return;
-  const uid = currentUser?.id;
+  if(!confirm('¿Cerrar sesión?\n\nEsto eliminará tu perfil, canciones y datos de la app.\nTambién serás removido de los eventos donde estás asignado.')) return;
+
+  const uid  = currentUser?.id;
   const name = currentUser?.fullName;
-  // Remove from Firebase musicians list
-  if(uid && uid !== 'demo-admin-001') {
-    await fbRemove(`musicians/${uid}`);
-    await logActivity('musician','👋',`"${name}" cerró sesión y salió del ministerio`);
+
+  if(uid && uid !== 'demo-admin-001' && fbReady) {
+    const { db, ref, remove: fbRm, onValue:ov, update: fbUp } = window._fb;
+    try {
+      // 1. Borrar todas las canciones subidas por este usuario
+      const mySongs = Object.values(songs).filter(s => s.ownerId === uid);
+      for(const s of mySongs) {
+        await fbRm(ref(db, `songs/${s.id}`)).catch(()=>{});
+      }
+      // 2. Borrar sus selecciones personales
+      await fbRm(ref(db, `selections/${uid}`)).catch(()=>{});
+      // 3. Borrar su token FCM
+      await fbRm(ref(db, `fcmTokens/${uid}`)).catch(()=>{});
+      // 4. Quitar de todos los eventos donde está asignado
+      const evSnap = await new Promise(res => ov(ref(db,'events'), s=>res(s), {onlyOnce:true}));
+      const evData = evSnap.val ? evSnap.val() : {};
+      for(const [evId, ev] of Object.entries(evData)) {
+        if(ev.assignees && ev.assignees[uid]) {
+          await fbRm(ref(db, `events/${evId}/assignees/${uid}`)).catch(()=>{});
+        }
+      }
+      // 5. Borrar de musicians y users
+      await fbRm(ref(db, `musicians/${uid}`)).catch(()=>{});
+      await fbRm(ref(db, `users/${uid}`)).catch(()=>{});
+      await logActivity('musician','🚪',`"${name}" cerró sesión y fue eliminado`);
+    } catch(e) { console.warn('logout cleanup:', e); }
   }
-  currentUser = null; isAdmin = false;
+
+  // Limpiar memoria local
+  currentUser = null; isAdmin = false; songs = {};
+  window._mySelections = {};
   localStorage.removeItem('mdios_user');
   localStorage.removeItem('mdios_uid');
   sessionStorage.removeItem('mdios_session');
-  songs = {};
+
   document.getElementById('role-btn').textContent='👤 Invitado';
   document.getElementById('role-btn').className='role-pill viewer';
   updateAdminUI();
   renderSongsList();
-  // Reset register to step 1
+  closeProfileModal();
+
+  // Volver a pantalla de login
   document.querySelectorAll('.reg-step').forEach(s=>s.classList.remove('active'));
   document.getElementById('reg-step-1')?.classList.add('active');
   ['sd1','sd2','sd3'].forEach((id,i)=>{const el=document.getElementById(id);if(el)el.classList.toggle('done',i===0);});
   const scr = document.getElementById('register-screen');
   scr.style.display='flex'; scr.style.opacity='1';
   buildLoginSection();
+  toast('Sesión cerrada y datos eliminados','success');
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
