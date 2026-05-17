@@ -542,6 +542,18 @@ textarea{resize:vertical;min-height:64px;}
     </div>
 
     <!-- STEP 1: name, birthdate, password -->
+    <!-- LOGIN FIRST (returning user / admin) -->
+    <div id="reg-login-section" style="text-align:center;">
+    </div>
+
+    <!-- DIVIDER -->
+    <div style="display:flex;align-items:center;gap:8px;margin:14px 0;">
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+      <div style="font-size:11px;color:var(--muted);">¿Eres nuevo? Regístrate</div>
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+    </div>
+
+    <!-- STEP 1: datos personales -->
     <div class="reg-step active" id="reg-step-1">
       <div class="form-row"><label>Nombres</label>
         <input type="text" id="reg-nombres" placeholder="Ej: Juan Pablo">
@@ -550,7 +562,20 @@ textarea{resize:vertical;min-height:64px;}
         <input type="text" id="reg-apellidos" placeholder="Ej: Gómez Ruiz">
       </div>
       <div class="form-row"><label>Fecha de nacimiento</label>
-        <input type="date" id="reg-bday">
+        <div style="display:flex;gap:6px;">
+          <select id="reg-bday-d" style="flex:1;">
+            <option value="">Día</option>
+            ${Array.from({length:31},(_,i)=>`<option value="${String(i+1).padStart(2,'0')}">${i+1}</option>`).join('')}
+          </select>
+          <select id="reg-bday-m" style="flex:1.5;">
+            <option value="">Mes</option>
+            ${['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'].map((m,i)=>`<option value="${String(i+1).padStart(2,'0')}">${m}</option>`).join('')}
+          </select>
+          <select id="reg-bday-y" style="flex:1.2;">
+            <option value="">Año</option>
+            ${Array.from({length:70},(_,i)=>`<option value="${2010-i}">${2010-i}</option>`).join('')}
+          </select>
+        </div>
       </div>
       <div class="form-row"><label>Contraseña</label>
         <input type="password" id="reg-pass" placeholder="Mínimo 4 caracteres">
@@ -609,10 +634,6 @@ textarea{resize:vertical;min-height:64px;}
       </div>
     </div>
 
-    <!-- LOGIN (returning user) -->
-    <!-- Login section: populated dynamically by buildLoginSection() -->
-    <div id="reg-login-section" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);text-align:center;">
-    </div>
   </div>
 </div>
 
@@ -3012,11 +3033,14 @@ function selInstr(instr) {
 function regStep1() {
   const nombres   = document.getElementById('reg-nombres').value.trim();
   const apellidos = document.getElementById('reg-apellidos').value.trim();
-  const bday      = document.getElementById('reg-bday').value;
+  const bdayD = document.getElementById('reg-bday-d').value;
+  const bdayM = document.getElementById('reg-bday-m').value;
+  const bdayY = document.getElementById('reg-bday-y').value;
+  const bday  = (bdayY && bdayM && bdayD) ? `${bdayY}-${bdayM}-${bdayD}` : '';
   const pass      = document.getElementById('reg-pass').value;
   const pass2     = document.getElementById('reg-pass2').value;
   if(!nombres||!apellidos){ toast('Ingresa nombres y apellidos','error'); return; }
-  if(!bday){ toast('Ingresa tu fecha de nacimiento','error'); return; }
+  if(!bday){ toast('Ingresa tu fecha de nacimiento completa','error'); return; }
   if(pass.length < 4){ toast('La contraseña debe tener al menos 4 caracteres','error'); return; }
   if(pass !== pass2){ toast('Las contraseñas no coinciden','error'); return; }
   regData = {...regData, nombres, apellidos, bday, pass};
@@ -3371,7 +3395,47 @@ function renderProfileModal() {
   const u = currentUser;
   const color = u.cargo==='Voz'?'#f0b429':u.cargo==='Músico'?'#3ecf8e':'#5ca8e0';
   const cargoIco = {Músico:'🎸',Voz:'🎤',Líder:'👑'}[u.cargo]||'';
-  const age = u.bday ? Math.floor((Date.now()-new Date(u.bday))/(365.25*24*3600*1000)) : '?';
+  const age = (() => {
+    if(!u.bday) return '?';
+    try {
+      // bday puede venir como "YYYY-MM-DD" o "MM-DD" o timestamp
+      let d;
+      if(typeof u.bday === 'number') {
+        d = new Date(u.bday);
+      } else if(String(u.bday).length === 5 || String(u.bday).match(/^\d{2}-\d{2}$/)) {
+        // Solo mes-día, sin año → no calcular edad
+        return '?';
+      } else {
+        // "YYYY-MM-DD" — parsear manualmente para evitar zona horaria
+        const parts = String(u.bday).split('-');
+        if(parts.length === 3) {
+          d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+        } else {
+          d = new Date(u.bday);
+        }
+      }
+      if(isNaN(d.getTime())) return '?';
+      const now = new Date();
+      let age = now.getFullYear() - d.getFullYear();
+      const m = now.getMonth() - d.getMonth();
+      if(m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+      return age > 0 && age < 120 ? age : '?';
+    } catch(e) { return '?'; }
+  })();
+
+  const bdayDisplay = (() => {
+    if(!u.bday) return '—';
+    try {
+      const MNTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      const parts = String(u.bday).split('-');
+      if(parts.length === 3 && parts[0].length === 4) {
+        return `${parseInt(parts[2])} ${MNTHS[parseInt(parts[1])-1]} ${parts[0]}`;
+      } else if(parts.length === 2) {
+        return `${parseInt(parts[1])} ${MNTHS[parseInt(parts[0])-1]}`;
+      }
+      return u.bday;
+    } catch(e) { return u.bday || '—'; }
+  })();
   const mRecord = musicians[u.id] || {};
   const unavailEntries = Object.entries(mRecord.unavailDates||{}).sort((a,b)=>a[1].localeCompare(b[1]));
   const mySongs = Object.values(songs)
@@ -3427,7 +3491,7 @@ function renderProfileModal() {
         </div>
         <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;">
           <div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px;">Nacimiento</div>
-          <div style="font-weight:700;font-size:13px;">${fmtDate(u.bday)}</div>
+          <div style="font-weight:700;font-size:13px;">${bdayDisplay}</div>
         </div>
       </div>
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:13px;">
