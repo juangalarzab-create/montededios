@@ -546,45 +546,44 @@ textarea{resize:vertical;min-height:64px;}
     <div id="reg-login-section" style="text-align:center;">
     </div>
 
-    <!-- DIVIDER -->
-    <div style="display:flex;align-items:center;gap:8px;margin:14px 0;">
-      <div style="flex:1;height:1px;background:var(--border);"></div>
-      <div style="font-size:11px;color:var(--muted);">¿Eres nuevo? Regístrate</div>
-      <div style="flex:1;height:1px;background:var(--border);"></div>
+    <!-- DIVIDER + toggle to show register form -->
+    <div style="margin-top:14px;text-align:center;">
+      <button onclick="toggleRegisterForm()"
+        id="show-reg-btn"
+        style="background:none;border:none;color:var(--accent);font-size:12px;
+        cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline;padding:4px;">
+        ¿Eres nuevo? Crear perfil
+      </button>
     </div>
 
-    <!-- STEP 1: datos personales -->
-    <div class="reg-step active" id="reg-step-1">
-      <div class="form-row"><label>Nombres</label>
-        <input type="text" id="reg-nombres" placeholder="Ej: Juan Pablo">
+    <!-- REGISTER FORM (hidden by default) -->
+    <div id="register-form-wrap" style="display:none;margin-top:10px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <div style="flex:1;height:1px;background:var(--border);"></div>
+        <div style="font-size:11px;color:var(--muted);">Nuevo perfil</div>
+        <div style="flex:1;height:1px;background:var(--border);"></div>
       </div>
-      <div class="form-row"><label>Apellidos</label>
-        <input type="text" id="reg-apellidos" placeholder="Ej: Gómez Ruiz">
-      </div>
-      <div class="form-row"><label>Fecha de nacimiento</label>
-        <div style="display:flex;gap:6px;">
-          <select id="reg-bday-d" style="flex:1;">
-            <option value="">Día</option>
-            ${Array.from({length:31},(_,i)=>`<option value="${String(i+1).padStart(2,'0')}">${i+1}</option>`).join('')}
-          </select>
-          <select id="reg-bday-m" style="flex:1.5;">
-            <option value="">Mes</option>
-            ${['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'].map((m,i)=>`<option value="${String(i+1).padStart(2,'0')}">${m}</option>`).join('')}
-          </select>
-          <select id="reg-bday-y" style="flex:1.2;">
-            <option value="">Año</option>
-            ${Array.from({length:70},(_,i)=>`<option value="${2010-i}">${2010-i}</option>`).join('')}
-          </select>
+
+      <!-- STEP 1: datos personales -->
+      <div class="reg-step active" id="reg-step-1">
+        <div class="form-row"><label>Nombres</label>
+          <input type="text" id="reg-nombres" placeholder="Ej: Juan Pablo">
         </div>
+        <div class="form-row"><label>Apellidos</label>
+          <input type="text" id="reg-apellidos" placeholder="Ej: Gómez Ruiz">
+        </div>
+        <div class="form-row"><label>Fecha de nacimiento</label>
+          <input type="date" id="reg-bday" style="width:100%;"
+            max="2010-12-31" min="1940-01-01">
+        </div>
+        <div class="form-row"><label>Contraseña</label>
+          <input type="password" id="reg-pass" placeholder="Mínimo 4 caracteres">
+        </div>
+        <div class="form-row"><label>Confirmar contraseña</label>
+          <input type="password" id="reg-pass2" placeholder="Repite la contraseña">
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:6px;" onclick="regStep1()">Siguiente →</button>
       </div>
-      <div class="form-row"><label>Contraseña</label>
-        <input type="password" id="reg-pass" placeholder="Mínimo 4 caracteres">
-      </div>
-      <div class="form-row"><label>Confirmar contraseña</label>
-        <input type="password" id="reg-pass2" placeholder="Repite la contraseña">
-      </div>
-      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:6px;" onclick="regStep1()">Siguiente →</button>
-    </div>
 
     <!-- STEP 2: cargo -->
     <div class="reg-step" id="reg-step-2">
@@ -633,6 +632,8 @@ textarea{resize:vertical;min-height:64px;}
         <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="finishRegister()">✓ Registrarme</button>
       </div>
     </div>
+
+    </div><!-- /register-form-wrap -->
 
   </div>
 </div>
@@ -3005,7 +3006,28 @@ async function autoDeletePastEvents() {
 // ══════════════════════════════════════════════════════════════════════════════
 // REGISTER / LOGIN
 // ══════════════════════════════════════════════════════════════════════════════
+function toggleRegisterForm() {
+  const wrap = document.getElementById('register-form-wrap');
+  const btn  = document.getElementById('show-reg-btn');
+  if(!wrap) return;
+  const open = wrap.style.display !== 'none';
+  wrap.style.display = open ? 'none' : 'block';
+  if(btn) btn.textContent = open ? '¿Eres nuevo? Crear perfil' : '✕ Cancelar registro';
+  if(!open) {
+    // Reset to step 1 when opening
+    document.querySelectorAll('.reg-step').forEach(s=>s.classList.remove('active'));
+    document.getElementById('reg-step-1')?.classList.add('active');
+    ['sd1','sd2','sd3'].forEach((id,i)=>{
+      const el=document.getElementById(id); if(el) el.classList.toggle('done',i===0);
+    });
+    setTimeout(()=>document.getElementById('reg-nombres')?.focus(), 150);
+  }
+}
+
 function regGoStep(n) {
+  // Make sure the form wrapper is visible when navigating steps
+  const wrap = document.getElementById('register-form-wrap');
+  if(wrap) wrap.style.display = 'block';
   document.querySelectorAll('.reg-step').forEach(s=>s.classList.remove('active'));
   document.getElementById('reg-step-'+n).classList.add('active');
   ['sd1','sd2','sd3'].forEach((id,i)=>{
@@ -3033,14 +3055,11 @@ function selInstr(instr) {
 function regStep1() {
   const nombres   = document.getElementById('reg-nombres').value.trim();
   const apellidos = document.getElementById('reg-apellidos').value.trim();
-  const bdayD = document.getElementById('reg-bday-d').value;
-  const bdayM = document.getElementById('reg-bday-m').value;
-  const bdayY = document.getElementById('reg-bday-y').value;
-  const bday  = (bdayY && bdayM && bdayD) ? `${bdayY}-${bdayM}-${bdayD}` : '';
+  const bday      = document.getElementById('reg-bday').value; // "YYYY-MM-DD" from native date picker
   const pass      = document.getElementById('reg-pass').value;
   const pass2     = document.getElementById('reg-pass2').value;
   if(!nombres||!apellidos){ toast('Ingresa nombres y apellidos','error'); return; }
-  if(!bday){ toast('Ingresa tu fecha de nacimiento completa','error'); return; }
+  if(!bday){ toast('Selecciona tu fecha de nacimiento','error'); return; }
   if(pass.length < 4){ toast('La contraseña debe tener al menos 4 caracteres','error'); return; }
   if(pass !== pass2){ toast('Las contraseñas no coinciden','error'); return; }
   regData = {...regData, nombres, apellidos, bday, pass};
