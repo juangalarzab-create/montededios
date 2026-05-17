@@ -1599,13 +1599,13 @@ function renderNextEventHero(ev) {
   // Render inmediato con datos en memoria
   const renderHeroSongs = (selectedIds) => {
     const allSongs = Object.values(songs);
-    let heroSongs = selectedIds && vozId
-      ? allSongs.filter(s => selectedIds[s.id])
-      : vozId
-        ? allSongs.filter(s => s.ownerId === vozId && s.selected === true)
-        : [];
-    if(!heroSongs.length && vozP && !selectedIds) {
-      heroSongs = allSongs.filter(s => s.ownerName === vozP.name && s.selected === true);
+    // selectedIds = objeto {songId: {songId, eventId, ...}} desde Firebase selections
+    let heroSongs = [];
+    if(selectedIds && Object.keys(selectedIds).length > 0) {
+      heroSongs = allSongs.filter(s => selectedIds[s.id]);
+    } else if(vozId) {
+      // Fallback: leer s.selected del objeto songs (campo legacy)
+      heroSongs = allSongs.filter(s => (s.ownerId === vozId || s.ownerName === vozP?.name) && s.selected === true);
     }
     return heroSongs.length
       ? heroSongs.map(s => `
@@ -1619,7 +1619,12 @@ function renderNextEventHero(ev) {
         }</span>`;
   };
 
-  const songsList = renderHeroSongs(null);
+  // Render inicial: si el vozId es el usuario actual, usar _mySelections ya cargado
+  // Si es otro usuario, empezar vacío y la suscripción Firebase lo llenará enseguida
+  const initialSel = (vozId === currentUser?.id && window._mySelections)
+    ? window._mySelections
+    : null;
+  const songsList = renderHeroSongs(initialSel);
 
   // ── Render ────────────────────────────────────────────────────────────────
   hero.innerHTML = `
@@ -3221,15 +3226,20 @@ function doLogin() {
 
 // ── Enriquecer datos de usuario desde Firebase (bday, nombres, cargo) ────────
 // Se llama en cada login para que el perfil siempre muestre datos actualizados
-// Cargar selecciones personales del usuario desde Firebase al login
+// Cargar selecciones personales del usuario desde Firebase — suscripción en tiempo real
 function _loadMySelections(userId) {
   if(!userId || !fbReady) return;
   const { db, ref, onValue:ov } = window._fb;
-  ov(ref(db, `selections/${userId}`), snap => {
+  // Cancelar suscripción anterior si existe
+  if(window._mySelectionsUnsub) { try { window._mySelectionsUnsub(); } catch(e){} }
+  window._mySelectionsUnsub = ov(ref(db, `selections/${userId}`), snap => {
     window._mySelections = snap.val ? (snap.val() || {}) : {};
+    // Refrescar todas las vistas que dependen de las selecciones
     renderSongsList();
     renderProfileSongs();
-  }, { onlyOnce: true });
+    // Refrescar el evento hero si hay uno activo
+    if(selEv && events[selEv]) renderNextEventHero(events[selEv]);
+  });
 }
 
 function enrichUserFromFirebase(userId) {
@@ -3385,24 +3395,31 @@ function renderProfileModal() {
   const age = u.bday ? Math.floor((Date.now()-new Date(u.bday))/(365.25*24*3600*1000)) : '?';
   const mRecord = musicians[u.id] || {};
   const unavailEntries = Object.entries(mRecord.unavailDates||{}).sort((a,b)=>a[1].localeCompare(b[1]));
+  const mySelections = window._mySelections || {};
   const mySongs = Object.values(songs)
     .filter(s=>s.ownerId===u.id)
     .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))
     .slice(0,6); // últimos 6 subidos
-  const songRows = mySongs.length ? mySongs.map(s=>`
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:9px;
+  const songRows = mySongs.length ? mySongs.map(s=>{
+    const isSel = !!mySelections[s.id];
+    return `
+    <div data-song-row="${s.id}" style="background:${isSel?'rgba(240,180,41,.04)':'var(--surface)'};border:1px solid ${isSel?'var(--accent)':'var(--border)'};border-radius:9px;
       padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
       <div style="flex:1;min-width:0;">
         <div style="font-weight:600;font-size:13px;">${s.title} <span class="song-tono">${s.tono||''}</span></div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${s.selected?'⭐ En mi lista':'☆ No en lista'}</div>
+        <div data-song-label="${s.id}" style="font-size:10px;margin-top:2px;color:${isSel?'var(--success)':'var(--muted)'};">
+          ${isSel?'✅ En mi lista':'☆ No en lista'}
+        </div>
       </div>
       <div style="display:flex;gap:5px;flex-shrink:0;">
-        <button class="btn btn-ghost btn-sm" onclick="toggleSongSelected('${s.id}')"
-          style="font-size:11px;padding:4px 8px;" title="${s.selected?'Quitar de lista':'Poner en lista'}">${s.selected?'⭐':'☆'}</button>
+        <button class="btn btn-ghost btn-sm" data-song-id="${s.id}" onclick="toggleSongSelected('${s.id}')"
+          style="font-size:18px;padding:4px 10px;background:${isSel?'rgba(240,180,41,.15)':''};border-color:${isSel?'var(--accent)':''};"
+          title="${isSel?'Quitar de lista':'Poner en lista'}">${isSel?'⭐':'<span style="opacity:.4;">☆</span>'}</button>
         <button class="btn btn-danger btn-sm" onclick="deleteSong('${s.id}')"
           style="font-size:11px;padding:4px 8px;">🗑</button>
       </div>
-    </div>`).join('') : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Sin temas subidos aún</div>';
+    </div>`;
+  }).join('') : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Sin temas subidos aún</div>';
 
   const unavailHtml = unavailEntries.length
     ? unavailEntries.map(([key,date])=>`
@@ -3516,15 +3533,34 @@ function renderProfile() { /* legacy — no-op, profile is now a modal */ }
 function renderProfileSongs() {
   const list = document.getElementById('prof-songs-list');
   if(!list || !currentUser) return;
+
+  // Leer selecciones personales del usuario actual
+  const mySelections = window._mySelections || {};
+
+  // Mostrar los últimos 6 temas subidos por el usuario
   const mySongs = Object.values(songs)
     .filter(s=>s.ownerId===currentUser.id)
     .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))
     .slice(0,6);
-  list.innerHTML = mySongs.length
-    ? mySongs.map(s=>`
+
+  // También mostrar temas elegidos de otros (que no son propios)
+  const chosenOthers = Object.keys(mySelections)
+    .filter(sid => songs[sid] && songs[sid].ownerId !== currentUser.id)
+    .map(sid => songs[sid])
+    .filter(Boolean);
+
+  // Combinar: propios primero, luego elegidos de otros
+  const allToShow = [...mySongs];
+  chosenOthers.forEach(s => { if(!allToShow.find(x=>x.id===s.id)) allToShow.push(s); });
+
+  list.innerHTML = allToShow.length
+    ? allToShow.map(s=>{
+        const isSel = !!mySelections[s.id];
+        const isOwn = s.ownerId === currentUser.id;
+        return `
         <div data-song-row="${s.id}"
-          style="background:${s.selected?'rgba(240,180,41,.04)':'var(--surface)'};
-            border:1px solid ${s.selected?'var(--accent)':'var(--border)'};
+          style="background:${isSel?'rgba(240,180,41,.04)':'var(--surface)'};
+            border:1px solid ${isSel?'var(--accent)':'var(--border)'};
             border-radius:9px;padding:9px 12px;display:flex;align-items:center;
             justify-content:space-between;gap:8px;margin-bottom:6px;
             transition:border-color .2s,background .2s;">
@@ -3533,9 +3569,10 @@ function renderProfileSongs() {
               <span class="song-tono">${s.tono||''}</span>
               ${s.bpm?`<span style="background:rgba(92,168,224,.12);color:var(--info);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">${s.bpm} BPM</span>`:''}
             </div>
+            ${!isOwn?`<div style="font-size:10px;color:var(--muted);">por ${s.ownerName||''}</div>`:''}
             <div data-song-label="${s.id}"
-              style="font-size:11px;margin-top:3px;color:${s.selected?'var(--success)':'var(--muted)'};">
-              ${s.selected?'✅ <strong>En mi lista</strong>':'☆ No en lista'}
+              style="font-size:11px;margin-top:3px;color:${isSel?'var(--success)':'var(--muted)'};">
+              ${isSel?'✅ <strong>En mi lista</strong>':'☆ No en lista'}
             </div>
           </div>
           <div style="display:flex;gap:5px;align-items:center;">
@@ -3543,15 +3580,16 @@ function renderProfileSongs() {
               data-song-id="${s.id}"
               onclick="toggleSongSelected('${s.id}')"
               style="font-size:18px;padding:4px 10px;min-width:40px;
-                background:${s.selected?'rgba(240,180,41,.15)':''};
-                border-color:${s.selected?'var(--accent)':''};"
-              title="${s.selected?'Quitar de lista':'Agregar a lista'}">
-              ${s.selected?'⭐':'<span style="opacity:.4;">☆</span>'}
+                background:${isSel?'rgba(240,180,41,.15)':''};
+                border-color:${isSel?'var(--accent)':''};"
+              title="${isSel?'Quitar de lista':'Agregar a lista'}">
+              ${isSel?'⭐':'<span style="opacity:.4;">☆</span>'}
             </button>
-            <button class="btn btn-danger btn-sm" onclick="deleteSong('${s.id}')"
-              style="font-size:11px;padding:4px 8px;">🗑</button>
+            ${isOwn?`<button class="btn btn-danger btn-sm" onclick="deleteSong('${s.id}')"
+              style="font-size:11px;padding:4px 8px;">🗑</button>`:''}
           </div>
-        </div>`).join('')
+        </div>`;
+      }).join('')
     : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Sin temas subidos aún</div>';
 }
 
@@ -3936,6 +3974,9 @@ function _doSetSongSelected(songId, val, evId) {
   });
 
   toast(val ? `⭐ "${s.title}" en tu lista` : `☆ "${s.title}" quitado`, val?'success':'warning');
+
+  // Refrescar perfil inmediatamente (sin esperar Firebase)
+  renderProfileSongs();
 
   // Guardar en Firebase: selections/{userId}/{songId} — selección personal por usuario
   if(fbReady) {
