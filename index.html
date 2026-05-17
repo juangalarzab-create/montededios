@@ -364,6 +364,12 @@ textarea{resize:vertical;min-height:64px;}
   font-weight:600;cursor:pointer;text-decoration:none;transition:all .15s;font-family:'DM Sans',sans-serif;}
 .song-btn:hover{border-color:var(--accent);color:var(--accent);}
 .song-btn.disabled{opacity:.3;cursor:not-allowed;pointer-events:none;}
+.min-filter-btn{flex-shrink:0;background:var(--surface2);border:1px solid var(--border);
+  border-radius:20px;padding:5px 13px;font-size:11px;font-weight:600;color:var(--muted);
+  cursor:pointer;white-space:nowrap;transition:all .2s;font-family:'DM Sans',sans-serif;}
+.min-filter-btn.active{background:var(--accent);border-color:var(--accent);color:#0d0d0f;}
+.min-filter-btn:hover:not(.active){border-color:var(--accent);color:var(--accent);}
+#min-filter-bar::-webkit-scrollbar{display:none;}
 .song-btn.play{border-color:rgba(224,92,42,.4);color:var(--accent2);}
 .song-btn.play:hover{background:rgba(224,92,42,.1);}
 .song-owner{font-size:10px;color:var(--muted);margin-top:6px;}
@@ -658,6 +664,7 @@ textarea{resize:vertical;min-height:64px;}
           <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center;"
             id="new-ev-btn" onclick="openNewEvForm()" disabled>＋ Nuevo Evento</button>
           <button class="btn btn-ghost btn-sm" onclick="exportCalendarPDF()" title="Exportar PDF de eventos">📅 PDF Eventos</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportVoicesCalendar()" title="Calendario Voces">🎤 Cal. Voces</button>
           <button class="btn btn-ghost btn-sm" onclick="openBirthdayPanel()" title="Cumpleaños">🎂</button>
         </div>
 
@@ -694,6 +701,18 @@ textarea{resize:vertical;min-height:64px;}
         </div>
         <!-- No add form — members appear automatically when they register -->
         <input class="search-bar" type="text" placeholder="🔍 Buscar integrante..." oninput="filterMusicians(this.value)">
+        <!-- Filtros por categoría -->
+        <div id="min-filter-bar" style="display:flex;gap:6px;overflow-x:auto;padding:6px 0 4px;
+          scrollbar-width:none;-webkit-overflow-scrolling:touch;">
+          <button class="min-filter-btn active" onclick="setMinFilter('todos',this)">Todos</button>
+          <button class="min-filter-btn" onclick="setMinFilter('voces',this)">🎤 Voces</button>
+          <button class="min-filter-btn" onclick="setMinFilter('guitarra',this)">🎸 Guitarra</button>
+          <button class="min-filter-btn" onclick="setMinFilter('bajo',this)">🎵 Bajo</button>
+          <button class="min-filter-btn" onclick="setMinFilter('teclado',this)">🎹 Teclado</button>
+          <button class="min-filter-btn" onclick="setMinFilter('bateria',this)">🥁 Batería</button>
+          <button class="min-filter-btn" onclick="setMinFilter('percusion',this)">🪘 Percusión</button>
+          <button class="min-filter-btn" onclick="setMinFilter('otros',this)">➕ Otros</button>
+        </div>
         <div class="mus-table" id="mus-table"></div>
       </div>
     </div>
@@ -2072,16 +2091,50 @@ function showMemberCard(musId) {
   };
 }
 
+let minFilterCat = 'todos';
+
+// Categorías de instrumentos/roles
+const MIN_CATS = {
+  voces:     r => ['Voz','Cantante','Coros','Voz Principal','Líder'].some(v=>r.includes(v)) || ['Voz','Líder'].includes(r),
+  guitarra:  r => r.includes('Guitarra') || r.includes('guitarr'),
+  bajo:      r => r.includes('Bajo') || r.includes('Bajista'),
+  teclado:   r => r.includes('Teclado') || r.includes('Tecladista') || r.includes('Piano'),
+  bateria:   r => r.includes('Bater') || r.includes('Drums'),
+  percusion: r => r.includes('Percus') || r.includes('Cajón') || r.includes('Cajon'),
+};
+
+function setMinFilter(cat, btn) {
+  minFilterCat = cat;
+  document.querySelectorAll('.min-filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMT();
+}
+
 function renderMT() {
   const cont = document.getElementById('mus-table');
   const all = Object.values(musicians);
   document.getElementById('mus-count').textContent = `${all.length} integrante${all.length!==1?'s':''}`;
-  const filtered = all.filter(m => !searchQ ||
+
+  let filtered = all.filter(m => !searchQ ||
     m.name.toLowerCase().includes(searchQ.toLowerCase()) ||
     m.role.toLowerCase().includes(searchQ.toLowerCase()) ||
     (m.cargo||'').toLowerCase().includes(searchQ.toLowerCase())
   );
-  if(!filtered.length){ cont.innerHTML=`<div class="empty-s"><div class="ei">🎵</div>Aún no hay integrantes</div>`; return; }
+
+  // Aplicar filtro de categoría
+  if(minFilterCat !== 'todos') {
+    if(minFilterCat === 'otros') {
+      filtered = filtered.filter(m => {
+        const r = (m.role||'') + ' ' + (m.cargo||'');
+        return !Object.values(MIN_CATS).some(fn => fn(r));
+      });
+    } else {
+      const fn = MIN_CATS[minFilterCat];
+      filtered = filtered.filter(m => fn((m.role||'') + ' ' + (m.cargo||'')));
+    }
+  }
+
+  if(!filtered.length){ cont.innerHTML=`<div class="empty-s"><div class="ei">🎵</div>${minFilterCat!=='todos'?'Sin integrantes en esta categoría':'Aún no hay integrantes'}</div>`; return; }
   const td = today();
   cont.innerHTML = filtered.map(m => {
     const color = rc(m.role);
@@ -2089,7 +2142,6 @@ function renderMT() {
     const isTodayUnavail = unavailDates.includes(td);
     const dotColor = isTodayUnavail ? 'var(--danger)' : 'var(--success)';
     const dotTitle = isTodayUnavail ? 'No disponible hoy' : 'Disponible hoy';
-    // Read-only unavail pills (no delete, managed from their own profile)
     const unavailPills = unavailDates.length
       ? unavailDates.map(d=>`
           <span style="display:inline-flex;align-items:center;gap:3px;background:rgba(224,92,92,.1);
@@ -2408,6 +2460,172 @@ function exportBirthdayPDF() {
   });
 
   doc.save('cumpleanos-monte-de-dios.pdf');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CALENDARIO VOCES PDF — diseño tipo calendario mensual
+// ══════════════════════════════════════════════════════════════════════════════
+async function exportVoicesCalendar() {
+  if(!window.jspdf?.jsPDF){ toast('jsPDF no disponible','error'); return; }
+  const allEvs = Object.values(events).sort((a,b)=>a.date.localeCompare(b.date));
+  if(!allEvs.length){ toast('Sin eventos','warning'); return; }
+
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({unit:'mm', format:'a4', orientation:'landscape'});
+  const PW = doc.internal.pageSize.getWidth();   // 297
+  const PH = doc.internal.pageSize.getHeight();  // 210
+
+  const DAYS_ES  = ['LU','MA','MI','JU','VI','SA','DO'];
+  const MNTHS_ES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO',
+                    'JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+  const MNTHS_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                      'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+  // Agrupar eventos por mes (YYYY-MM)
+  const byMonth = {};
+  allEvs.forEach(ev => {
+    const ym = ev.date.slice(0,7);
+    if(!byMonth[ym]) byMonth[ym] = [];
+    byMonth[ym].push(ev);
+  });
+
+  // Cargar selecciones de la voz principal de cada evento desde Firebase
+  const getVozSelections = async (vozId) => {
+    if(!vozId || !fbReady) return {};
+    const { db, ref, onValue:ov } = window._fb;
+    return new Promise(res => {
+      ov(ref(db, `selections/${vozId}`), snap => res(snap.val ? (snap.val()||{}) : {}), {onlyOnce:true});
+    });
+  };
+
+  let pageIdx = 0;
+
+  for(const [ym, monthEvs] of Object.entries(byMonth)) {
+    const [year, mo] = ym.split('-').map(Number);
+    if(pageIdx > 0) doc.addPage();
+    pageIdx++;
+
+    // ── Fondo blanco ──────────────────────────────────────────────────────
+    doc.setFillColor(255,255,255); doc.rect(0,0,PW,PH,'F');
+
+    // ── TÍTULO MES/AÑO ────────────────────────────────────────────────────
+    doc.setFont('helvetica','bold'); doc.setFontSize(26);
+    doc.setTextColor(15,15,20);
+    doc.text(`${MNTHS_ES[mo-1]} - ${year}`, PW/2, 18, {align:'center'});
+
+    // ── Subrayado título ──────────────────────────────────────────────────
+    doc.setDrawColor(200,170,50); doc.setLineWidth(0.8);
+    doc.line(20, 21, PW-20, 21);
+
+    // ── Cabecera días de la semana ────────────────────────────────────────
+    const gridTop  = 26;
+    const gridLeft = 8;
+    const gridW    = PW - 16;
+    const colW     = gridW / 7;
+    const daysInMonth = new Date(year, mo, 0).getDate();
+    // Qué día de semana es el 1 (0=dom, ajustar a lunes=0)
+    let firstDay = new Date(year, mo-1, 1).getDay(); // 0=dom
+    firstDay = firstDay === 0 ? 6 : firstDay - 1;    // lunes=0
+
+    const totalRows = Math.ceil((daysInMonth + firstDay) / 7);
+    const rowH = (PH - gridTop - 8) / totalRows;
+
+    // Encabezado días
+    DAYS_ES.forEach((d,i) => {
+      const x = gridLeft + i*colW;
+      doc.setFillColor(i===5||i===6 ? 245 : 250, i===5||i===6?245:250, i===5||i===6?245:250);
+      doc.rect(x, gridTop, colW, 7, 'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(8);
+      doc.setTextColor(i===5 ? 50 : 80, 80, 80);
+      doc.text(d, x + colW/2, gridTop+5, {align:'center'});
+    });
+
+    // ── Celdas del calendario ─────────────────────────────────────────────
+    const evByDay = {};
+    monthEvs.forEach(ev => {
+      const d = parseInt(ev.date.split('-')[2]);
+      if(!evByDay[d]) evByDay[d] = [];
+      evByDay[d].push(ev);
+    });
+
+    for(let row=0; row<totalRows; row++) {
+      for(let col=0; col<7; col++) {
+        const dayNum = row*7 + col - firstDay + 1;
+        const x = gridLeft + col*colW;
+        const y = gridTop + 7 + row*rowH;
+        const hasEv = dayNum >= 1 && dayNum <= daysInMonth && evByDay[dayNum];
+
+        // Celda background
+        doc.setFillColor(hasEv ? 210 : 255, hasEv ? 228 : 255, hasEv ? 245 : 255);
+        doc.rect(x, y, colW, rowH, 'F');
+        doc.setDrawColor(200,200,200); doc.setLineWidth(0.2);
+        doc.rect(x, y, colW, rowH, 'S');
+
+        if(dayNum < 1 || dayNum > daysInMonth) continue;
+
+        // Número del día — resaltar si tiene evento
+        if(hasEv) {
+          doc.setFillColor(50,100,170);
+          doc.circle(x+4.5, y+4.5, 3.5, 'F');
+          doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255,255,255);
+        } else {
+          doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(80,80,80);
+        }
+        doc.text(String(dayNum), x+4.5, y+5.5, {align:'center'});
+
+        if(!hasEv) continue;
+
+        // Datos del evento — voces, coros, baterista
+        let ty = y + 9;
+        for(const ev of evByDay[dayNum]) {
+          const asgn = ev.assignees ? Object.values(ev.assignees) : [];
+
+          // Voz principal (subrayada)
+          const vozP = asgn.find(a=>a.rolEvento==='Voz Principal') || asgn.find(a=>['Voz','Cantante'].includes(a.cargo||a.role||''));
+          if(vozP) {
+            const vname = vozP.name.split(' ')[0];
+            doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(10,10,10);
+            doc.text(vname, x+3, ty);
+            // Subrayado
+            const tw = doc.getTextWidth(vname);
+            doc.setDrawColor(10,10,10); doc.setLineWidth(0.3);
+            doc.line(x+3, ty+0.5, x+3+tw, ty+0.5);
+            ty += 4.5;
+          }
+
+          // Coros/voces adicionales
+          const coros = asgn.filter(a => {
+            const r = (a.rolEvento||a.role||a.cargo||'').toLowerCase();
+            return (r.includes('coro')||r.includes('voz')) && a.musId !== vozP?.musId;
+          });
+          coros.forEach(c => {
+            if(ty > y+rowH-4) return;
+            doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(20,20,20);
+            doc.text(c.name.split(' ')[0], x+3, ty);
+            ty += 3.8;
+          });
+
+          // Baterista
+          const bat = asgn.find(a=>{
+            const r = (a.rolEvento||a.role||a.cargo||'').toLowerCase();
+            return r.includes('bater')||r.includes('drum');
+          });
+          if(bat && ty <= y+rowH-4) {
+            doc.setFont('helvetica','bold'); doc.setFontSize(5.5); doc.setTextColor(180,50,50);
+            doc.text(`BATERÍA: ${bat.name.split(' ')[0].toUpperCase()}`, x+3, ty);
+            ty += 3.5;
+          }
+        }
+      }
+    }
+
+    // Pie de página
+    doc.setFont('helvetica','normal'); doc.setFontSize(6); doc.setTextColor(160,160,160);
+    doc.text(`Monte de Dios · ${MNTHS_FULL[mo-1]} ${year} · Generado ${new Date().toLocaleDateString('es-PE')}`, PW/2, PH-3, {align:'center'});
+  }
+
+  doc.save(`calendario-voces-${Object.keys(byMonth)[0]}.pdf`);
+  toast('📅 Calendario de voces exportado','success');
 }
 
 function exportAllPDF(){ if(!Object.keys(events).length){toast('Sin eventos','warning');return;} genPDF(Object.values(events)); }
@@ -2895,7 +3113,7 @@ function checkBirthdayAlerts() {
   if(!window._bdaySessionDismissed) window._bdaySessionDismissed = false;
   if(window._bdaySessionDismissed) return;
 
-  // Calcular próximos 7 cumpleaños (dentro de los próximos 365 días)
+  // Solo mostrar cumpleaños que caen dentro de los próximos 7 días (incluyendo hoy)
   const upcoming = Object.values(musicians)
     .filter(m => m.bday && (m.fullName || m.displayName))
     .map(m => {
@@ -2907,8 +3125,8 @@ function checkBirthdayAlerts() {
       const daysLeft = Math.round((next - today_d) / 86400000);
       return { name: m.fullName||m.displayName, bday: m.bday, next, daysLeft };
     })
-    .sort((a,b) => a.daysLeft - b.daysLeft)
-    .slice(0, 7); // los 7 más próximos
+    .filter(m => m.daysLeft >= 0 && m.daysLeft <= 7) // solo los de esta semana
+    .sort((a,b) => a.daysLeft - b.daysLeft);
 
   if(!upcoming.length) return;
 
@@ -2947,7 +3165,7 @@ function checkBirthdayAlerts() {
         <div style="font-size:42px;margin-bottom:8px;">🎂</div>
         <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;
           color:var(--accent);margin-bottom:4px;">Próximos Cumpleaños</div>
-        <div style="font-size:11px;color:var(--muted);">Los 7 más cercanos del ministerio</div>
+        <div style="font-size:11px;color:var(--muted);">Cumplen años esta semana</div>
       </div>
       <!-- Lista -->
       <div style="overflow-y:auto;padding:0 16px;flex:1;">${rows}</div>
@@ -3396,10 +3614,10 @@ function renderProfileModal() {
   const mRecord = musicians[u.id] || {};
   const unavailEntries = Object.entries(mRecord.unavailDates||{}).sort((a,b)=>a[1].localeCompare(b[1]));
   const mySelections = window._mySelections || {};
-  const mySongs = Object.values(songs)
-    .filter(s=>s.ownerId===u.id)
-    .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))
-    .slice(0,6); // últimos 6 subidos
+  const ownSongs2     = Object.values(songs).filter(s=>s.ownerId===u.id);
+  const ownSel2       = ownSongs2.filter(s=>mySelections[s.id]).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const ownUnsel2     = ownSongs2.filter(s=>!mySelections[s.id]).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const mySongs       = [...ownSel2, ...ownUnsel2].slice(0,6);
   const songRows = mySongs.length ? mySongs.map(s=>{
     const isSel = !!mySelections[s.id];
     return `
@@ -3534,32 +3752,33 @@ function renderProfileSongs() {
   const list = document.getElementById('prof-songs-list');
   if(!list || !currentUser) return;
 
-  // Leer selecciones personales del usuario actual
   const mySelections = window._mySelections || {};
 
-  // Mostrar los últimos 6 temas subidos por el usuario
-  const mySongs = Object.values(songs)
-    .filter(s=>s.ownerId===currentUser.id)
-    .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))
-    .slice(0,6);
+  // Temas propios — últimos 6, pero PRIORIZANDO los marcados con estrella
+  const ownSongs = Object.values(songs).filter(s => s.ownerId === currentUser.id);
+  const ownSelected   = ownSongs.filter(s => mySelections[s.id]).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const ownUnselected = ownSongs.filter(s => !mySelections[s.id]).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  // Estrellados primero, luego el resto, total máx 6
+  const mySongs = [...ownSelected, ...ownUnselected].slice(0, 6);
 
-  // También mostrar temas elegidos de otros (que no son propios)
+  // Temas ajenos elegidos (no propios, pero en mis selecciones)
   const chosenOthers = Object.keys(mySelections)
     .filter(sid => songs[sid] && songs[sid].ownerId !== currentUser.id)
     .map(sid => songs[sid])
-    .filter(Boolean);
+    .filter(Boolean)
+    .sort((a,b) => (b.createdAt||0)-(a.createdAt||0));
 
-  // Combinar: propios primero, luego elegidos de otros
+  // Combinar: propios primero (estrellados al frente), luego elegidos de otros
   const allToShow = [...mySongs];
   chosenOthers.forEach(s => { if(!allToShow.find(x=>x.id===s.id)) allToShow.push(s); });
 
   list.innerHTML = allToShow.length
-    ? allToShow.map(s=>{
+    ? allToShow.map(s => {
         const isSel = !!mySelections[s.id];
         const isOwn = s.ownerId === currentUser.id;
         return `
         <div data-song-row="${s.id}"
-          style="background:${isSel?'rgba(240,180,41,.04)':'var(--surface)'};
+          style="background:${isSel?'rgba(240,180,41,.05)':'var(--surface)'};
             border:1px solid ${isSel?'var(--accent)':'var(--border)'};
             border-radius:9px;padding:9px 12px;display:flex;align-items:center;
             justify-content:space-between;gap:8px;margin-bottom:6px;
@@ -3585,12 +3804,25 @@ function renderProfileSongs() {
               title="${isSel?'Quitar de lista':'Agregar a lista'}">
               ${isSel?'⭐':'<span style="opacity:.4;">☆</span>'}
             </button>
-            ${isOwn?`<button class="btn btn-danger btn-sm" onclick="deleteSong('${s.id}')"
-              style="font-size:11px;padding:4px 8px;">🗑</button>`:''}
+            ${isOwn
+              ? `<button class="btn btn-danger btn-sm" onclick="deleteSong('${s.id}')"
+                  style="font-size:11px;padding:4px 8px;" title="Eliminar tema">🗑</button>`
+              : `<button class="btn btn-danger btn-sm" onclick="removeFromMyList('${s.id}')"
+                  style="font-size:11px;padding:4px 8px;opacity:.7;" title="Quitar de mi lista">✕</button>`
+            }
           </div>
         </div>`;
       }).join('')
-    : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Sin temas subidos aún</div>';
+    : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Sin temas en lista aún</div>';
+}
+
+// Quitar un tema ajeno de mi lista personal (sin borrar el tema de la DB)
+function removeFromMyList(songId) {
+  const s = songs[songId];
+  if(!s) return;
+  // Solo quitar de selecciones — no borrar el tema
+  _doSetSongSelected(songId, false, null);
+  toast(`"${s.title}" quitado de tu lista`,'warning');
 }
 
 
@@ -3834,12 +4066,38 @@ async function deleteSong(songId) {
   const s = songs[songId];
   if(!s) return;
   if(s.ownerId !== currentUser?.id){ toast('Solo puedes eliminar tus propios temas','warning'); return; }
-  if(!confirm(`¿Eliminar "${s.title}"?`)) return;
+  if(!confirm(`¿Eliminar "${s.title}"?\n\nSe borrará de toda la base de datos y de todos los eventos.`)) return;
+
+  // 1. Borrar de memoria local inmediatamente → UI se actualiza al instante
   delete songs[songId];
-  await fbRemove(`songs/${songId}`);
   renderProfileSongs();
   renderSongsList();
-  toast('Tema eliminado','warning');
+  if(selEv && events[selEv]) renderNextEventHero(events[selEv]);
+
+  // 2. Borrar de Firebase — songs
+  await fbRemove(`songs/${songId}`);
+
+  // 3. Borrar de todas las selecciones personales de todos los usuarios
+  //    (cualquiera que haya elegido este tema lo pierde de su lista)
+  if(fbReady) {
+    const { db, ref, onValue:ov, remove:fbRm } = window._fb;
+    const selSnap = await new Promise(res =>
+      ov(ref(db,'selections'), s=>res(s), {onlyOnce:true})
+    );
+    const selData = selSnap.val ? selSnap.val() : {};
+    for(const [uid, userSels] of Object.entries(selData)) {
+      if(userSels[songId]) {
+        await fbRm(ref(db, `selections/${uid}/${songId}`)).catch(()=>{});
+      }
+    }
+    // Si el tema eliminado estaba en mis selecciones, quitarlo también de memoria
+    if(window._mySelections?.[songId]) {
+      delete window._mySelections[songId];
+    }
+  }
+
+  await logActivity('musician','🗑️',`"${currentUser.fullName}" eliminó el tema "${s.title}"`);
+  toast(`"${s.title}" eliminado de todo`,'warning');
 }
 
 function toggleSongSelected(songId) {
