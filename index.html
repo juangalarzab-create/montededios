@@ -542,48 +542,24 @@ textarea{resize:vertical;min-height:64px;}
     </div>
 
     <!-- STEP 1: name, birthdate, password -->
-    <!-- LOGIN FIRST (returning user / admin) -->
-    <div id="reg-login-section" style="text-align:center;">
-    </div>
-
-    <!-- DIVIDER + toggle to show register form -->
-    <div style="margin-top:14px;text-align:center;">
-      <button onclick="toggleRegisterForm()"
-        id="show-reg-btn"
-        style="background:none;border:none;color:var(--accent);font-size:12px;
-        cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline;padding:4px;">
-        ¿Eres nuevo? Crear perfil
-      </button>
-    </div>
-
-    <!-- REGISTER FORM (hidden by default) -->
-    <div id="register-form-wrap" style="display:none;margin-top:10px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-        <div style="flex:1;height:1px;background:var(--border);"></div>
-        <div style="font-size:11px;color:var(--muted);">Nuevo perfil</div>
-        <div style="flex:1;height:1px;background:var(--border);"></div>
+    <div class="reg-step active" id="reg-step-1">
+      <div class="form-row"><label>Nombres</label>
+        <input type="text" id="reg-nombres" placeholder="Ej: Juan Pablo">
       </div>
-
-      <!-- STEP 1: datos personales -->
-      <div class="reg-step active" id="reg-step-1">
-        <div class="form-row"><label>Nombres</label>
-          <input type="text" id="reg-nombres" placeholder="Ej: Juan Pablo">
-        </div>
-        <div class="form-row"><label>Apellidos</label>
-          <input type="text" id="reg-apellidos" placeholder="Ej: Gómez Ruiz">
-        </div>
-        <div class="form-row"><label>Fecha de nacimiento</label>
-          <input type="date" id="reg-bday" style="width:100%;"
-            max="2010-12-31" min="1940-01-01">
-        </div>
-        <div class="form-row"><label>Contraseña</label>
-          <input type="password" id="reg-pass" placeholder="Mínimo 4 caracteres">
-        </div>
-        <div class="form-row"><label>Confirmar contraseña</label>
-          <input type="password" id="reg-pass2" placeholder="Repite la contraseña">
-        </div>
-        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:6px;" onclick="regStep1()">Siguiente →</button>
+      <div class="form-row"><label>Apellidos</label>
+        <input type="text" id="reg-apellidos" placeholder="Ej: Gómez Ruiz">
       </div>
+      <div class="form-row"><label>Fecha de nacimiento</label>
+        <input type="date" id="reg-bday">
+      </div>
+      <div class="form-row"><label>Contraseña</label>
+        <input type="password" id="reg-pass" placeholder="Mínimo 4 caracteres">
+      </div>
+      <div class="form-row"><label>Confirmar contraseña</label>
+        <input type="password" id="reg-pass2" placeholder="Repite la contraseña">
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:6px;" onclick="regStep1()">Siguiente →</button>
+    </div>
 
     <!-- STEP 2: cargo -->
     <div class="reg-step" id="reg-step-2">
@@ -633,8 +609,10 @@ textarea{resize:vertical;min-height:64px;}
       </div>
     </div>
 
-    </div><!-- /register-form-wrap -->
-
+    <!-- LOGIN (returning user) -->
+    <!-- Login section: populated dynamically by buildLoginSection() -->
+    <div id="reg-login-section" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);text-align:center;">
+    </div>
   </div>
 </div>
 
@@ -1059,7 +1037,7 @@ function setupFirebase() {
         // Clear all local data
         localStorage.removeItem('mdios_user');
         localStorage.removeItem('mdios_uid');
-        localStorage.removeItem('mdios_active_session');
+        sessionStorage.removeItem('mdios_session');
         currentUser = null; isAdmin = false; songs = {};
         // Show register screen
         document.getElementById('role-btn').textContent = '👤 Invitado';
@@ -1168,8 +1146,6 @@ function setupFirebase() {
   setRTIndicator('live');
   document.getElementById('fb-banner')?.classList.remove('show');
   setupFCM();
-  // Auto-login después de que Firebase está listo — valida contra Firebase
-  setTimeout(checkAutoLogin, 300);
   setTimeout(syncDemoAdminToFirebase, 2000);
 }
 
@@ -2971,6 +2947,128 @@ function checkBirthdayAlerts() {
 }
 
 // Ask permission and start checking
+function startReminderEngine() {
+  if('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().then(p => {
+      if(p === 'granted') toast('🔔 Notificaciones activadas — recibirás recordatorios de eventos', 'success');
+    });
+  }
+  autoDeletePastEvents();
+  checkReminders();
+  checkBirthdayAlerts(); // ← revisar cumpleaños al abrir
+  setInterval(checkReminders, 60000);
+  setInterval(autoDeletePastEvents, 3600000);
+}
+
+async function autoDeletePastEvents() {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const cutoff = yesterday.toISOString().split('T')[0]; // ayer
+  const toDelete = Object.values(events).filter(ev => ev.date < cutoff);
+  for(const ev of toDelete) {
+    await fbRemove(`events/${ev.id}`);
+    await logActivity('event','🗑️',`Evento pasado eliminado automáticamente: "${ev.title}"`);
+  }
+  if(toDelete.length > 0) {
+    renderEL();
+    if(toDelete.some(ev=>ev.id===selEv)) {
+      selEv=null;
+      document.getElementById('detail-ph').style.display='flex';
+      document.getElementById('detail-body').style.display='none';
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// REGISTER / LOGIN
+// ══════════════════════════════════════════════════════════════════════════════
+function toggleRegisterForm() {
+  const wrap = document.getElementById('register-form-wrap');
+  const btn  = document.getElementById('show-reg-btn');
+  if(!wrap) return;
+  const open = wrap.style.display !== 'none';
+  wrap.style.display = open ? 'none' : 'block';
+  if(btn) btn.textContent = open ? '¿Eres nuevo? Crear perfil' : '✕ Cancelar registro';
+  if(!open) {
+    // Reset to step 1 when opening
+    document.querySelectorAll('.reg-step').forEach(s=>s.classList.remove('active'));
+    document.getElementById('reg-step-1')?.classList.add('active');
+    ['sd1','sd2','sd3'].forEach((id,i)=>{
+      const el=document.getElementById(id); if(el) el.classList.toggle('done',i===0);
+    });
+    setTimeout(()=>document.getElementById('reg-nombres')?.focus(), 150);
+  }
+}
+
+function regGoStep(n) {
+  // Make sure the form wrapper is visible when navigating steps
+  const wrap = document.getElementById('register-form-wrap');
+  if(wrap) wrap.style.display = 'block';
+  document.querySelectorAll('.reg-step').forEach(s=>s.classList.remove('active'));
+  document.getElementById('reg-step-'+n).classList.add('active');
+  ['sd1','sd2','sd3'].forEach((id,i)=>{
+    document.getElementById(id).classList.toggle('done', i < n);
+  });
+}
+
+function selCargo(cargo) {
+  regData.cargo = cargo;
+  document.querySelectorAll('.cargo-card').forEach(c=>c.classList.remove('sel'));
+  const map = {Músico:'musico',Voz:'voz',Líder:'lider'};
+  document.getElementById('cargo-'+map[cargo])?.classList.add('sel');
+  document.getElementById('instr-section').style.display = cargo==='Músico'?'block':'none';
+  if(cargo!=='Músico') regData.instrumento = '';
+}
+
+function selInstr(instr) {
+  regData.instrumento = instr;
+  document.querySelectorAll('.instr-card').forEach(c=>c.classList.remove('sel'));
+  const map = {Tecladista:'teclado',Guitarrista:'guitarra',Bajista:'bajo',
+               Baterista:'bateria',Vientos:'vientos',Percusionista:'percusion'};
+  document.getElementById('instr-'+map[instr])?.classList.add('sel');
+}
+
+function regStep1() {
+  const nombres   = document.getElementById('reg-nombres').value.trim();
+  const apellidos = document.getElementById('reg-apellidos').value.trim();
+  const bday      = document.getElementById('reg-bday').value; // "YYYY-MM-DD" from native date picker
+  const pass      = document.getElementById('reg-pass').value;
+  const pass2     = document.getElementById('reg-pass2').value;
+  if(!nombres||!apellidos){ toast('Ingresa nombres y apellidos','error'); return; }
+  if(!bday){ toast('Selecciona tu fecha de nacimiento','error'); return; }
+  if(pass.length < 4){ toast('La contraseña debe tener al menos 4 caracteres','error'); return; }
+  if(pass !== pass2){ toast('Las contraseñas no coinciden','error'); return; }
+  regData = {...regData, nombres, apellidos, bday, pass};
+  regGoStep(2);
+}
+
+function regStep2() {
+  if(!regData.cargo){ toast('Elige tu cargo','error'); return; }
+  if(regData.cargo==='Músico' && !regData.instrumento){ toast('Elige tu instrumento','error'); return; }
+  const role = regData.cargo==='Músico' ? regData.instrumento
+             : regData.cargo==='Voz'    ? 'Cantante' : 'Líder';
+  document.getElementById('reg-confirm-name').textContent =
+    `${regData.nombres} ${regData.apellidos}`;
+  const cargoIco = {Músico:'🎸',Voz:'🎤',Líder:'👑'}[regData.cargo] || '';
+  document.getElementById('reg-confirm-role').textContent =
+    `${cargoIco} ${regData.cargo}${regData.instrumento?' · '+regData.instrumento:''}`;
+  regGoStep(3);
+}
+
+// Build display name: "Juan.G"
+function buildDisplayName(nombres, apellidos) {
+  const firstName  = nombres.trim().split(' ')[0];
+  const firstApell = apellidos.trim()[0].toUpperCase();
+  return `${firstName}.${firstApell}`;
+}
+// Build login label: "JuanGalarza" (primernombre + primerapellido)
+function buildLoginLabel(nombres, apellidos) {
+  const firstName  = nombres.trim().split(' ')[0];
+  const firstApell = apellidos.trim().split(' ')[0];
+  return `${firstName}${firstApell}`;
+}
+
+
 function startReminderEngine() {
   if('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission().then(p => {
