@@ -1313,7 +1313,6 @@ async function setupFCM() {
 // Funciona con app cerrada, bloqueada o en background
 // ══════════════════════════════════════════════════════════════════════════════
 
-// Genera JWT para OAuth2 usando las credenciales del Service Account
 async function _getOAuthToken(clientEmail, privateKeyPem) {
   const now   = Math.floor(Date.now() / 1000);
   const claim = {
@@ -1323,23 +1322,18 @@ async function _getOAuthToken(clientEmail, privateKeyPem) {
     iat:   now,
     exp:   now + 3600
   };
-
-  // Encode JWT header + payload
   const b64 = obj => btoa(JSON.stringify(obj))
     .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
   const header  = b64({ alg:'RS256', typ:'JWT' });
   const payload = b64(claim);
   const unsigned = `${header}.${payload}`;
 
-  // Convertir PEM a CryptoKey
   const pemBody = privateKeyPem
-    .replace(/-----BEGIN PRIVATE KEY-----/, '')
-    .replace(/-----END PRIVATE KEY-----/, '')
-    .replace(/-----BEGIN RSA PRIVATE KEY-----/, '')
-    .replace(/-----END RSA PRIVATE KEY-----/, '')
-    .replace(/\\n/g, '')
-    .replace(/\n/g, '')
-    .trim();
+    .replace(/-----BEGIN PRIVATE KEY-----/,'')
+    .replace(/-----END PRIVATE KEY-----/,'')
+    .replace(/-----BEGIN RSA PRIVATE KEY-----/,'')
+    .replace(/-----END RSA PRIVATE KEY-----/,'')
+    .replace(/\\n/g,'').replace(/\n/g,'').trim();
 
   const binaryDer = Uint8Array.from(atob(pemBody), c => c.charCodeAt(0));
   const cryptoKey = await crypto.subtle.importKey(
@@ -1347,18 +1341,14 @@ async function _getOAuthToken(clientEmail, privateKeyPem) {
     { name:'RSASSA-PKCS1-v1_5', hash:'SHA-256' },
     false, ['sign']
   );
-
-  // Firmar
   const signature = await crypto.subtle.sign(
     'RSASSA-PKCS1-v1_5', cryptoKey,
     new TextEncoder().encode(unsigned)
   );
   const sig64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
     .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-
   const jwt = `${unsigned}.${sig64}`;
 
-  // Intercambiar JWT por access token
   const resp = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1380,77 +1370,48 @@ async function broadcastPushToAll(title, body) {
     });
   } catch(e) { console.warn('broadcastPush/notif:', e); }
 
-  // 2. Leer credenciales del Service Account desde Firebase config
+  // 2. Enviar push real via FCM v1 API con OAuth2
   try {
     const config = await new Promise(res =>
       ov(ref(db,'config'), snap => res(snap.val ? snap.val() : null), {onlyOnce:true})
     );
     if(!config?.sa_private_key || !config?.sa_client_email || !config?.sa_project_id) {
-      console.warn('FCM: faltan credenciales en config/');
-      return;
+      console.warn('FCM: faltan credenciales en config/'); return;
     }
 
-    // 3. Leer todos los FCM tokens registrados
     const tokenData = await new Promise(res =>
       ov(ref(db,'fcmTokens'), snap => res(snap.val ? snap.val() : null), {onlyOnce:true})
     );
-    if(!tokenData) { console.warn('FCM: no hay tokens registrados'); return; }
+    if(!tokenData) { console.warn('FCM: no hay tokens'); return; }
 
     const tokens = Object.values(tokenData).map(t=>t.token).filter(Boolean);
     if(!tokens.length) return;
 
-    // 4. Obtener OAuth2 access token
     const accessToken = await _getOAuthToken(config.sa_client_email, config.sa_private_key);
     if(!accessToken) { console.warn('FCM: no se pudo obtener access token'); return; }
 
-    const projectId = config.sa_project_id;
-    const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
+    const fcmUrl = `https://fcm.googleapis.com/v1/projects/${config.sa_project_id}/messages:send`;
 
-    // 5. Enviar a cada token (FCM v1 envía uno por uno)
-    let sent = 0, failed = 0;
-    const sends = tokens.map(async token => {
+    await Promise.all(tokens.map(async token => {
       try {
-        const res = await fetch(fcmUrl, {
+        await fetch(fcmUrl, {
           method: 'POST',
-          headers: {
-            'Content-Type':  'application/json',
-            'Authorization': 'Bearer ' + accessToken
-          },
+          headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+accessToken },
           body: JSON.stringify({
             message: {
               token,
               notification: { title, body },
               data: { title, body, url: location.origin + location.pathname },
-              android: {
-                priority: 'high',
-                notification: {
-                  sound:  'default',
-                  channel_id: 'montededios_default'
-                }
-              },
-              apns: {
-                headers: { 'apns-priority': '10' },
-                payload: { aps: { sound: 'default', badge: 1, 'content-available': 1 } }
-              },
-              webpush: {
-                headers: { Urgency: 'high' },
-                notification: {
-                  icon:    '/icon-192.png',
-                  badge:   '/icon-192.png',
-                  vibrate: [300,100,300]
-                }
-              }
+              android: { priority:'high', notification:{ sound:'default', channel_id:'montededios_default' } },
+              apns: { headers:{'apns-priority':'10'}, payload:{ aps:{ sound:'default', badge:1, 'content-available':1 } } },
+              webpush: { headers:{ Urgency:'high' }, notification:{ icon:'/icon-192.png', badge:'/icon-192.png' } }
             }
           })
         });
-        const r = await res.json();
-        if(r.name) sent++; else { failed++; console.warn('FCM token error:', r); }
-      } catch(e) { failed++; }
-    });
+      } catch(e) { console.warn('FCM token error:', e); }
+    }));
 
-    await Promise.all(sends);
-    console.log(`FCM v1: ${sent} enviados, ${failed} fallidos`);
-
+    console.log(`FCM v1: push enviado a ${tokens.length} dispositivo(s)`);
   } catch(e) { console.warn('broadcastPushToAll error:', e); }
 }
 
@@ -1759,6 +1720,9 @@ function renderNextEventHero(ev) {
     if(window._heroSongsUnsub) { try { window._heroSongsUnsub(); } catch(e){} }
     window._heroSongsUnsub = ov(ref(db, `selections/${vozId}`), snap => {
       const sel = snap.val ? snap.val() : null;
+      // Actualizar cache global de selecciones
+      if(!window._allSelections) window._allSelections = {};
+      window._allSelections[vozId] = sel || {};
       const el = document.getElementById(`hero-songs-${ev.id}`);
       if(el) el.innerHTML = renderHeroSongs(sel || {});
     });
@@ -1814,11 +1778,37 @@ function openEvDetailModal(id) {
   const body = document.getElementById('ev-detail-modal-body');
   if(body) { body.innerHTML = ''; renderDetail(ev); }
   document.getElementById('modal-ev-detail').classList.remove('hidden');
+
+  // Suscripción en tiempo real a las selecciones de la Voz Principal para el detalle modal
+  const asgn = ev.assignees ? Object.values(ev.assignees) : [];
+  const vozP = asgn.find(a=>a.rolEvento==='Voz Principal')||asgn.find(a=>a.cargo==='Voz'||a.role==='Cantante');
+  const vozId = vozP ? (vozP.musId||vozP.id) : null;
+  if(vozId && fbReady) {
+    const { db, ref, onValue:ov } = window._fb;
+    if(window._detailSongsUnsub) { try { window._detailSongsUnsub(); } catch(e){} }
+    window._detailSongsUnsub = ov(ref(db, `selections/${vozId}`), snap => {
+      const sel = snap.val ? (snap.val()||{}) : {};
+      if(!window._allSelections) window._allSelections = {};
+      window._allSelections[vozId] = sel;
+      const el = document.getElementById(`ev-detail-songs-${id}`);
+      if(!el) return;
+      const evSongs2 = Object.values(songs).filter(s => sel[s.id]);
+      el.innerHTML = evSongs2.length
+        ? evSongs2.map(s=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+            padding:7px 10px;margin-bottom:5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-weight:600;font-size:12px;">🎵 ${s.title}</span>
+            ${s.tono?`<span class="song-tono">${s.tono}</span>`:''}
+            ${s.bpm?`<span style="background:rgba(92,168,224,.12);color:var(--info);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;">${s.bpm} BPM</span>`:''}
+          </div>`).join('')
+        : `<div style="font-size:12px;color:var(--muted);">${vozP.name.split(' ')[0]} no tiene temas elegidos aún</div>`;
+    });
+  }
 }
 
 function closeEvDetailModal() {
   document.getElementById('modal-ev-detail').classList.add('hidden');
   selEv = null;
+  if(window._detailSongsUnsub) { try { window._detailSongsUnsub(); } catch(e){} window._detailSongsUnsub = null; }
 }
 
 function renderEvSongsBar(ev) {
@@ -1906,15 +1896,31 @@ function renderDetail(ev) {
     </div>`;
   }).join('');
 
+  const assignees2 = ev.assignees ? Object.values(ev.assignees) : [];
+  const vozPdet = assignees2.find(a=>a.rolEvento==='Voz Principal')||assignees2.find(a=>a.cargo==='Voz'||a.role==='Cantante');
+  const vozIdDet = vozPdet ? (vozPdet.musId||vozPdet.id) : null;
+  const vozSelsDet = vozIdDet && window._allSelections && window._allSelections[vozIdDet] ? window._allSelections[vozIdDet] : null;
+  const evSongs = vozIdDet
+    ? Object.values(songs).filter(s => vozSelsDet ? vozSelsDet[s.id] : ((s.ownerId===vozIdDet||s.ownerName===vozPdet?.name)&&s.selected===true))
+    : [];
+  const evSongsHtml = evSongs.length
+    ? evSongs.map(s=>`
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+          padding:7px 10px;margin-bottom:5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-weight:600;font-size:12px;">🎵 ${s.title}</span>
+          ${s.tono?`<span class="song-tono">${s.tono}</span>`:''}
+          ${s.bpm?`<span style="background:rgba(92,168,224,.12);color:var(--info);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;">${s.bpm} BPM</span>`:''}
+        </div>`).join('')
+    : `<div style="font-size:12px;color:var(--muted);">${vozPdet?vozPdet.name.split(' ')[0]+' no tiene temas elegidos aún':'Sin voz principal asignada'}</div>`;
+
   const detailTarget = document.getElementById('ev-detail-modal-body') || document.getElementById('detail-body');
   detailTarget.innerHTML = `
     <div class="d-top">
       <h2>${ev.title}</h2>
       <div class="d-acts">
         ${isAdmin?`<button class="btn btn-ghost btn-sm" onclick="openEditEvModal('${ev.id}')">✏️ Editar</button>
-        <button class="btn btn-ghost btn-sm" onclick="exportEvPDF('${ev.id}')">📄 PDF</button>
         <button class="btn btn-danger btn-sm" onclick="askDelEv('${ev.id}')">🗑</button>`
-        :`<button class="btn btn-ghost btn-sm" onclick="exportEvPDF('${ev.id}')">📄 PDF</button>`}
+        :''}
       </div>
     </div>
     <div class="meta-grid">
@@ -1954,6 +1960,10 @@ function renderDetail(ev) {
       <div style="font-size:13px;color:${ev.notes?'var(--text)':'var(--muted)'};">
         ${ev.notes||'Sin notas — usa Editar para agregar'}
       </div>
+    </div>
+    <div class="sec">🎵 Temas — ${vozPdet?vozPdet.name.split(' ')[0]:'Voz Principal'}</div>
+    <div id="ev-detail-songs-${ev.id}" style="padding:0 0 8px;">
+      ${evSongsHtml}
     </div>
   `;
 }
@@ -2117,7 +2127,11 @@ function showMemberCard(musId) {
     : '<span style="font-size:12px;color:var(--success);">✅ Disponible siempre</span>';
 
   // Their selected songs
-  const memberSongs = Object.values(songs).filter(s=>s.ownerId===musId && s.selected);
+  // Usar selecciones de Firebase (_allSelections) si disponibles, con fallback a legacy s.selected
+  const memberSels = window._allSelections && window._allSelections[musId] ? window._allSelections[musId] : null;
+  const memberSongs = memberSels
+    ? Object.values(songs).filter(s => memberSels[s.id])
+    : Object.values(songs).filter(s => s.ownerId===musId && s.selected);
   const songList = memberSongs.length
     ? memberSongs.map(s=>`
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;
@@ -2141,7 +2155,7 @@ function showMemberCard(musId) {
 
   const box = document.getElementById('member-card-content');
   box.innerHTML = `
-    <button class="mcm-close" onclick="document.getElementById('modal-member').classList.add('hidden')">✕</button>
+    <button class="mcm-close" onclick="document.getElementById('modal-member').classList.add('hidden'); if(window._memberCardUnsub){try{window._memberCardUnsub();}catch(e){} window._memberCardUnsub=null;}">✕</button>
     <div class="mcm-header">
       <div class="mcm-avatar" style="background:${color}22;color:${color};">${m.name[0]}</div>
       <div>
@@ -2166,26 +2180,57 @@ function showMemberCard(musId) {
       </div>
       <div class="mcm-unavail" style="margin-top:4px;">
         <div class="mcm-unavail-label">🎵 Temas en lista</div>
-        <div style="margin-top:6px;">${songList}</div>
+        <div id="member-songs-${musId}" style="margin-top:6px;">${songList}</div>
       </div>
     </div>`;
 
   document.getElementById('modal-member').classList.remove('hidden');
   document.getElementById('modal-member').onclick = function(e) {
-    if(e.target===this) this.classList.add('hidden');
+    if(e.target===this) {
+      this.classList.add('hidden');
+      if(window._memberCardUnsub) { try { window._memberCardUnsub(); } catch(ee){} window._memberCardUnsub = null; }
+    }
   };
+
+  // Suscripción en tiempo real a selecciones de este miembro
+  if(fbReady) {
+    const { db, ref, onValue:ov } = window._fb;
+    if(window._memberCardUnsub) { try { window._memberCardUnsub(); } catch(ee){} }
+    window._memberCardUnsub = ov(ref(db, `selections/${musId}`), snap => {
+      const sel = snap.val ? (snap.val()||{}) : {};
+      if(!window._allSelections) window._allSelections = {};
+      window._allSelections[musId] = sel;
+      // Actualizar lista de temas en el card si sigue abierto
+      const container = document.getElementById(`member-songs-${musId}`);
+      if(!container) return;
+      const updatedSongs = Object.values(songs).filter(s => sel[s.id]);
+      if(!updatedSongs.length) {
+        container.innerHTML = '<div style="font-size:11px;color:var(--muted);">Sin temas en lista</div>';
+        return;
+      }
+      container.innerHTML = updatedSongs.map(s=>`
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+          padding:7px 10px;margin-bottom:5px;">
+          <div style="font-weight:600;font-size:12px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+            <span>${s.title}</span>
+            ${s.tono?`<span class="song-tono">${s.tono}</span>`:''}
+            ${s.bpm?`<span style="background:rgba(92,168,224,.12);color:var(--info);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;">${s.bpm} BPM</span>`:''}
+          </div>
+        </div>`).join('');
+    });
+  }
 }
 
 let minFilterCat = 'todos';
 
 // Categorías de instrumentos/roles
 const MIN_CATS = {
-  voces:     r => ['Voz','Cantante','Coros','Voz Principal','Líder'].some(v=>r.includes(v)) || ['Voz','Líder'].includes(r),
-  guitarra:  r => r.includes('Guitarra') || r.includes('guitarr'),
-  bajo:      r => r.includes('Bajo') || r.includes('Bajista'),
-  teclado:   r => r.includes('Teclado') || r.includes('Tecladista') || r.includes('Piano'),
-  bateria:   r => r.includes('Bater') || r.includes('Drums'),
-  percusion: r => r.includes('Percus') || r.includes('Cajón') || r.includes('Cajon'),
+  voces:     r => /voz|cantante|coros?|corista|vocalista|líder|lider/i.test(r),
+  guitarra:  r => /guitarra?|guitarrista/i.test(r),
+  bajo:      r => /bajo|bajista/i.test(r),
+  teclado:   r => /teclado|tecladista|piano|pianista|keyboardist/i.test(r),
+  bateria:   r => /bater[íi]a?|baterista|drums?|drummer/i.test(r),
+  percusion: r => /percus|cajón|cajon|percusionista/i.test(r),
 };
 
 function setMinFilter(cat, btn) {
@@ -2532,15 +2577,23 @@ function exportBirthdayPDF() {
     const isEven = i%2===0;
     doc.setFillColor(...(isEven?[24,24,28]:[20,20,24]));
     doc.roundedRect(12, y-5, W-24, 10, 2, 2, 'F');
-    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...WHT);
-    doc.text(m.name, 17, y);
-    doc.setFont('helvetica','normal'); doc.setTextColor(...MUT);
-    doc.text(label, W-17, y, {align:'right'});
+    const badgeW = 18;
+    const badgeX = W - 17 - badgeW - 2;
+    // Badge primero (si aplica), para saber cuánto espacio restar al nombre
     if(m.daysLeft<=7){
-      doc.setFillColor(...ACC); doc.roundedRect(W-48,y-4,16,5,1,1,'F');
+      doc.setFillColor(...ACC); doc.roundedRect(badgeX, y-4, badgeW, 5, 1, 1, 'F');
       doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(...DARK);
-      doc.text(m.daysLeft===0?'HOY':`${m.daysLeft}d`, W-40, y-0.5, {align:'center'});
+      doc.text(m.daysLeft===0?'HOY':`${m.daysLeft}d`, badgeX + badgeW/2, y-0.5, {align:'center'});
     }
+    // Nombre — limitado para no solaparse con la fecha ni el badge
+    const maxNameW = m.daysLeft<=7 ? (badgeX - 19) : (W - 80);
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...WHT);
+    const nameTrunc = doc.splitTextToSize(m.name, maxNameW)[0];
+    doc.text(nameTrunc, 17, y);
+    // Fecha — a la derecha del badge (o donde termina el nombre)
+    doc.setFont('helvetica','normal'); doc.setTextColor(...MUT);
+    const labelX = m.daysLeft<=7 ? (badgeX - 3) : (W - 17);
+    doc.text(label, labelX, y, {align:'right'});
     y += 12;
   });
 
@@ -2837,9 +2890,12 @@ function _doExportCalendarPDF() {
       const asgn  = ev.assignees ? Object.values(ev.assignees) : [];
       const vozP  = asgn.find(a=>a.rolEvento==='Voz Principal')||asgn.find(a=>a.cargo==='Voz'||a.role==='Cantante');
       const vozId = vozP ? (vozP.musId||vozP.id) : null;
-      // Get selected songs for voz principal
+      // Get selected songs for voz principal — use Firebase selections (real-time) first, fallback to legacy s.selected
+      const vozSels = vozId && window._allSelections && window._allSelections[vozId]
+        ? window._allSelections[vozId]
+        : null;
       const heroSongs = vozId
-        ? Object.values(songs).filter(s=>(s.ownerId===vozId||s.ownerName===vozP?.name)&&s.selected===true)
+        ? Object.values(songs).filter(s => vozSels ? vozSels[s.id] : ((s.ownerId===vozId||s.ownerName===vozP?.name)&&s.selected===true))
         : [];
 
       // ── Card outer — rounded, dark surface with gold left stripe ──────────
@@ -3504,6 +3560,7 @@ function doLogin() {
     toast(`¡Hola, ${u.nombres}! 👋`, 'success');
     enrichUserFromFirebase(u.id);
     _loadMySelections(u.id);
+    _loadAllSelections();
     // Reset birthday alert so it shows on every new login
     window._bdaySessionDismissed = false;
     setTimeout(setupFCM, 1000);
@@ -3574,6 +3631,17 @@ function _loadMySelections(userId) {
     renderSongsList();
     renderProfileSongs();
     // Refrescar el evento hero si hay uno activo
+    if(selEv && events[selEv]) renderNextEventHero(events[selEv]);
+  });
+}
+
+// Cargar TODAS las selecciones — para PDF de eventos y cardview ministerio
+function _loadAllSelections() {
+  if(!fbReady) return;
+  const { db, ref, onValue:ov } = window._fb;
+  if(window._allSelectionsUnsub) { try { window._allSelectionsUnsub(); } catch(e){} }
+  window._allSelectionsUnsub = ov(ref(db, 'selections'), snap => {
+    window._allSelections = snap.val ? (snap.val() || {}) : {};
     if(selEv && events[selEv]) renderNextEventHero(events[selEv]);
   });
 }
