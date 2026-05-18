@@ -2575,44 +2575,77 @@ async function exportVoicesCalendar() {
 
         if(!hasEv) continue;
 
-        // Datos del evento — voces, coros, baterista
+        // Helper: "Juan.G" desde "Juan Augusto Galarza Basilio"
+        const shortName = fullName => {
+          if(!fullName) return '';
+          const parts = fullName.trim().split(/\s+/);
+          const nombre = parts[0];
+          // Buscar primer apellido (tercera palabra si hay 4, segunda si hay 2-3)
+          const apellido = parts.length >= 4 ? parts[2] : parts.length >= 2 ? parts[1] : '';
+          return apellido ? `${nombre}.${apellido[0].toUpperCase()}` : nombre;
+        };
+
+        // Datos del evento — voces, coros, bajo, baterista
         let ty = y + 9;
         for(const ev of evByDay[dayNum]) {
           const asgn = ev.assignees ? Object.values(ev.assignees) : [];
 
-          // Voz principal (subrayada)
-          const vozP = asgn.find(a=>a.rolEvento==='Voz Principal') || asgn.find(a=>['Voz','Cantante'].includes(a.cargo||a.role||''));
-          if(vozP) {
-            const vname = vozP.name.split(' ')[0];
+          // Voz principal — negrita + subrayado
+          const vozP = asgn.find(a => {
+            const r = (a.rolEvento||'').toLowerCase();
+            return r.includes('voz principal') || r === 'voz principal';
+          }) || asgn.find(a => {
+            const r = (a.rolEvento||a.role||a.cargo||'').toLowerCase();
+            return r.includes('voz') || r.includes('cantante');
+          });
+
+          if(vozP && ty <= y+rowH-3) {
+            const vname = shortName(vozP.name);
             doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(10,10,10);
             doc.text(vname, x+3, ty);
             // Subrayado
             const tw = doc.getTextWidth(vname);
-            doc.setDrawColor(10,10,10); doc.setLineWidth(0.3);
-            doc.line(x+3, ty+0.5, x+3+tw, ty+0.5);
+            doc.setDrawColor(10,10,10); doc.setLineWidth(0.35);
+            doc.line(x+3, ty+0.6, x+3+tw, ty+0.6);
             ty += 4.5;
           }
 
-          // Coros/voces adicionales
+          // Coros/voces de apoyo (todo lo que tenga "coro" o "voz" pero no sea voz principal)
           const coros = asgn.filter(a => {
             const r = (a.rolEvento||a.role||a.cargo||'').toLowerCase();
-            return (r.includes('coro')||r.includes('voz')) && a.musId !== vozP?.musId;
+            const isVozPrincipal = r.includes('principal');
+            const isVozOrCoro = r.includes('coro') || r.includes('voz') || r.includes('cantante');
+            return isVozOrCoro && !isVozPrincipal && (a.musId||a.id) !== (vozP?.musId||vozP?.id);
           });
           coros.forEach(c => {
-            if(ty > y+rowH-4) return;
+            if(ty > y+rowH-6) return;
             doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(20,20,20);
-            doc.text(c.name.split(' ')[0], x+3, ty);
+            doc.text(shortName(c.name), x+3, ty);
             ty += 3.8;
           });
 
-          // Baterista
-          const bat = asgn.find(a=>{
+          // Separador antes de BAT/BAJ
+          if((vozP || coros.length) && ty <= y+rowH-6) { ty += 1; }
+
+          // Bajo
+          const baj = asgn.find(a => {
             const r = (a.rolEvento||a.role||a.cargo||'').toLowerCase();
-            return r.includes('bater')||r.includes('drum');
+            return r.includes('bajo') || r.includes('bajista');
           });
-          if(bat && ty <= y+rowH-4) {
-            doc.setFont('helvetica','bold'); doc.setFontSize(5.5); doc.setTextColor(180,50,50);
-            doc.text(`BATERÍA: ${bat.name.split(' ')[0].toUpperCase()}`, x+3, ty);
+          if(baj && ty <= y+rowH-4) {
+            doc.setFont('helvetica','bold'); doc.setFontSize(5.8); doc.setTextColor(30,100,180);
+            doc.text(`BAJ: ${shortName(baj.name)}`, x+3, ty);
+            ty += 3.5;
+          }
+
+          // Baterista
+          const bat = asgn.find(a => {
+            const r = (a.rolEvento||a.role||a.cargo||'').toLowerCase();
+            return r.includes('bater') || r.includes('drum');
+          });
+          if(bat && ty <= y+rowH-3) {
+            doc.setFont('helvetica','bold'); doc.setFontSize(5.8); doc.setTextColor(180,50,50);
+            doc.text(`BAT: ${shortName(bat.name)}`, x+3, ty);
             ty += 3.5;
           }
         }
