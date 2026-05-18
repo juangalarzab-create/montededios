@@ -3657,7 +3657,10 @@ function renderProfileModal() {
     <div data-song-row="${s.id}" style="background:${isSel?'rgba(240,180,41,.04)':'var(--surface)'};border:1px solid ${isSel?'var(--accent)':'var(--border)'};border-radius:9px;
       padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;font-size:13px;">${s.title} <span class="song-tono">${s.tono||''}</span></div>
+        <div style="font-weight:600;font-size:13px;">${s.title}
+          <span class="song-tono">${s.tono||''}</span>
+          ${s.bpm?`<span style="background:rgba(92,168,224,.12);color:var(--info);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">${s.bpm} BPM</span>`:''}
+        </div>
         <div data-song-label="${s.id}" style="font-size:10px;margin-top:2px;color:${isSel?'var(--success)':'var(--muted)'};">
           ${isSel?'✅ En mi lista':'☆ No en lista'}
         </div>
@@ -3666,8 +3669,10 @@ function renderProfileModal() {
         <button class="btn btn-ghost btn-sm" data-song-id="${s.id}" onclick="toggleSongSelected('${s.id}')"
           style="font-size:18px;padding:4px 10px;background:${isSel?'rgba(240,180,41,.15)':''};border-color:${isSel?'var(--accent)':''};"
           title="${isSel?'Quitar de lista':'Poner en lista'}">${isSel?'⭐':'<span style="opacity:.4;">☆</span>'}</button>
+        <button class="btn btn-ghost btn-sm" onclick="openEditSong('${s.id}')"
+          style="font-size:11px;padding:4px 8px;" title="Editar tema">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteSong('${s.id}')"
-          style="font-size:11px;padding:4px 8px;">🗑</button>
+          style="font-size:11px;padding:4px 8px;" title="Eliminar tema">🗑</button>
       </div>
     </div>`;
   }).join('') : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Sin temas subidos aún</div>';
@@ -3838,7 +3843,9 @@ function renderProfileSongs() {
               ${isSel?'⭐':'<span style="opacity:.4;">☆</span>'}
             </button>
             ${isOwn
-              ? `<button class="btn btn-danger btn-sm" onclick="deleteSong('${s.id}')"
+              ? `<button class="btn btn-ghost btn-sm" onclick="openEditSong('${s.id}')"
+                  style="font-size:11px;padding:4px 8px;" title="Editar tema">✏️</button>
+                 <button class="btn btn-danger btn-sm" onclick="deleteSong('${s.id}')"
                   style="font-size:11px;padding:4px 8px;" title="Eliminar tema">🗑</button>`
               : `<button class="btn btn-danger btn-sm" onclick="removeFromMyList('${s.id}')"
                   style="font-size:11px;padding:4px 8px;opacity:.7;" title="Quitar de mi lista">✕</button>`
@@ -4095,7 +4102,138 @@ async function fileToBase64(file) {
   });
 }
 
-async function deleteSong(songId) {
+// ── Editar tema subido ─────────────────────────────────────────────────────
+function openEditSong(songId) {
+  const s = songs[songId];
+  if(!s) return;
+  if(s.ownerId !== currentUser?.id){ toast('Solo puedes editar tus propios temas','warning'); return; }
+
+  // Quitar modal anterior si existe
+  document.getElementById('edit-song-overlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'edit-song-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:4500;padding:20px;';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;
+      width:min(380px,100%);max-height:88vh;overflow-y:auto;padding:22px;">
+      <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700;
+        margin-bottom:16px;">✏️ Editar tema</div>
+
+      <div class="form-row" style="margin-bottom:11px;">
+        <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;
+          color:var(--muted);display:block;margin-bottom:5px;">Título</label>
+        <input type="text" id="edit-song-title" value="${s.title.replace(/"/g,'&quot;')}"
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+          padding:10px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;">
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:11px;">
+        <div style="flex:1;">
+          <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;
+            color:var(--muted);display:block;margin-bottom:5px;">Tono</label>
+          <input type="text" id="edit-song-tono" value="${(s.tono||'').replace(/"/g,'&quot;')}"
+            placeholder="Ej: Fm, C, D#"
+            style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+            padding:10px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;">
+        </div>
+        <div style="flex:1;">
+          <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;
+            color:var(--muted);display:block;margin-bottom:5px;">BPM</label>
+          <input type="number" id="edit-song-bpm" value="${s.bpm||''}"
+            placeholder="Ej: 120"
+            style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+            padding:10px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;">
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-bottom:11px;">
+        <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;
+          color:var(--muted);display:block;margin-bottom:5px;">Link de Video (YouTube)</label>
+        <input type="text" id="edit-song-yt" value="${(s.ytLink||'').replace(/"/g,'&quot;')}"
+          placeholder="https://youtube.com/..."
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+          padding:10px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;">
+      </div>
+
+      <div class="form-row" style="margin-bottom:11px;">
+        <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;
+          color:var(--muted);display:block;margin-bottom:5px;">Link Letras</label>
+        <input type="text" id="edit-song-letra" value="${(s.letraLink||'').replace(/"/g,'&quot;')}"
+          placeholder="https://..."
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+          padding:10px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;">
+      </div>
+
+      <div class="form-row" style="margin-bottom:20px;">
+        <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;
+          color:var(--muted);display:block;margin-bottom:5px;">Link Chart</label>
+        <input type="text" id="edit-song-chart" value="${(s.chartLink||'').replace(/"/g,'&quot;')}"
+          placeholder="https://..."
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+          padding:10px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;">
+      </div>
+
+      <div style="display:flex;gap:9px;">
+        <button onclick="document.getElementById('edit-song-overlay')?.remove()"
+          style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;
+          padding:12px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;">
+          Cancelar
+        </button>
+        <button id="edit-song-save-btn" onclick="saveEditSong('${songId}')"
+          style="flex:2;background:linear-gradient(135deg,var(--accent),var(--accent2));
+          color:#0d0d0f;border:none;border-radius:12px;padding:12px;
+          font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;">
+          ✓ Guardar cambios
+        </button>
+      </div>
+    </div>`;
+  overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+  document.getElementById('edit-song-title')?.focus();
+}
+
+async function saveEditSong(songId) {
+  const s = songs[songId];
+  if(!s) return;
+
+  const title    = document.getElementById('edit-song-title')?.value.trim();
+  const tono     = document.getElementById('edit-song-tono')?.value.trim();
+  const bpm      = document.getElementById('edit-song-bpm')?.value.trim();
+  const ytLink   = document.getElementById('edit-song-yt')?.value.trim();
+  const letraLink= document.getElementById('edit-song-letra')?.value.trim();
+  const chartLink= document.getElementById('edit-song-chart')?.value.trim();
+
+  if(!title){ toast('El título no puede estar vacío','error'); return; }
+
+  const btn = document.getElementById('edit-song-save-btn');
+  if(btn){ btn.disabled=true; btn.textContent='Guardando…'; }
+
+  // Actualizar en memoria inmediatamente → todas las vistas se refrescan al instante
+  songs[songId] = { ...s, title, tono:tono||'', bpm:bpm||'', ytLink:ytLink||'',
+    letraLink:letraLink||'', chartLink:chartLink||'' };
+
+  // Refrescar vistas inmediatamente
+  renderProfileSongs();
+  renderSongsList();
+  if(selEv && events[selEv]) renderNextEventHero(events[selEv]);
+
+  // Guardar en Firebase
+  try {
+    await fbUpdate(`songs/${songId}`, { title, tono:tono||'', bpm:bpm||'',
+      ytLink:ytLink||'', letraLink:letraLink||'', chartLink:chartLink||'' });
+    await logActivity('musician','✏️',`"${currentUser.fullName}" editó "${title}"`);
+    toast(`"${title}" actualizado ✓`,'success');
+    document.getElementById('edit-song-overlay')?.remove();
+  } catch(e) {
+    // Revertir en caso de error
+    songs[songId] = s;
+    renderProfileSongs();
+    renderSongsList();
+    toast('Error al guardar cambios','error');
+    if(btn){ btn.disabled=false; btn.textContent='✓ Guardar cambios'; }
+  }
+}
   const s = songs[songId];
   if(!s) return;
   if(s.ownerId !== currentUser?.id){ toast('Solo puedes eliminar tus propios temas','warning'); return; }
