@@ -1309,64 +1309,149 @@ async function setupFCM() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// PUSH BROADCAST — envía a todos los dispositivos, incluso con app cerrada
+// PUSH BROADCAST — FCM v1 API con OAuth2 Service Account
+// Funciona con app cerrada, bloqueada o en background
 // ══════════════════════════════════════════════════════════════════════════════
+
+// Genera JWT para OAuth2 usando las credenciales del Service Account
+async function _getOAuthToken(clientEmail, privateKeyPem) {
+  const now   = Math.floor(Date.now() / 1000);
+  const claim = {
+    iss:   clientEmail,
+    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud:   'https://oauth2.googleapis.com/token',
+    iat:   now,
+    exp:   now + 3600
+  };
+
+  // Encode JWT header + payload
+  const b64 = obj => btoa(JSON.stringify(obj))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  const header  = b64({ alg:'RS256', typ:'JWT' });
+  const payload = b64(claim);
+  const unsigned = `${header}.${payload}`;
+
+  // Convertir PEM a CryptoKey
+  const pemBody = privateKeyPem
+    .replace(/-----BEGIN PRIVATE KEY-----/, '')
+    .replace(/-----END PRIVATE KEY-----/, '')
+    .replace(/-----BEGIN RSA PRIVATE KEY-----/, '')
+    .replace(/-----END RSA PRIVATE KEY-----/, '')
+    .replace(/\\n/g, '')
+    .replace(/\n/g, '')
+    .trim();
+
+  const binaryDer = Uint8Array.from(atob(pemBody), c => c.charCodeAt(0));
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8', binaryDer.buffer,
+    { name:'RSASSA-PKCS1-v1_5', hash:'SHA-256' },
+    false, ['sign']
+  );
+
+  // Firmar
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5', cryptoKey,
+    new TextEncoder().encode(unsigned)
+  );
+  const sig64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+
+  const jwt = `${unsigned}.${sig64}`;
+
+  // Intercambiar JWT por access token
+  const resp = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`
+  });
+  const data = await resp.json();
+  return data.access_token;
+}
+
 async function broadcastPushToAll(title, body) {
   if(!fbReady) return;
-  const { db, ref, push: fbPush } = window._fb;
+  const { db, ref, push: fbPush, onValue:ov } = window._fb;
 
-  // 1. Guardar en /notifications → clientes abiertos lo reciben via onValue
+  // 1. Guardar en /notifications → clientes abiertos lo ven en tiempo real
   try {
     await fbPush(ref(db,'notifications'), {
       title, body, ts: Date.now(),
-      from: currentUser?.displayName || 'Admin'
+      from: currentUser?.fullName || 'Admin'
     });
   } catch(e) { console.warn('broadcastPush/notif:', e); }
 
-  // 2. Escribir en /pendingPush → el SW lo detecta y dispara notificación real
-  //    Esto funciona porque el Service Worker escucha Firebase en background
+  // 2. Leer credenciales del Service Account desde Firebase config
   try {
-    await fbPush(ref(db,'pendingPush'), {
-      title, body, ts: Date.now(),
-      url: (location.origin + location.pathname)
-    });
-  } catch(e) {}
+    const config = await new Promise(res =>
+      ov(ref(db,'config'), snap => res(snap.val ? snap.val() : null), {onlyOnce:true})
+    );
+    if(!config?.sa_private_key || !config?.sa_client_email || !config?.sa_project_id) {
+      console.warn('FCM: faltan credenciales en config/');
+      return;
+    }
 
-  // 3. Enviar vía FCM Legacy HTTP API a todos los tokens registrados
-  //    → garantiza push real a dispositivos con app COMPLETAMENTE cerrada
-  try {
-    const {onValue:ov} = window._fb;
-    const tokenData = await new Promise(res => {
-      ov(ref(db,'fcmTokens'), snap => res(snap.val ? snap.val() : null), {onlyOnce:true});
-    });
-    if(!tokenData) return;
+    // 3. Leer todos los FCM tokens registrados
+    const tokenData = await new Promise(res =>
+      ov(ref(db,'fcmTokens'), snap => res(snap.val ? snap.val() : null), {onlyOnce:true})
+    );
+    if(!tokenData) { console.warn('FCM: no hay tokens registrados'); return; }
+
     const tokens = Object.values(tokenData).map(t=>t.token).filter(Boolean);
     if(!tokens.length) return;
 
-    // Obtener server key guardada por el admin en Firebase config
-    const serverKey = await new Promise(res => {
-      ov(ref(db,'config/fcmServerKey'), snap => res(snap.val ? snap.val() : null), {onlyOnce:true});
-    });
-    if(!serverKey) return;
+    // 4. Obtener OAuth2 access token
+    const accessToken = await _getOAuthToken(config.sa_client_email, config.sa_private_key);
+    if(!accessToken) { console.warn('FCM: no se pudo obtener access token'); return; }
 
-    // Enviar en bloques de 500 (límite FCM)
-    for(let i=0; i<tokens.length; i+=500){
-      const chunk = tokens.slice(i, i+500);
-      fetch('https://fcm.googleapis.com/fcm/send', {
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':'key='+serverKey},
-        body: JSON.stringify({
-          registration_ids: chunk,
-          // notification block: FCM lo muestra directamente en el sistema
-          notification: { title, body, icon:'/icon-192.png', sound:'default' },
-          // data block: el SW también lo puede leer
-          data: { title, body, url: location.origin + location.pathname },
-          android: { priority:'high', notification:{ sound:'default', channel_id:'montededios' } },
-          apns: { payload:{ aps:{ sound:'default', badge:1 } } }
-        })
-      }).catch(()=>{});
-    }
-  } catch(e) { console.warn('FCM send:', e); }
+    const projectId = config.sa_project_id;
+    const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
+
+    // 5. Enviar a cada token (FCM v1 envía uno por uno)
+    let sent = 0, failed = 0;
+    const sends = tokens.map(async token => {
+      try {
+        const res = await fetch(fcmUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': 'Bearer ' + accessToken
+          },
+          body: JSON.stringify({
+            message: {
+              token,
+              notification: { title, body },
+              data: { title, body, url: location.origin + location.pathname },
+              android: {
+                priority: 'high',
+                notification: {
+                  sound:  'default',
+                  channel_id: 'montededios_default'
+                }
+              },
+              apns: {
+                headers: { 'apns-priority': '10' },
+                payload: { aps: { sound: 'default', badge: 1, 'content-available': 1 } }
+              },
+              webpush: {
+                headers: { Urgency: 'high' },
+                notification: {
+                  icon:    '/icon-192.png',
+                  badge:   '/icon-192.png',
+                  vibrate: [300,100,300]
+                }
+              }
+            }
+          })
+        });
+        const r = await res.json();
+        if(r.name) sent++; else { failed++; console.warn('FCM token error:', r); }
+      } catch(e) { failed++; }
+    });
+
+    await Promise.all(sends);
+    console.log(`FCM v1: ${sent} enviados, ${failed} fallidos`);
+
+  } catch(e) { console.warn('broadcastPushToAll error:', e); }
 }
 
 function sendPushNotification(msg) {
