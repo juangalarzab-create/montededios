@@ -1285,27 +1285,53 @@ async function logActivity(type, icon, text) {
 async function setupFCM() {
   if(!window._fb?.messaging) return;
   const { messaging, getToken, onMessage, VAPID_KEY } = window._fb;
-  if(!VAPID_KEY) return;
-  // NOTE: removed wrong placeholder check — VAPID_KEY IS the real key
+  if(!VAPID_KEY) { console.warn('FCM: no VAPID_KEY'); return; }
   try {
-    // Request notification permission if not yet granted
+    // Pedir permiso si no está concedido
     if('Notification' in window && Notification.permission === 'default') {
-      await Notification.requestPermission();
+      const perm = await Notification.requestPermission();
+      console.log('FCM: permiso de notificación:', perm);
     }
-    const token = await getToken(messaging, {vapidKey: VAPID_KEY});
+    if(Notification.permission !== 'granted') {
+      console.warn('FCM: permiso denegado'); return;
+    }
+
+    // Esperar a que el firebase-messaging-sw.js esté listo
+    let swReg = window._fcmSWReg;
+    if(!swReg) {
+      swReg = await navigator.serviceWorker.register('firebase-messaging-sw.js');
+      window._fcmSWReg = swReg;
+    }
+    await navigator.serviceWorker.ready;
+
+    // Obtener token FCM usando el SW de Firebase explícitamente
+    const token = await getToken(messaging, {
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: swReg
+    });
+
     if(token) {
-      // Store full token keyed by last 30 chars (unique enough)
       const key = token.slice(-30).replace(/[^a-zA-Z0-9]/g,'_');
-      await fbSet(`fcmTokens/${key}`, {token, uid: currentUser?.id||'anon', ts: Date.now()});
-      console.log('FCM token registered');
+      await fbSet(`fcmTokens/${key}`, {
+        token,
+        uid: currentUser?.id || 'anon',
+        ts:  Date.now()
+      });
+      console.log('FCM: token registrado en Firebase ✓', key);
+    } else {
+      console.warn('FCM: getToken devolvió vacío — verifica VAPID key y SW');
     }
-    // Handle foreground messages
+
+    // Manejar mensajes cuando la app está en primer plano
     onMessage(messaging, payload => {
       const title = payload.notification?.title || 'Monte de Dios';
       const body  = payload.notification?.body  || '';
       pushNotif(title, body);
     });
-  } catch(e) { console.warn('FCM setup error:', e.message); }
+
+  } catch(e) {
+    console.warn('FCM setupFCM error:', e.message || e);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1525,7 +1551,15 @@ function installApp() {
 
 // Service Worker
 if('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(()=>{});
+  // Registrar SW principal
+  navigator.serviceWorker.register('sw.js').catch(e=>console.warn('sw.js error:',e));
+  // Registrar Firebase Messaging SW explícitamente — necesario para FCM push tokens
+  navigator.serviceWorker.register('firebase-messaging-sw.js')
+    .then(reg => {
+      console.log('Firebase Messaging SW registrado:', reg.scope);
+      window._fcmSWReg = reg;
+    })
+    .catch(e => console.warn('firebase-messaging-sw.js error:', e));
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
