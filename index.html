@@ -641,6 +641,15 @@ textarea{resize:vertical;min-height:64px;}
       <div class="rt-dot" id="rt-dot"></div>
       <span class="rt-label" id="rt-label">offline</span>
     </div>
+    <div id="upload-switch-wrap" style="display:none;align-items:center;gap:4px;" title="Switch: bloquea subir temas para usuarios">
+      <span style="font-size:10px;color:var(--muted);">🎵</span>
+      <label style="position:relative;display:inline-block;width:32px;height:18px;cursor:pointer;" onclick="event.stopPropagation()">
+        <input type="checkbox" id="upload-switch-chk" onchange="toggleAllowUpload(this.checked)"
+          style="opacity:0;width:0;height:0;position:absolute;">
+        <span id="upload-sw-track" style="position:absolute;inset:0;border-radius:18px;background:var(--border);transition:.25s;"></span>
+        <span id="upload-sw-knob"  style="position:absolute;width:12px;height:12px;left:3px;bottom:3px;border-radius:50%;background:#fff;transition:.25s;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span>
+      </label>
+    </div>
     <button id="install-btn" onclick="installApp()">📲 Instalar App</button>
     <button class="role-pill viewer" id="role-btn" onclick="openProfileModal()">👤 Invitado</button>
   </div>
@@ -1082,9 +1091,8 @@ function setupFirebase() {
   onValue(ref(db,'config'), snap => {
     if(snap.val()) config = {...config,...snap.val()};
     // FIX 8: sincronizar switch con Firebase en tiempo real
-    const allowed = config.allowSongUpload !== false; // default true
-    const chk = document.getElementById('upload-switch-chk');
-    if(chk) chk.checked = allowed;
+    const blocked = config.allowSongUpload === true;
+    _syncSwitchVisual(blocked);
     _applyUploadPermission();
   });
   // Listen to users for cross-device login
@@ -1624,9 +1632,10 @@ function updateAdminUI() {
   } else {
     if(newEvBtn) newEvBtn.disabled = true;
   }
-  // FIX 8: mostrar switch solo al admin y aplicar permiso de subir temas
+  // FIX 8: mostrar switch solo al admin (display flex/none)
   const switchWrap = document.getElementById('upload-switch-wrap');
-  if(switchWrap) switchWrap.classList.toggle('visible', !!isAdmin);
+  if(switchWrap) switchWrap.style.display = isAdmin ? 'flex' : 'none';
+  _syncSwitchVisual(config.allowSongUpload === true);
   _applyUploadPermission();
   renderMT();
   if(selEv && events[selEv]) renderDetail(events[selEv]);
@@ -5254,58 +5263,61 @@ async function saveEditEvent() {
 // ══════════════════════════════════════════════════════════════════════════════
 // FIX 8 — SWITCH ADMIN: PERMITIR / BLOQUEAR SUBIR TEMAS
 // ══════════════════════════════════════════════════════════════════════════════
+function _syncSwitchVisual(on) {
+  const track = document.getElementById('upload-sw-track');
+  const knob  = document.getElementById('upload-sw-knob');
+  if(track) track.style.background = on ? 'var(--accent)' : 'var(--border)';
+  if(knob)  knob.style.transform   = on ? 'translateX(14px)' : 'translateX(0)';
+  const chk = document.getElementById('upload-switch-chk');
+  if(chk) chk.checked = on;
+}
+
 function _applyUploadPermission() {
-  const allowed = config.allowSongUpload !== false; // default true si no hay config
+  // blocked=true  → switch encendido → no-admins no pueden subir
+  // blocked=false → switch apagado  → todos pueden subir (default)
+  const blocked = config.allowSongUpload === true;
   const btn = document.getElementById('upload-toggle-btn');
   if(!btn) return;
   if(isAdmin) {
-    // Admin siempre puede subir, independientemente del switch
-    btn.style.display = '';
+    // Admin SIEMPRE puede usar el botón, el switch no le afecta
     btn.disabled = false;
+    btn.style.opacity = '';
     btn.title = '';
-  } else if(allowed) {
-    btn.style.display = '';
-    btn.disabled = false;
-    btn.title = '';
-  } else {
-    // Bloqueado por el admin → ocultar botón y cerrar form
-    btn.style.display = 'none';
+  } else if(blocked) {
+    // Bloqueado: deshabilitar botón y cerrar form si está abierto
+    btn.disabled = true;
+    btn.style.opacity = '0.4';
+    btn.title = 'El admin ha desactivado subir temas';
     const form = document.getElementById('song-upload-form');
-    if(form) form.style.display = 'none';
-    const toggleBtn = document.getElementById('upload-toggle-btn');
-    if(toggleBtn) toggleBtn.textContent = '＋ Subir tema';
+    if(form && form.style.display !== 'none') {
+      form.style.display = 'none';
+      btn.textContent = '＋ Subir tema';
+    }
+  } else {
+    // Permitido: botón normal
+    btn.disabled = false;
+    btn.style.opacity = '';
+    btn.title = '';
   }
 }
 
 async function toggleAllowUpload(checked) {
   if(!isAdmin) return;
+  // checked=true  → switch ON  → bloquear subida para no-admins
+  // checked=false → switch OFF → todos pueden subir
   config.allowSongUpload = checked;
+  _syncSwitchVisual(checked);
   _applyUploadPermission();
   try {
     await fbSet('config/allowSongUpload', checked);
-  } catch(e) { console.warn('toggleAllowUpload fbSet error:', e); }
-  toast(checked ? '✅ Subir temas: ACTIVADO para todos' : '🔒 Subir temas: BLOQUEADO para usuarios', checked ? 'success' : 'warning');
+  } catch(e) { console.warn('toggleAllowUpload error:', e); }
+  toast(
+    checked ? '🔒 Subir temas bloqueado para usuarios' : '✅ Subir temas habilitado para todos',
+    checked ? 'warning' : 'success'
+  );
 }
 
-// Guardar referencia original de toggleUploadForm y wrappearla para respetar el permiso
-const _origToggleUploadForm = typeof toggleUploadForm === 'function' ? toggleUploadForm : null;
-function toggleUploadForm() {
-  const allowed = config.allowSongUpload !== false;
-  if(!isAdmin && !allowed) {
-    toast('🔒 El admin ha desactivado subir temas temporalmente', 'warning');
-    return;
-  }
-  if(_origToggleUploadForm) _origToggleUploadForm();
-  else {
-    // fallback inline por si el wrapper se carga antes
-    const form = document.getElementById('song-upload-form');
-    if(!form) return;
-    const isOpen = form.style.display !== 'none';
-    form.style.display = isOpen ? 'none' : 'block';
-    const btn = document.getElementById('upload-toggle-btn');
-    if(btn) btn.textContent = isOpen ? '＋ Subir tema' : '✕ Cancelar';
-  }
-}
+// (wrapper toggleUploadForm eliminado — control via _applyUploadPermission + btn.disabled)
 
 // ══════════════════════════════════════════════════════════════════════════════
 // INIT
