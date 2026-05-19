@@ -1079,7 +1079,14 @@ function setupFirebase() {
     renderActivity();
     // activity badge removed (profile tab now)
   });
-  onValue(ref(db,'config'),   snap => { if(snap.val()) config = {...config,...snap.val()}; });
+  onValue(ref(db,'config'), snap => {
+    if(snap.val()) config = {...config,...snap.val()};
+    // FIX 8: sincronizar switch con Firebase en tiempo real
+    const allowed = config.allowSongUpload !== false; // default true
+    const chk = document.getElementById('upload-switch-chk');
+    if(chk) chk.checked = allowed;
+    _applyUploadPermission();
+  });
   // Listen to users for cross-device login
   onValue(ref(db,'users'), snap => { window._fbUsers = snap.val() || {}; });
 
@@ -1617,6 +1624,10 @@ function updateAdminUI() {
   } else {
     if(newEvBtn) newEvBtn.disabled = true;
   }
+  // FIX 8: mostrar switch solo al admin y aplicar permiso de subir temas
+  const switchWrap = document.getElementById('upload-switch-wrap');
+  if(switchWrap) switchWrap.classList.toggle('visible', !!isAdmin);
+  _applyUploadPermission();
   renderMT();
   if(selEv && events[selEv]) renderDetail(events[selEv]);
 }
@@ -1792,6 +1803,9 @@ async function addEvent() {
   await logActivity('event','🗓️',`Nuevo evento: "${title}" el ${fmtDate(date)}${assigned?' · '+assigned:''}`);
   broadcastPushToAll('🗓️ Nuevo Evento', `"${title}" — ${fmtDate(date)}${ev.time?' a las '+ev.time:''}${ev.venue?' · '+ev.venue:''}`);
   closeEvModal();
+  // FIX Android/iOS/PC: forzar ocultamiento del modal por si classList no reactúa
+  const _newModal = document.getElementById('modal-new-event');
+  if(_newModal) { _newModal.classList.add('hidden'); _newModal.style.display='none'; }
   newEvSelPeople = {};
   selEvent(id);
   toast(`Evento "${title}" creado ✓`,'success');
@@ -3574,7 +3588,11 @@ function showRegSuccess(user, cb) {
       <div style="font-size:12px;color:var(--muted);margin-top:16px;">Entrando a la plataforma…</div>
     </div>`;
   box.style.border = '2px solid var(--success)';
-  setTimeout(cb, 1800);
+  void box.offsetHeight; // forzar repaint (Android fix)
+  let _cbFired = false;
+  const fireCb = () => { if (_cbFired) return; _cbFired = true; try { cb(); } catch(e){} };
+  requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(fireCb, 1600)));
+  setTimeout(fireCb, 3000); // fallback Android
 }
 
 function doLogin() {
@@ -3708,6 +3726,7 @@ function hideRegister() {
   scr.style.opacity='0';
   scr.style.transition='opacity .4s';
   setTimeout(()=>{ scr.style.display='none'; }, 400);
+  setTimeout(()=>{ scr.style.display='none'; }, 900); // Android fallback
 }
 
 function buildLoginSection() {
@@ -4259,7 +4278,11 @@ async function _doUploadSong(title, tono, bpm) {
   renderProfileSongs();
   renderSongsList();
   showSaveSuccess(`✅ "${title}" guardado correctamente`);
-  setTimeout(()=>{ document.getElementById('song-title-inp')?.focus(); }, 100);
+  // FIX Android: cerrar y resetear el formulario explícitamente
+  const _uploadForm = document.getElementById('song-upload-form');
+  if(_uploadForm) _uploadForm.style.display = 'none';
+  const _uploadBtn = document.getElementById('upload-toggle-btn');
+  if(_uploadBtn) _uploadBtn.textContent = '＋ Subir tema';
 }
 
 function showSaveSuccess(msg) {
@@ -4597,9 +4620,10 @@ function _doSetSongSelected(songId, val, evId) {
     `"${currentUser?.fullName}" ${val?'eligió':'quitó'} "${s.title}" de su lista`
   ).catch(()=>{});
 
-  // Si soy Voz Principal en algún evento → reflejar en tiempo real en el hero del evento
-  if(selEv && events[selEv]) renderNextEventHero(events[selEv]);
+  // FIX 7: reflejar selección en tiempo real en perfil + catálogo + hero del evento
   renderProfileSongs();
+  renderSongsList();
+  if(selEv && events[selEv]) renderNextEventHero(events[selEv]);
 }
 
 function openSongLink(url) {
@@ -5217,10 +5241,70 @@ async function saveEditEvent() {
   await fbUpdate(`events/${editEvId}`, updated);
   await logActivity('event','✏️',`Evento "${updated.title}" actualizado`);
   broadcastPushToAll('✏️ Evento Actualizado', `"${updated.title}" fue modificado — ${fmtDate(updated.date)}${updated.time?' a las '+updated.time:''}`);
+  const _savedEvId = editEvId;
   closeEditEvModal();
+  // FIX Android: forzar ocultamiento del modal por si classList no reactúa
+  const _editModal = document.getElementById('modal-edit-event');
+  if(_editModal) { _editModal.classList.add('hidden'); _editModal.style.display='none'; }
   toast('Evento guardado ✓','success');
   renderEL();
-  if(editEvId) openEvDetailModal(editEvId);
+  if(_savedEvId) openEvDetailModal(_savedEvId);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FIX 8 — SWITCH ADMIN: PERMITIR / BLOQUEAR SUBIR TEMAS
+// ══════════════════════════════════════════════════════════════════════════════
+function _applyUploadPermission() {
+  const allowed = config.allowSongUpload !== false; // default true si no hay config
+  const btn = document.getElementById('upload-toggle-btn');
+  if(!btn) return;
+  if(isAdmin) {
+    // Admin siempre puede subir, independientemente del switch
+    btn.style.display = '';
+    btn.disabled = false;
+    btn.title = '';
+  } else if(allowed) {
+    btn.style.display = '';
+    btn.disabled = false;
+    btn.title = '';
+  } else {
+    // Bloqueado por el admin → ocultar botón y cerrar form
+    btn.style.display = 'none';
+    const form = document.getElementById('song-upload-form');
+    if(form) form.style.display = 'none';
+    const toggleBtn = document.getElementById('upload-toggle-btn');
+    if(toggleBtn) toggleBtn.textContent = '＋ Subir tema';
+  }
+}
+
+async function toggleAllowUpload(checked) {
+  if(!isAdmin) return;
+  config.allowSongUpload = checked;
+  _applyUploadPermission();
+  try {
+    await fbSet('config/allowSongUpload', checked);
+  } catch(e) { console.warn('toggleAllowUpload fbSet error:', e); }
+  toast(checked ? '✅ Subir temas: ACTIVADO para todos' : '🔒 Subir temas: BLOQUEADO para usuarios', checked ? 'success' : 'warning');
+}
+
+// Guardar referencia original de toggleUploadForm y wrappearla para respetar el permiso
+const _origToggleUploadForm = typeof toggleUploadForm === 'function' ? toggleUploadForm : null;
+function toggleUploadForm() {
+  const allowed = config.allowSongUpload !== false;
+  if(!isAdmin && !allowed) {
+    toast('🔒 El admin ha desactivado subir temas temporalmente', 'warning');
+    return;
+  }
+  if(_origToggleUploadForm) _origToggleUploadForm();
+  else {
+    // fallback inline por si el wrapper se carga antes
+    const form = document.getElementById('song-upload-form');
+    if(!form) return;
+    const isOpen = form.style.display !== 'none';
+    form.style.display = isOpen ? 'none' : 'block';
+    const btn = document.getElementById('upload-toggle-btn');
+    if(btn) btn.textContent = isOpen ? '＋ Subir tema' : '✕ Cancelar';
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
