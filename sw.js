@@ -50,45 +50,6 @@ self.addEventListener('fetch', event => {
   );
 });
 
-// ── PUSH NOTIFICATIONS ─────────────────────────────────────────────────────
-self.addEventListener('push', event => {
-  let data = {}, notif = {};
-  try {
-    data  = event.data ? event.data.json() : {};
-    notif = data.notification || data;
-  } catch(e){}
-
-  const title = notif.title || data.title || 'Monte de Dios';
-  const body  = notif.body  || data.body  || 'Hay cambios en el ministerio';
-  const icon  = notif.icon  || '/icon-192.png';
-
-  event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      icon,
-      badge:   '/icon-192.png',
-      vibrate: [300, 100, 300, 100, 300],
-      tag:     'montededios-push',
-      silent:  false,              // uses device default sound at device volume
-      requireInteraction: false,
-      data: { url: notif.click_action || data.url || self.registration.scope }
-    })
-  );
-});
-
-// ── NOTIFICATION CLICK ─────────────────────────────────────────────────────
-self.addEventListener('notificationclick', event => {
-  event.notification.close();
-  const url = event.notification.data?.url || '/';
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then(clientList => {
-        // Focus existing window if open
-        for (const client of clientList) {
-          if (client.url === url && 'focus' in client) return client.focus();
-        }
-        // Otherwise open new window
-        if (clients.openWindow) return clients.openWindow(url);
-      })
-  );
-});
+// ── PUSH y NOTIFICATIONCLICK ──────────────────────────────────────────────
+// Manejados exclusivamente por firebase-messaging-sw.js para evitar
+// conflicto de doble-disparo. Este SW solo gestiona cache/offline.
