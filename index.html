@@ -339,6 +339,16 @@ textarea{resize:vertical;min-height:64px;}
 /* ══════════════════════════════════════════════
    REALTIME INDICATOR
 ══════════════════════════════════════════════ */
+/* Modal aviso batería Android */
+#battery-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;}
+#battery-modal.show{display:flex;}
+.battery-box{background:var(--surface);border-radius:16px;padding:24px 20px;max-width:340px;width:100%;text-align:center;border:1px solid var(--border);}
+.battery-box h3{margin:0 0 8px;font-size:17px;color:var(--text);}
+.battery-box p{font-size:13px;color:var(--muted);margin:0 0 16px;line-height:1.5;}
+.battery-steps{text-align:left;background:var(--surface2);border-radius:10px;padding:12px 14px;margin-bottom:16px;}
+.battery-steps li{font-size:12px;color:var(--text);margin-bottom:6px;line-height:1.4;}
+.battery-steps li:last-child{margin-bottom:0;}
+.battery-steps strong{color:var(--accent);}
 .rt-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);
   transition:background .5s;flex-shrink:0;}
 .rt-dot.live{background:var(--success);box-shadow:0 0 6px var(--success);}
@@ -618,6 +628,23 @@ textarea{resize:vertical;min-height:64px;}
     <!-- LOGIN (returning user) -->
     <!-- Login section: populated dynamically by buildLoginSection() -->
     <div id="reg-login-section" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);text-align:center;">
+    </div>
+  </div>
+</div>
+
+<!-- Modal aviso batería Android -->
+<div id="battery-modal">
+  <div class="battery-box">
+    <div style="font-size:40px;margin-bottom:8px;">🔋</div>
+    <h3>Activa notificaciones en segundo plano</h3>
+    <p>Para recibir avisos aunque la app esté cerrada o la pantalla apagada, permite que tu dispositivo no restrinja la batería de esta app.</p>
+    <ul class="battery-steps" id="battery-steps-list">
+      <!-- Se llena por JS según el fabricante detectado -->
+    </ul>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:14px;">Solo necesitas hacerlo una vez.</p>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="dismissBatteryModal(true)">Ya lo hice</button>
+      <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center;" onclick="dismissBatteryModal(false)">Ahora no</button>
     </div>
   </div>
 </div>
@@ -1090,10 +1117,14 @@ function setupFirebase() {
   });
   onValue(ref(db,'config'), snap => {
     if(snap.val()) config = {...config,...snap.val()};
-    // FIX 8: sincronizar switch con Firebase en tiempo real
+    // FIX 8: sincronizar switch con Firebase en tiempo real → bloqueo instantáneo
     const blocked = config.allowSongUpload === true;
     _syncSwitchVisual(blocked);
     _applyUploadPermission();
+    // Si el modal de perfil está abierto, re-aplicar ahí también
+    if(!document.getElementById('modal-profile')?.classList.contains('hidden')) {
+      requestAnimationFrame(_applyUploadPermission);
+    }
   });
   // Listen to users for cross-device login
   onValue(ref(db,'users'), snap => { window._fbUsers = snap.val() || {}; });
@@ -1591,6 +1622,7 @@ function openProfileModal() {
   // Siempre refrescar datos de Firebase antes de mostrar el perfil
   enrichUserFromFirebase(currentUser.id);
   renderProfileModal();
+  requestAnimationFrame(_applyUploadPermission); // bloquear botón si switch ON
   document.getElementById('modal-profile').classList.remove('hidden');
   document.getElementById('modal-profile').onclick = e => {
     if(e.target === document.getElementById('modal-profile'))
@@ -3625,6 +3657,7 @@ function doLogin() {
     // Reset birthday alert so it shows on every new login
     window._bdaySessionDismissed = false;
     setTimeout(setupFCM, 1000);
+    setTimeout(showBatteryModal, 3000); // Aviso batería Android tras login
     renderSongsList();
     renderProfileSongs();
     setTimeout(startReminderEngine, 500);
@@ -3939,7 +3972,7 @@ function renderProfileModal() {
       </div>
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:13px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);">🎵 Mis Temas <span style="font-weight:400;text-transform:none;font-size:10px;">(últimos 6)</span></div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);">🎵 Mis Temas <span style="font-weight:400;text-transform:none;font-size:10px;" id="mis-temas-count"></span></div>
           <button class="btn btn-ghost btn-sm" onclick="toggleUploadForm()" id="upload-toggle-btn">＋ Subir tema</button>
         </div>
         <div id="song-upload-form" style="display:none;background:var(--surface);border:1px solid var(--border);
@@ -3997,9 +4030,15 @@ function renderProfileModal() {
         <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="logoutUser()">Cerrar sesión</button>
       </div>
     </div>`;
+  // Aplicar permiso de subir temas tras renderizar el modal
+  requestAnimationFrame(_applyUploadPermission);
 }
 
 function renderProfile() { /* legacy — no-op, profile is now a modal */ }
+
+// Página actual del slider de Mis Temas (se conserva entre renders)
+window._profSongsPage = window._profSongsPage || 0;
+const _PROF_PAGE_SIZE = 3;
 
 function renderProfileSongs() {
   const list = document.getElementById('prof-songs-list');
@@ -4007,68 +4046,106 @@ function renderProfileSongs() {
 
   const mySelections = window._mySelections || {};
 
-  // Temas propios — últimos 6, pero PRIORIZANDO los marcados con estrella
+  // Temas propios subidos por mí
   const ownSongs = Object.values(songs).filter(s => s.ownerId === currentUser.id);
-  const ownSelected   = ownSongs.filter(s => mySelections[s.id]).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const ownSelected   = ownSongs.filter(s =>  mySelections[s.id]).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   const ownUnselected = ownSongs.filter(s => !mySelections[s.id]).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  // Estrellados primero, luego el resto, total máx 6
-  const mySongs = [...ownSelected, ...ownUnselected].slice(0, 6);
+  const mySongs = [...ownSelected, ...ownUnselected];
 
-  // Temas ajenos elegidos (no propios, pero en mis selecciones)
+  // Temas de otros que elegí con ⭐ — tiempo real: _mySelections ya es reactivo
   const chosenOthers = Object.keys(mySelections)
-    .filter(sid => songs[sid] && songs[sid].ownerId !== currentUser.id)
     .map(sid => songs[sid])
-    .filter(Boolean)
+    .filter(s => s && s.ownerId !== currentUser.id)
     .sort((a,b) => (b.createdAt||0)-(a.createdAt||0));
 
-  // Combinar: propios primero (estrellados al frente), luego elegidos de otros
+  // Combinar: propios primero, luego elegidos de otros
   const allToShow = [...mySongs];
   chosenOthers.forEach(s => { if(!allToShow.find(x=>x.id===s.id)) allToShow.push(s); });
 
-  list.innerHTML = allToShow.length
-    ? allToShow.map(s => {
-        const isSel = !!mySelections[s.id];
-        const isOwn = s.ownerId === currentUser.id;
-        return `
-        <div data-song-row="${s.id}"
-          style="background:${isSel?'rgba(240,180,41,.05)':'var(--surface)'};
-            border:1px solid ${isSel?'var(--accent)':'var(--border)'};
-            border-radius:9px;padding:9px 12px;display:flex;align-items:center;
-            justify-content:space-between;gap:8px;margin-bottom:6px;
-            transition:border-color .2s,background .2s;">
-          <div style="flex:1;min-width:0;">
-            <div style="font-weight:600;font-size:13px;">${s.title}
-              <span class="song-tono">${s.tono||''}</span>
-              ${s.bpm?`<span style="background:rgba(92,168,224,.12);color:var(--info);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">${s.bpm} BPM</span>`:''}
-            </div>
-            ${!isOwn?`<div style="font-size:10px;color:var(--muted);">por ${s.ownerName||''}</div>`:''}
-            <div data-song-label="${s.id}"
-              style="font-size:11px;margin-top:3px;color:${isSel?'var(--success)':'var(--muted)'};">
-              ${isSel?'✅ <strong>En mi lista</strong>':'☆ No en lista'}
-            </div>
-          </div>
-          <div style="display:flex;gap:5px;align-items:center;">
-            <button class="btn btn-ghost btn-sm"
-              data-song-id="${s.id}"
-              onclick="toggleSongSelected('${s.id}')"
-              style="font-size:18px;padding:4px 10px;min-width:40px;
-                background:${isSel?'rgba(240,180,41,.15)':''};
-                border-color:${isSel?'var(--accent)':''};"
-              title="${isSel?'Quitar de lista':'Agregar a lista'}">
-              ${isSel?'⭐':'<span style="opacity:.4;">☆</span>'}
-            </button>
-            ${isOwn
-              ? `<button class="btn btn-ghost btn-sm" onclick="openEditSong('${s.id}')"
-                  style="font-size:11px;padding:4px 8px;" title="Editar tema">✏️</button>
-                 <button class="btn btn-danger btn-sm" onclick="deleteSong('${s.id}')"
-                  style="font-size:11px;padding:4px 8px;" title="Eliminar tema">🗑</button>`
-              : `<button class="btn btn-danger btn-sm" onclick="removeFromMyList('${s.id}')"
-                  style="font-size:11px;padding:4px 8px;opacity:.7;" title="Quitar de mi lista">✕</button>`
-            }
-          </div>
-        </div>`;
-      }).join('')
-    : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Sin temas en lista aún</div>';
+  // Ajustar página si quedó fuera de rango tras borrar/quitar
+  const totalPages = Math.max(1, Math.ceil(allToShow.length / _PROF_PAGE_SIZE));
+  if(window._profSongsPage >= totalPages) window._profSongsPage = totalPages - 1;
+  if(window._profSongsPage < 0) window._profSongsPage = 0;
+
+  const page    = window._profSongsPage;
+  const start   = page * _PROF_PAGE_SIZE;
+  const pageItems = allToShow.slice(start, start + _PROF_PAGE_SIZE);
+  const hasPrev = page > 0;
+  const hasNext = start + _PROF_PAGE_SIZE < allToShow.length;
+
+  // Actualizar contador
+  const countEl = document.getElementById('mis-temas-count');
+  if(countEl) countEl.textContent = allToShow.length ? `(${allToShow.length})` : '';
+
+  if(!allToShow.length) {
+    list.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Sin temas en lista aún</div>';
+    return;
+  }
+
+  // Construir cards de la página actual
+  const cards = pageItems.map(s => {
+    const isSel = !!mySelections[s.id];
+    const isOwn = s.ownerId === currentUser.id;
+    return `
+    <div data-song-row="${s.id}"
+      style="background:${isSel?'rgba(240,180,41,.05)':'var(--surface)'};
+        border:1px solid ${isSel?'var(--accent)':'var(--border)'};
+        border-radius:9px;padding:9px 12px;display:flex;align-items:center;
+        justify-content:space-between;gap:8px;margin-bottom:6px;
+        transition:border-color .2s,background .2s;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:13px;">${s.title}
+          <span class="song-tono">${s.tono||''}</span>
+          ${s.bpm?`<span style="background:rgba(92,168,224,.12);color:var(--info);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">${s.bpm} BPM</span>`:''}
+        </div>
+        ${!isOwn?`<div style="font-size:10px;color:var(--muted);">por ${s.ownerName||''}</div>`:''}
+        <div data-song-label="${s.id}"
+          style="font-size:11px;margin-top:3px;color:${isSel?'var(--success)':'var(--muted)'};">
+          ${isSel?'✅ <strong>En mi lista</strong>':'☆ No en lista'}
+        </div>
+      </div>
+      <div style="display:flex;gap:5px;align-items:center;">
+        <button class="btn btn-ghost btn-sm"
+          data-song-id="${s.id}"
+          onclick="toggleSongSelected('${s.id}')"
+          style="font-size:18px;padding:4px 10px;min-width:40px;
+            background:${isSel?'rgba(240,180,41,.15)':''};
+            border-color:${isSel?'var(--accent)':''};"
+          title="${isSel?'Quitar de lista':'Agregar a lista'}">
+          ${isSel?'⭐':'<span style="opacity:.4;">☆</span>'}
+        </button>
+        ${isOwn
+          ? `<button class="btn btn-ghost btn-sm" onclick="openEditSong('${s.id}')"
+              style="font-size:11px;padding:4px 8px;" title="Editar tema">✏️</button>
+             <button class="btn btn-danger btn-sm" onclick="deleteSong('${s.id}')"
+              style="font-size:11px;padding:4px 8px;" title="Eliminar tema">🗑</button>`
+          : `<button class="btn btn-danger btn-sm" onclick="removeFromMyList('${s.id}')"
+              style="font-size:11px;padding:4px 8px;opacity:.7;" title="Quitar de mi lista">✕</button>`
+        }
+      </div>
+    </div>`;
+  }).join('');
+
+  // Navegación del slider (solo si hay más de una página)
+  const nav = totalPages > 1 ? `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
+      <button onclick="profSongsNav(-1)" ${hasPrev?'':'disabled'}
+        style="background:none;border:1px solid var(--border);border-radius:8px;
+          padding:4px 10px;color:${hasPrev?'var(--text)':'var(--muted)'};
+          cursor:${hasPrev?'pointer':'default'};font-size:16px;line-height:1;">‹</button>
+      <span style="font-size:11px;color:var(--muted);">${page+1} / ${totalPages}</span>
+      <button onclick="profSongsNav(1)" ${hasNext?'':'disabled'}
+        style="background:none;border:1px solid var(--border);border-radius:8px;
+          padding:4px 10px;color:${hasNext?'var(--text)':'var(--muted)'};
+          cursor:${hasNext?'pointer':'default'};font-size:16px;line-height:1;">›</button>
+    </div>` : '';
+
+  list.innerHTML = cards + nav;
+}
+
+function profSongsNav(dir) {
+  window._profSongsPage = (window._profSongsPage || 0) + dir;
+  renderProfileSongs();
 }
 
 // Quitar un tema ajeno de mi lista personal (sin borrar el tema de la DB)
@@ -4145,6 +4222,11 @@ function refreshUnavailList() {
 // ═══════════════════════════════════════════════════════════
 
 function toggleUploadForm() {
+  const blocked = config.allowSongUpload === true;
+  if(!isAdmin && blocked) {
+    toast('🔒 El admin ha bloqueado subir temas temporalmente', 'warning');
+    return;
+  }
   const form = document.getElementById('song-upload-form');
   if(!form) return;
   const isOpen = form.style.display !== 'none';
@@ -5258,6 +5340,135 @@ async function saveEditEvent() {
   toast('Evento guardado ✓','success');
   renderEL();
   if(_savedEvId) openEvDetailModal(_savedEvId);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// AVISO BATERÍA ANDROID — guía por fabricante para notificaciones en background
+// ══════════════════════════════════════════════════════════════════════════════
+function _detectPlatform() {
+  const ua = navigator.userAgent.toLowerCase();
+  // iOS (iPhone/iPad)
+  if(/iphone|ipad|ipod/.test(ua)) return 'ios';
+  // Android por fabricante
+  if(ua.includes('miui') || ua.includes('xiaomi') || ua.includes('redmi')) return 'xiaomi';
+  if(ua.includes('huawei') || ua.includes('honor') || ua.includes('emui')) return 'huawei';
+  if(ua.includes('samsung')) return 'samsung';
+  if(ua.includes('oppo') || ua.includes('cph') || ua.includes('coloros')) return 'oppo';
+  if(ua.includes('vivo')) return 'vivo';
+  if(ua.includes('oneplus')) return 'oneplus';
+  if(ua.includes('motorola') || ua.includes('moto ')) return 'motorola';
+  if(/android/i.test(ua)) return 'android';
+  // PC: Mac, Windows, Linux
+  if(ua.includes('macintosh') || ua.includes('mac os')) return 'mac';
+  if(ua.includes('windows')) return 'windows';
+  if(ua.includes('linux')) return 'linux';
+  return 'unknown';
+}
+
+const _BATTERY_STEPS = {
+  ios: [
+    '📱 <strong>Instala la app</strong> desde Safari: toca el botón compartir (<strong>⎦</strong>) → <strong>"Agregar a pantalla de inicio"</strong>',
+    'Abre la app desde la pantalla de inicio (no desde Safari)',
+    'Cuando aparezca el aviso de notificaciones, toca <strong>"Permitir"</strong>',
+    'Si lo bloqueaste antes: ve a <strong>Ajustes → Notificaciones → Chrome (o Safari)</strong> → activa <strong>"Permitir notificaciones"</strong>',
+    '⚠️ iOS solo envía notificaciones si la app fue instalada en pantalla de inicio'
+  ],
+  xiaomi: [
+    'Abre <strong>Ajustes</strong> → <strong>Aplicaciones</strong> → busca <strong>Chrome</strong>',
+    'Toca <strong>Ahorro de batería</strong> → selecciona <strong>"Sin restricciones"</strong>',
+    'Ve a <strong>Ajustes → Batería → Iniciar aplicaciones</strong>',
+    'Busca <strong>Chrome</strong>, desactiva "Automático" y activa: <strong>Inicio automático</strong>, <strong>Inicio secundario</strong> y <strong>Ejecución en segundo plano</strong>'
+  ],
+  huawei: [
+    'Abre <strong>Ajustes</strong> → <strong>Batería</strong> → <strong>Inicio de aplicaciones</strong>',
+    'Busca <strong>Chrome</strong> → desactiva "Administrar automáticamente"',
+    'Activa <strong>Inicio automático</strong>, <strong>Inicio secundario</strong> y <strong>Ejecución en segundo plano</strong>'
+  ],
+  samsung: [
+    'Abre <strong>Ajustes</strong> → <strong>Aplicaciones</strong> → busca <strong>Chrome</strong>',
+    'Toca <strong>Batería</strong> → selecciona <strong>"Sin restricciones"</strong>',
+    'Ve a <strong>Ajustes → Batería → Más ajustes de batería</strong>',
+    'Desactiva Chrome de la lista <strong>"Límites de uso en segundo plano"</strong>'
+  ],
+  oppo: [
+    'Abre <strong>Ajustes</strong> → <strong>Batería</strong> → <strong>Optimización de batería</strong>',
+    'Busca <strong>Chrome</strong> → selecciona <strong>"No optimizar"</strong>',
+    'Ve a <strong>Ajustes → Gestión de apps → Chrome → Ahorro de energía</strong> → activa <strong>"Ejecución en segundo plano"</strong>'
+  ],
+  vivo: [
+    'Abre <strong>iManager</strong> → <strong>Administración de energía</strong> → busca <strong>Chrome</strong>',
+    'Desactiva las restricciones de fondo',
+    'Ve a <strong>Ajustes → Aplicaciones → Chrome → Consumo de energía</strong> → <strong>"Sin restricciones"</strong>'
+  ],
+  oneplus: [
+    'Abre <strong>Ajustes</strong> → <strong>Batería</strong> → <strong>Optimización de batería</strong>',
+    'Toca los tres puntos → <strong>"Todas las aplicaciones"</strong>',
+    'Busca <strong>Chrome</strong> → selecciona <strong>"No optimizar"</strong>'
+  ],
+  motorola: [
+    'Abre <strong>Ajustes</strong> → <strong>Aplicaciones</strong> → <strong>Chrome</strong>',
+    'Toca <strong>Batería</strong> → selecciona <strong>"Sin restricciones"</strong>'
+  ],
+  android: [
+    'Abre <strong>Ajustes</strong> → <strong>Aplicaciones</strong> → <strong>Chrome</strong>',
+    'Toca <strong>Batería</strong> o <strong>Uso de batería</strong>',
+    'Selecciona <strong>"Sin restricciones"</strong> o <strong>"No optimizar"</strong>'
+  ],
+  mac: [
+    'En <strong>Chrome</strong>: abre una pestaña nueva → escribe <code>chrome://settings/content/notifications</code>',
+    'Busca esta app en la lista y asegúrate que esté en <strong>"Permitir"</strong>',
+    'En <strong>Mac</strong>: ve a <strong>Preferencias del Sistema → Notificaciones</strong>',
+    'Busca <strong>Chrome</strong> → activa <strong>"Permitir notificaciones"</strong> y desactiva <strong>"No molestar"</strong>',
+    'Asegúrate de que Chrome no esté en el modo <strong>Ahorro de energía</strong> del sistema'
+  ],
+  windows: [
+    'En <strong>Chrome</strong>: abre <code>chrome://settings/content/notifications</code>',
+    'Busca esta app y asegúrate que esté en <strong>"Permitir"</strong>',
+    'Ve a <strong>Inicio → Configuración → Sistema → Notificaciones</strong>',
+    'Activa notificaciones para <strong>Google Chrome</strong>',
+    'Asegúrate de que Chrome no esté en modo <strong>Ahorro de batería de Windows</strong>'
+  ],
+  linux: [
+    'En <strong>Chrome</strong>: abre <code>chrome://settings/content/notifications</code>',
+    'Busca esta app y asegúrate que esté en <strong>"Permitir"</strong>',
+    'Verifica que el sistema no bloquee notificaciones de Chrome en tu gestor de escritorio'
+  ],
+  unknown: [
+    'Asegúrate de haber dado permiso de notificaciones cuando la app lo solicitó',
+    'Verifica en la configuración de tu navegador que las notificaciones estén permitidas para esta app',
+    'Si usas Android, busca en Ajustes → Aplicaciones → Chrome → Batería → Sin restricciones'
+  ]
+};
+
+const _BATTERY_TITLES = {
+  ios:     '🔔 Activa notificaciones en iPhone',
+  mac:     '🔔 Activa notificaciones en Mac',
+  windows: '🔔 Activa notificaciones en Windows',
+  linux:   '🔔 Activa notificaciones en Linux',
+  unknown: '🔔 Activa notificaciones push'
+};
+
+function showBatteryModal() {
+  const dismissed = localStorage.getItem('mdios_battery_ok');
+  if(dismissed === 'yes') return;
+  const platform = _detectPlatform();
+  const steps = _BATTERY_STEPS[platform] || _BATTERY_STEPS.unknown;
+  const list  = document.getElementById('battery-steps-list');
+  if(list) list.innerHTML = steps.map(s => `<li>${s}</li>`).join('');
+  // Cambiar título según plataforma
+  const titleEl = document.querySelector('#battery-modal h3');
+  if(titleEl) {
+    const isAndroid = !['ios','mac','windows','linux','unknown'].includes(platform);
+    titleEl.textContent = _BATTERY_TITLES[platform] || (isAndroid ? '🔋 Activa notificaciones en Android' : '🔔 Activa notificaciones push');
+  }
+  const modal = document.getElementById('battery-modal');
+  if(modal) modal.classList.add('show');
+}
+
+function dismissBatteryModal(done) {
+  if(done) localStorage.setItem('mdios_battery_ok', 'yes');
+  const modal = document.getElementById('battery-modal');
+  if(modal) modal.classList.remove('show');
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
