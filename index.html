@@ -1117,10 +1117,14 @@ function setupFirebase() {
   });
   onValue(ref(db,'config'), snap => {
     if(snap.val()) config = {...config,...snap.val()};
-    // FIX 8: sincronizar switch con Firebase en tiempo real
+    // FIX 8: sincronizar switch con Firebase en tiempo real → bloqueo instantáneo
     const blocked = config.allowSongUpload === true;
     _syncSwitchVisual(blocked);
     _applyUploadPermission();
+    // Si el modal de perfil está abierto, re-aplicar ahí también
+    if(!document.getElementById('modal-profile')?.classList.contains('hidden')) {
+      requestAnimationFrame(_applyUploadPermission);
+    }
   });
   // Listen to users for cross-device login
   onValue(ref(db,'users'), snap => { window._fbUsers = snap.val() || {}; });
@@ -1618,6 +1622,7 @@ function openProfileModal() {
   // Siempre refrescar datos de Firebase antes de mostrar el perfil
   enrichUserFromFirebase(currentUser.id);
   renderProfileModal();
+  requestAnimationFrame(_applyUploadPermission); // bloquear botón si switch ON
   document.getElementById('modal-profile').classList.remove('hidden');
   document.getElementById('modal-profile').onclick = e => {
     if(e.target === document.getElementById('modal-profile'))
@@ -3967,7 +3972,7 @@ function renderProfileModal() {
       </div>
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:13px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);">🎵 Mis Temas <span style="font-weight:400;text-transform:none;font-size:10px;">(últimos 6)</span></div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);">🎵 Mis Temas <span style="font-weight:400;text-transform:none;font-size:10px;" id="mis-temas-count"></span></div>
           <button class="btn btn-ghost btn-sm" onclick="toggleUploadForm()" id="upload-toggle-btn">＋ Subir tema</button>
         </div>
         <div id="song-upload-form" style="display:none;background:var(--surface);border:1px solid var(--border);
@@ -4025,9 +4030,15 @@ function renderProfileModal() {
         <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="logoutUser()">Cerrar sesión</button>
       </div>
     </div>`;
+  // Aplicar permiso de subir temas tras renderizar el modal
+  requestAnimationFrame(_applyUploadPermission);
 }
 
 function renderProfile() { /* legacy — no-op, profile is now a modal */ }
+
+// Página actual del slider de Mis Temas (se conserva entre renders)
+window._profSongsPage = window._profSongsPage || 0;
+const _PROF_PAGE_SIZE = 3;
 
 function renderProfileSongs() {
   const list = document.getElementById('prof-songs-list');
@@ -4035,68 +4046,106 @@ function renderProfileSongs() {
 
   const mySelections = window._mySelections || {};
 
-  // Temas propios — últimos 6, pero PRIORIZANDO los marcados con estrella
+  // Temas propios subidos por mí
   const ownSongs = Object.values(songs).filter(s => s.ownerId === currentUser.id);
-  const ownSelected   = ownSongs.filter(s => mySelections[s.id]).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const ownSelected   = ownSongs.filter(s =>  mySelections[s.id]).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   const ownUnselected = ownSongs.filter(s => !mySelections[s.id]).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  // Estrellados primero, luego el resto, total máx 6
-  const mySongs = [...ownSelected, ...ownUnselected].slice(0, 6);
+  const mySongs = [...ownSelected, ...ownUnselected];
 
-  // Temas ajenos elegidos (no propios, pero en mis selecciones)
+  // Temas de otros que elegí con ⭐ — tiempo real: _mySelections ya es reactivo
   const chosenOthers = Object.keys(mySelections)
-    .filter(sid => songs[sid] && songs[sid].ownerId !== currentUser.id)
     .map(sid => songs[sid])
-    .filter(Boolean)
+    .filter(s => s && s.ownerId !== currentUser.id)
     .sort((a,b) => (b.createdAt||0)-(a.createdAt||0));
 
-  // Combinar: propios primero (estrellados al frente), luego elegidos de otros
+  // Combinar: propios primero, luego elegidos de otros
   const allToShow = [...mySongs];
   chosenOthers.forEach(s => { if(!allToShow.find(x=>x.id===s.id)) allToShow.push(s); });
 
-  list.innerHTML = allToShow.length
-    ? allToShow.map(s => {
-        const isSel = !!mySelections[s.id];
-        const isOwn = s.ownerId === currentUser.id;
-        return `
-        <div data-song-row="${s.id}"
-          style="background:${isSel?'rgba(240,180,41,.05)':'var(--surface)'};
-            border:1px solid ${isSel?'var(--accent)':'var(--border)'};
-            border-radius:9px;padding:9px 12px;display:flex;align-items:center;
-            justify-content:space-between;gap:8px;margin-bottom:6px;
-            transition:border-color .2s,background .2s;">
-          <div style="flex:1;min-width:0;">
-            <div style="font-weight:600;font-size:13px;">${s.title}
-              <span class="song-tono">${s.tono||''}</span>
-              ${s.bpm?`<span style="background:rgba(92,168,224,.12);color:var(--info);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">${s.bpm} BPM</span>`:''}
-            </div>
-            ${!isOwn?`<div style="font-size:10px;color:var(--muted);">por ${s.ownerName||''}</div>`:''}
-            <div data-song-label="${s.id}"
-              style="font-size:11px;margin-top:3px;color:${isSel?'var(--success)':'var(--muted)'};">
-              ${isSel?'✅ <strong>En mi lista</strong>':'☆ No en lista'}
-            </div>
-          </div>
-          <div style="display:flex;gap:5px;align-items:center;">
-            <button class="btn btn-ghost btn-sm"
-              data-song-id="${s.id}"
-              onclick="toggleSongSelected('${s.id}')"
-              style="font-size:18px;padding:4px 10px;min-width:40px;
-                background:${isSel?'rgba(240,180,41,.15)':''};
-                border-color:${isSel?'var(--accent)':''};"
-              title="${isSel?'Quitar de lista':'Agregar a lista'}">
-              ${isSel?'⭐':'<span style="opacity:.4;">☆</span>'}
-            </button>
-            ${isOwn
-              ? `<button class="btn btn-ghost btn-sm" onclick="openEditSong('${s.id}')"
-                  style="font-size:11px;padding:4px 8px;" title="Editar tema">✏️</button>
-                 <button class="btn btn-danger btn-sm" onclick="deleteSong('${s.id}')"
-                  style="font-size:11px;padding:4px 8px;" title="Eliminar tema">🗑</button>`
-              : `<button class="btn btn-danger btn-sm" onclick="removeFromMyList('${s.id}')"
-                  style="font-size:11px;padding:4px 8px;opacity:.7;" title="Quitar de mi lista">✕</button>`
-            }
-          </div>
-        </div>`;
-      }).join('')
-    : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Sin temas en lista aún</div>';
+  // Ajustar página si quedó fuera de rango tras borrar/quitar
+  const totalPages = Math.max(1, Math.ceil(allToShow.length / _PROF_PAGE_SIZE));
+  if(window._profSongsPage >= totalPages) window._profSongsPage = totalPages - 1;
+  if(window._profSongsPage < 0) window._profSongsPage = 0;
+
+  const page    = window._profSongsPage;
+  const start   = page * _PROF_PAGE_SIZE;
+  const pageItems = allToShow.slice(start, start + _PROF_PAGE_SIZE);
+  const hasPrev = page > 0;
+  const hasNext = start + _PROF_PAGE_SIZE < allToShow.length;
+
+  // Actualizar contador
+  const countEl = document.getElementById('mis-temas-count');
+  if(countEl) countEl.textContent = allToShow.length ? `(${allToShow.length})` : '';
+
+  if(!allToShow.length) {
+    list.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Sin temas en lista aún</div>';
+    return;
+  }
+
+  // Construir cards de la página actual
+  const cards = pageItems.map(s => {
+    const isSel = !!mySelections[s.id];
+    const isOwn = s.ownerId === currentUser.id;
+    return `
+    <div data-song-row="${s.id}"
+      style="background:${isSel?'rgba(240,180,41,.05)':'var(--surface)'};
+        border:1px solid ${isSel?'var(--accent)':'var(--border)'};
+        border-radius:9px;padding:9px 12px;display:flex;align-items:center;
+        justify-content:space-between;gap:8px;margin-bottom:6px;
+        transition:border-color .2s,background .2s;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:13px;">${s.title}
+          <span class="song-tono">${s.tono||''}</span>
+          ${s.bpm?`<span style="background:rgba(92,168,224,.12);color:var(--info);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">${s.bpm} BPM</span>`:''}
+        </div>
+        ${!isOwn?`<div style="font-size:10px;color:var(--muted);">por ${s.ownerName||''}</div>`:''}
+        <div data-song-label="${s.id}"
+          style="font-size:11px;margin-top:3px;color:${isSel?'var(--success)':'var(--muted)'};">
+          ${isSel?'✅ <strong>En mi lista</strong>':'☆ No en lista'}
+        </div>
+      </div>
+      <div style="display:flex;gap:5px;align-items:center;">
+        <button class="btn btn-ghost btn-sm"
+          data-song-id="${s.id}"
+          onclick="toggleSongSelected('${s.id}')"
+          style="font-size:18px;padding:4px 10px;min-width:40px;
+            background:${isSel?'rgba(240,180,41,.15)':''};
+            border-color:${isSel?'var(--accent)':''};"
+          title="${isSel?'Quitar de lista':'Agregar a lista'}">
+          ${isSel?'⭐':'<span style="opacity:.4;">☆</span>'}
+        </button>
+        ${isOwn
+          ? `<button class="btn btn-ghost btn-sm" onclick="openEditSong('${s.id}')"
+              style="font-size:11px;padding:4px 8px;" title="Editar tema">✏️</button>
+             <button class="btn btn-danger btn-sm" onclick="deleteSong('${s.id}')"
+              style="font-size:11px;padding:4px 8px;" title="Eliminar tema">🗑</button>`
+          : `<button class="btn btn-danger btn-sm" onclick="removeFromMyList('${s.id}')"
+              style="font-size:11px;padding:4px 8px;opacity:.7;" title="Quitar de mi lista">✕</button>`
+        }
+      </div>
+    </div>`;
+  }).join('');
+
+  // Navegación del slider (solo si hay más de una página)
+  const nav = totalPages > 1 ? `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
+      <button onclick="profSongsNav(-1)" ${hasPrev?'':'disabled'}
+        style="background:none;border:1px solid var(--border);border-radius:8px;
+          padding:4px 10px;color:${hasPrev?'var(--text)':'var(--muted)'};
+          cursor:${hasPrev?'pointer':'default'};font-size:16px;line-height:1;">‹</button>
+      <span style="font-size:11px;color:var(--muted);">${page+1} / ${totalPages}</span>
+      <button onclick="profSongsNav(1)" ${hasNext?'':'disabled'}
+        style="background:none;border:1px solid var(--border);border-radius:8px;
+          padding:4px 10px;color:${hasNext?'var(--text)':'var(--muted)'};
+          cursor:${hasNext?'pointer':'default'};font-size:16px;line-height:1;">›</button>
+    </div>` : '';
+
+  list.innerHTML = cards + nav;
+}
+
+function profSongsNav(dir) {
+  window._profSongsPage = (window._profSongsPage || 0) + dir;
+  renderProfileSongs();
 }
 
 // Quitar un tema ajeno de mi lista personal (sin borrar el tema de la DB)
@@ -4173,6 +4222,11 @@ function refreshUnavailList() {
 // ═══════════════════════════════════════════════════════════
 
 function toggleUploadForm() {
+  const blocked = config.allowSongUpload === true;
+  if(!isAdmin && blocked) {
+    toast('🔒 El admin ha bloqueado subir temas temporalmente', 'warning');
+    return;
+  }
   const form = document.getElementById('song-upload-form');
   if(!form) return;
   const isOpen = form.style.display !== 'none';
