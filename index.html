@@ -1117,14 +1117,10 @@ function setupFirebase() {
   });
   onValue(ref(db,'config'), snap => {
     if(snap.val()) config = {...config,...snap.val()};
-    // FIX 8: sincronizar switch con Firebase en tiempo real → bloqueo instantáneo
+    // FIX 8: sincronizar switch con Firebase en tiempo real
     const blocked = config.allowSongUpload === true;
     _syncSwitchVisual(blocked);
     _applyUploadPermission();
-    // Si el modal de perfil está abierto, re-aplicar ahí también
-    if(!document.getElementById('modal-profile')?.classList.contains('hidden')) {
-      requestAnimationFrame(_applyUploadPermission);
-    }
   });
   // Listen to users for cross-device login
   onValue(ref(db,'users'), snap => { window._fbUsers = snap.val() || {}; });
@@ -1622,7 +1618,6 @@ function openProfileModal() {
   // Siempre refrescar datos de Firebase antes de mostrar el perfil
   enrichUserFromFirebase(currentUser.id);
   renderProfileModal();
-  requestAnimationFrame(_applyUploadPermission); // bloquear botón si switch ON
   document.getElementById('modal-profile').classList.remove('hidden');
   document.getElementById('modal-profile').onclick = e => {
     if(e.target === document.getElementById('modal-profile'))
@@ -4030,8 +4025,6 @@ function renderProfileModal() {
         <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="logoutUser()">Cerrar sesión</button>
       </div>
     </div>`;
-  // Aplicar permiso de subir temas tras renderizar el modal
-  requestAnimationFrame(_applyUploadPermission);
 }
 
 function renderProfile() { /* legacy — no-op, profile is now a modal */ }
@@ -4180,11 +4173,6 @@ function refreshUnavailList() {
 // ═══════════════════════════════════════════════════════════
 
 function toggleUploadForm() {
-  const blocked = config.allowSongUpload === true;
-  if(!isAdmin && blocked) {
-    toast('🔒 El admin ha bloqueado subir temas temporalmente', 'warning');
-    return;
-  }
   const form = document.getElementById('song-upload-form');
   if(!form) return;
   const isOpen = form.style.display !== 'none';
