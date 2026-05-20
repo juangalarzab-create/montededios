@@ -1838,37 +1838,47 @@ async function addEvent() {
   const date  = document.getElementById('nev-date').value;
   if(!title||!date){ toast('Completa nombre y fecha','error'); return; }
   const id  = gid();
-  // Build assignees from selected people with their event role
+
+  // ── CERRAR MODAL INMEDIATAMENTE (antes de cualquier await) ──────────────
+  const _nm = document.getElementById('modal-new-event');
+  const _forceHide = () => {
+    if(!_nm) return;
+    _nm.classList.add('hidden');
+    _nm.style.cssText = 'display:none!important;visibility:hidden!important;pointer-events:none!important;opacity:0!important;z-index:-1!important;';
+  };
+  _forceHide(); // ejecutar ANTES del primer await
+  if(isAdmin){ const b = document.getElementById('new-ev-btn'); if(b) b.disabled = false; }
+
+  // Build assignees
   const assignees = {};
   Object.values(newEvSelPeople).forEach(sel=>{
     assignees[sel.musId] = {
       musId: sel.musId, name: sel.name,
-      role: sel.role,           // registered role (Guitarrista, etc.)
-      rolEvento: sel.rolEvento  // event role (Voz Principal, Coros, etc.)
+      role: sel.role, rolEvento: sel.rolEvento
     };
   });
-  const ev  = { id, title, date,
+  const ev = { id, title, date,
     time:  document.getElementById('nev-time').value,
     venue: document.getElementById('nev-venue').value.trim(),
     assignees, notes:'', createdAt: Date.now()
   };
-  await fbSet(`events/${id}`, ev);
-  const assigned = Object.values(assignees).map(a=>a.name).join(', ');
-  await logActivity('event','🗓️',`Nuevo evento: "${title}" el ${fmtDate(date)}${assigned?' · '+assigned:''}`, id);
-  broadcastPushToAll('🗓️ Nuevo Evento', `"${title}" — ${fmtDate(date)}${ev.time?' a las '+ev.time:''}${ev.venue?' · '+ev.venue:''}`);
-  // Cerrar modal de forma agresiva ANTES de cualquier otra acción (fix Android)
-  const _nm = document.getElementById('modal-new-event');
-  if(_nm){
-    _nm.classList.add('hidden');
-    _nm.style.cssText = 'display:none!important;visibility:hidden!important;pointer-events:none!important;opacity:0!important;';
-  }
-  // Re-habilitar botón Nuevo Evento
-  if(isAdmin){ const b = document.getElementById('new-ev-btn'); if(b) b.disabled = false; }
+
   newEvSelPeople = {};
   renderEL();
-  toast(`Evento "${title}" creado ✓`,'success');
-  // Abrir detalle del nuevo evento en el siguiente frame (para que el cierre del modal sea visible primero)
-  requestAnimationFrame(() => requestAnimationFrame(() => selEvent(id)));
+  toast(`Evento "${title}" creado ✓`, 'success');
+
+  // Guardar en Firebase en paralelo (no bloquea la UI)
+  Promise.all([
+    fbSet(`events/${id}`, ev),
+    logActivity('event','🗓️',`Nuevo evento: "${title}" el ${fmtDate(date)}${Object.values(assignees).map(a=>a.name).join(', ')?(' · '+Object.values(assignees).map(a=>a.name).join(', ')):''}`, id)
+  ]).then(() => {
+    broadcastPushToAll('🗓️ Nuevo Evento', `"${title}" — ${fmtDate(date)}${ev.time?' a las '+ev.time:''}${ev.venue?' · '+ev.venue:''}`);
+  }).catch(e => console.warn('addEvent Firebase:', e));
+
+  // Doble seguro: volver a forzar hide tras el render (Android re-render fix)
+  requestAnimationFrame(_forceHide);
+  setTimeout(_forceHide, 100);
+  setTimeout(_forceHide, 500);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
