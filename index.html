@@ -1856,16 +1856,19 @@ async function addEvent() {
   const assigned = Object.values(assignees).map(a=>a.name).join(', ');
   await logActivity('event','🗓️',`Nuevo evento: "${title}" el ${fmtDate(date)}${assigned?' · '+assigned:''}`, id);
   broadcastPushToAll('🗓️ Nuevo Evento', `"${title}" — ${fmtDate(date)}${ev.time?' a las '+ev.time:''}${ev.venue?' · '+ev.venue:''}`);
-  closeEvModal();
-  // FIX Android/iOS/PC: forzar ocultamiento del modal por si classList no reactúa
-  const _newModal = document.getElementById('modal-new-event');
-  if(_newModal) { _newModal.classList.add('hidden'); _newModal.style.display='none'; }
-  // Re-habilitar botón Nuevo Evento explícitamente para que admin pueda seguir creando
+  // Cerrar modal de forma agresiva ANTES de cualquier otra acción (fix Android)
+  const _nm = document.getElementById('modal-new-event');
+  if(_nm){
+    _nm.classList.add('hidden');
+    _nm.style.cssText = 'display:none!important;visibility:hidden!important;pointer-events:none!important;opacity:0!important;';
+  }
+  // Re-habilitar botón Nuevo Evento
   if(isAdmin){ const b = document.getElementById('new-ev-btn'); if(b) b.disabled = false; }
   newEvSelPeople = {};
   renderEL();
-  selEvent(id);
   toast(`Evento "${title}" creado ✓`,'success');
+  // Abrir detalle del nuevo evento en el siguiente frame (para que el cierre del modal sea visible primero)
+  requestAnimationFrame(() => requestAnimationFrame(() => selEvent(id)));
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -3611,64 +3614,74 @@ async function finishRegister() {
   const loginLabel  = buildLoginLabel(regData.nombres, regData.apellidos);
   const user = {
     id,
-    nombres:      regData.nombres,
-    apellidos:    regData.apellidos,
-    fullName:     `${regData.nombres} ${regData.apellidos}`,
-    displayName,   // "Juan.G"
-    loginLabel,    // "JuanGalarza"
-    bday:         regData.bday,
-    cargo:        regData.cargo,
-    role,
-    pass:         btoa(regData.pass),
-    availDates:   {},
-    createdAt:    Date.now()
+    nombres:   regData.nombres,   apellidos: regData.apellidos,
+    fullName:  `${regData.nombres} ${regData.apellidos}`,
+    displayName, loginLabel, bday: regData.bday,
+    cargo: regData.cargo, role, pass: btoa(regData.pass),
+    availDates: {}, createdAt: Date.now()
   };
-  // 1. Save to Firebase musicians list (visible to all)
-  await fbSet(`musicians/${id}`, {
-    id, name: user.fullName, role, cargo: regData.cargo,
-    displayName, bday: regData.bday,
-    unavailDates:{}, createdAt: Date.now()
-  });
-  // 2. Save to Firebase users list (for login lookup across devices)
-  await fbSet(`users/${id}`, {
-    id, loginLabel, displayName, fullName: user.fullName,
-    cargo: regData.cargo, role,
-    pass: user.pass, createdAt: Date.now()
-  });
-  await logActivity('musician','🎤',`Nuevo integrante: "${user.fullName}" (${regData.cargo})`);
-  // 3. Save locally
+
+  // 1. Guardar localmente PRIMERO (no depende de red)
   localStorage.setItem('mdios_user', JSON.stringify(user));
   localStorage.setItem('mdios_uid', id);
+  sessionStorage.setItem('mdios_session','1');
   currentUser = user;
-  // Show success banner then enter main app
-  showRegSuccess(user, ()=>{
-    sessionStorage.setItem('mdios_session','1');
-    // 1. Ocultar pantalla de registro PRIMERO y de forma forzada
-    hideRegister();
-    // 2. Asegurar que el register-screen no bloquea la vista (Android fix)
-    const _scr = document.getElementById('register-screen');
-    if(_scr){
-      _scr.style.display = 'none';
-      _scr.style.opacity = '0';
-      _scr.style.visibility = 'hidden';
-      _scr.style.zIndex = '-1';
+
+  // 2. Mostrar banner de éxito INMEDIATAMENTE (sin esperar Firebase)
+  const _box = document.querySelector('.reg-box');
+  if(_box){
+    _box.scrollTop = 0;
+    _box.innerHTML = `
+      <div style="text-align:center;padding:40px 20px;">
+        <div style="font-size:64px;margin-bottom:14px;">✅</div>
+        <div style="font-size:22px;font-weight:700;color:var(--success);margin-bottom:8px;">¡Registro exitoso!</div>
+        <div style="font-size:15px;color:var(--text);margin-bottom:4px;">${user.fullName}</div>
+        <div style="font-size:13px;color:var(--muted);">Perfil: <strong style="color:var(--accent);">${user.displayName}</strong></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:20px;">Entrando a la plataforma…</div>
+      </div>`;
+    _box.style.border = '2px solid var(--success)';
+    void _box.offsetHeight; // forzar repaint Android
+  }
+
+  // 3. Guardar en Firebase en paralelo (no bloquea la navegación)
+  Promise.all([
+    fbSet(`musicians/${id}`, { id, name: user.fullName, role, cargo: regData.cargo,
+      displayName, bday: regData.bday, unavailDates:{}, createdAt: Date.now() }),
+    fbSet(`users/${id}`, { id, loginLabel, displayName, fullName: user.fullName,
+      cargo: regData.cargo, role, pass: user.pass, createdAt: Date.now() }),
+    logActivity('musician','🎤',`Nuevo integrante: "${user.fullName}" (${regData.cargo})`)
+  ]).catch(e => console.warn('finishRegister Firebase:', e));
+
+  // 4. Función de entrada a la app — se ejecuta exactamente una vez
+  let _entered = false;
+  const _enterApp = () => {
+    if(_entered) return; _entered = true;
+    // Ocultar register-screen de forma agresiva (Android/iOS/PC)
+    const scr = document.getElementById('register-screen');
+    if(scr){
+      scr.classList.add('hidden-reg');
+      scr.style.cssText = 'display:none!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important;z-index:-1!important;';
     }
-    // 3. Actualizar UI de usuario
     updateUserUI();
     setupFCM();
     _loadMySelections(user.id);
     _loadAllSelections();
-    // 4. Navegar al apartado eventos
-    const evBtn = document.querySelector('.bnav-btn');
-    switchView('events', evBtn);
-    // 5. Renderizar vistas
-    renderSongsList();
-    renderProfileSongs();
-    renderEL();
+    switchView('events', document.querySelector('.bnav-btn'));
+    renderSongsList(); renderProfileSongs(); renderEL();
     setTimeout(startReminderEngine, 500);
     setTimeout(showBatteryModal, 2000);
-    // Re-render extra por si Firebase aún no había cargado datos
     setTimeout(()=>{ renderSongsList(); renderProfileSongs(); renderEL(); }, 2000);
+  };
+
+  // 5. Disparar entrada: 1.8s para ver el banner + múltiples fallbacks para Android
+  setTimeout(_enterApp, 1800);   // normal
+  setTimeout(_enterApp, 3000);   // fallback Android
+  setTimeout(_enterApp, 5000);   // fallback MIUI/Android agresivo
+  document.addEventListener('visibilitychange', function _vis(){
+    if(document.visibilityState === 'visible'){
+      document.removeEventListener('visibilitychange', _vis);
+      setTimeout(_enterApp, 300);
+    }
   });
 }
 
