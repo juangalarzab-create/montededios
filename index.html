@@ -453,7 +453,10 @@ textarea{resize:vertical;min-height:64px;}
 
 /* ── REGISTER SCREEN ── */
 #register-screen{position:fixed;inset:0;background:var(--bg);z-index:9000;
-  display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;}
+  display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;
+  transition:opacity .35s;}
+#register-screen.hidden-reg{display:none!important;opacity:0!important;
+  visibility:hidden!important;pointer-events:none!important;z-index:-1!important;}
 .reg-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;
   width:min(420px,100%);padding:28px;max-height:90vh;overflow-y:auto;}
 .reg-box::-webkit-scrollbar{width:3px;}
@@ -1111,9 +1114,15 @@ function setupFirebase() {
   });
   onValue(ref(db,'activity'), snap => {
     const raw = snap.val() || {};
-    activity = Object.values(raw).sort((a,b)=>b.ts-a.ts).slice(0,50);
+    activity = Object.entries(raw)
+      .map(([k,v])=>({...v,_fbKey:k}))
+      .filter(a=>{
+        if(a.eventId && !events[a.eventId]) return false;
+        if(a.userId && !musicians[a.userId] && a.userId!==currentUser?.id) return false;
+        return true;
+      })
+      .sort((a,b)=>b.ts-a.ts).slice(0,50);
     renderActivity();
-    // activity badge removed (profile tab now)
   });
   onValue(ref(db,'config'), snap => {
     if(snap.val()) config = {...config,...snap.val()};
@@ -1312,8 +1321,12 @@ async function fbRemove(path) {
   }
 }
 
-async function logActivity(type, icon, text) {
-  const entry = { id: gid(), type, icon, text, ts: Date.now() };
+async function logActivity(type, icon, text, eventId) {
+  const entry = {
+    id: gid(), type, icon, text, ts: Date.now(),
+    userId:  currentUser?.id || null,
+    eventId: eventId         || null
+  };
   if(fbReady) {
     const { db, ref, push } = window._fb;
     await push(ref(db,'activity'), entry);
@@ -1841,13 +1854,16 @@ async function addEvent() {
   };
   await fbSet(`events/${id}`, ev);
   const assigned = Object.values(assignees).map(a=>a.name).join(', ');
-  await logActivity('event','🗓️',`Nuevo evento: "${title}" el ${fmtDate(date)}${assigned?' · '+assigned:''}`);
+  await logActivity('event','🗓️',`Nuevo evento: "${title}" el ${fmtDate(date)}${assigned?' · '+assigned:''}`, id);
   broadcastPushToAll('🗓️ Nuevo Evento', `"${title}" — ${fmtDate(date)}${ev.time?' a las '+ev.time:''}${ev.venue?' · '+ev.venue:''}`);
   closeEvModal();
   // FIX Android/iOS/PC: forzar ocultamiento del modal por si classList no reactúa
   const _newModal = document.getElementById('modal-new-event');
   if(_newModal) { _newModal.classList.add('hidden'); _newModal.style.display='none'; }
+  // Re-habilitar botón Nuevo Evento explícitamente para que admin pueda seguir creando
+  if(isAdmin){ const b = document.getElementById('new-ev-btn'); if(b) b.disabled = false; }
   newEvSelPeople = {};
+  renderEL();
   selEvent(id);
   toast(`Evento "${title}" creado ✓`,'success');
 }
@@ -2169,9 +2185,12 @@ function askDelEv(id) {
   const ev = events[id]; if(!ev) return;
   showConfirm(`¿Eliminar "${ev.title}"?`, 'Esta acción no se puede deshacer.', async ()=>{
     await fbRemove(`events/${id}`);
-    await logActivity('event','🗑️',`Evento "${ev.title}" eliminado`);
-    selEv=null;
-    closeEvDetailModal();
+    selEv = null;
+    // Cerrar modal de detalle y volver al apartado eventos
+    const det = document.getElementById('modal-ev-detail');
+    if(det){ det.classList.add('hidden'); det.style.display=''; }
+    if(window._detailSongsUnsub){ try{window._detailSongsUnsub();}catch(e){} window._detailSongsUnsub=null; }
+    renderEL();
     toast('Evento eliminado','warning');
   });
 }
@@ -2437,21 +2456,39 @@ async function askDelM(id) {
   showConfirm(`¿Eliminar a ${m.name}?`,
     `Se borrarán todos sus datos: ${songCount} tema(s), ${usedIn} asignación(es) en eventos. Acción irreversible.`,
     async ()=>{
-      // 1. Delete all their songs
+      // 1. Borrar todos sus temas y sus selecciones en otros usuarios
       const theirSongs = Object.keys(songs).filter(sid=>songs[sid].ownerId===id);
-      for(const sid of theirSongs) await fbRemove(`songs/${sid}`);
-      // 2. Remove from all events
-      for(const [evId, ev] of Object.entries(events)) {
+      if(fbReady && theirSongs.length){
+        const {db,ref,onValue:ov2,remove:rm2}=window._fb;
+        const ss=await new Promise(r=>ov2(ref(db,'selections'),s=>r(s),{onlyOnce:true}));
+        const sd=ss.val?ss.val():{};
+        for(const sid of theirSongs){
+          for(const [uid2,us2] of Object.entries(sd)){
+            if(us2[sid]) await rm2(ref(db,`selections/${uid2}/${sid}`)).catch(()=>{});
+          }
+          await fbRemove(`songs/${sid}`);
+        }
+      }
+      // 2. Quitar de todos los eventos
+      for(const [evId,ev] of Object.entries(events)){
         if(ev.assignees?.[id]) await fbRemove(`events/${evId}/assignees/${id}`);
       }
-      // 3. Delete their personal selections
+      // 3. Borrar selecciones personales
       await fbRemove(`selections/${id}`);
-      // 4. Delete FCM token
+      // 4. Borrar token FCM
       await fbRemove(`fcmTokens/${id}`);
-      // 5. Remove from musicians, users
+      // 5. Borrar su historial de activity en Firebase
+      if(fbReady){
+        const {db,ref,onValue:ovA,remove:rmA}=window._fb;
+        const as=await new Promise(r=>ovA(ref(db,'activity'),s=>r(s),{onlyOnce:true}));
+        const ad=as.val?as.val():{};
+        for(const [ak,av] of Object.entries(ad)){
+          if(av.userId===id) await rmA(ref(db,`activity/${ak}`)).catch(()=>{});
+        }
+      }
+      // 6. Borrar músico y usuario
       await fbRemove(`musicians/${id}`);
       await fbRemove(`users/${id}`);
-      await logActivity('musician','🗑️',`Admin eliminó a "${m.name}" completamente`);
       toast(`${m.name} eliminado completamente`,'warning');
     });
 }
@@ -3606,34 +3643,74 @@ async function finishRegister() {
   // Show success banner then enter main app
   showRegSuccess(user, ()=>{
     sessionStorage.setItem('mdios_session','1');
+    // 1. Ocultar pantalla de registro PRIMERO y de forma forzada
     hideRegister();
+    // 2. Asegurar que el register-screen no bloquea la vista (Android fix)
+    const _scr = document.getElementById('register-screen');
+    if(_scr){
+      _scr.style.display = 'none';
+      _scr.style.opacity = '0';
+      _scr.style.visibility = 'hidden';
+      _scr.style.zIndex = '-1';
+    }
+    // 3. Actualizar UI de usuario
     updateUserUI();
-    switchView('events', document.querySelector('.bnav-btn'));
+    setupFCM();
+    _loadMySelections(user.id);
+    _loadAllSelections();
+    // 4. Navegar al apartado eventos
+    const evBtn = document.querySelector('.bnav-btn');
+    switchView('events', evBtn);
+    // 5. Renderizar vistas
     renderSongsList();
     renderProfileSongs();
+    renderEL();
     setTimeout(startReminderEngine, 500);
-    setTimeout(()=>{ renderSongsList(); renderProfileSongs(); renderEL(); }, 1500);
+    setTimeout(showBatteryModal, 2000);
+    // Re-render extra por si Firebase aún no había cargado datos
+    setTimeout(()=>{ renderSongsList(); renderProfileSongs(); renderEL(); }, 2000);
   });
 }
 
 function showRegSuccess(user, cb) {
-  // Flash green success overlay on step 3 box
+  // Mostrar banner de éxito
   const box = document.querySelector('.reg-box');
-  const orig = box.innerHTML;
-  box.innerHTML = `
-    <div style="text-align:center;padding:30px 10px;">
-      <div style="font-size:56px;margin-bottom:12px;">✅</div>
-      <div style="font-size:20px;font-weight:700;color:var(--success);margin-bottom:6px;">¡Registro exitoso!</div>
-      <div style="font-size:14px;color:var(--text);margin-bottom:4px;">${user.fullName}</div>
-      <div style="font-size:13px;color:var(--muted);">Tu perfil: <strong style="color:var(--accent);">${user.displayName}</strong></div>
-      <div style="font-size:12px;color:var(--muted);margin-top:16px;">Entrando a la plataforma…</div>
-    </div>`;
-  box.style.border = '2px solid var(--success)';
-  void box.offsetHeight; // forzar repaint (Android fix)
-  let _cbFired = false;
-  const fireCb = () => { if (_cbFired) return; _cbFired = true; try { cb(); } catch(e){} };
+  if(box) {
+    box.innerHTML = `
+      <div style="text-align:center;padding:30px 10px;">
+        <div style="font-size:56px;margin-bottom:12px;">✅</div>
+        <div style="font-size:20px;font-weight:700;color:var(--success);margin-bottom:6px;">¡Registro exitoso!</div>
+        <div style="font-size:14px;color:var(--text);margin-bottom:4px;">${user.fullName}</div>
+        <div style="font-size:13px;color:var(--muted);">Tu perfil: <strong style="color:var(--accent);">${user.displayName}</strong></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:16px;">Entrando a la plataforma…</div>
+      </div>`;
+    box.style.border = '2px solid var(--success)';
+    void box.offsetHeight; // forzar repaint
+  }
+
+  // Garantizar que cb se ejecute exactamente una vez,
+  // incluso si Android throttlea los timers en background/PWA
+  let _fired = false;
+  const fireCb = () => {
+    if(_fired) return;
+    _fired = true;
+    try { cb(); } catch(e){ console.warn('showRegSuccess cb error:', e); }
+  };
+
+  // Nivel 1: doble rAF + 1.6s (iOS y PC — funciona siempre)
   requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(fireCb, 1600)));
-  setTimeout(fireCb, 3000); // fallback Android
+  // Nivel 2: fallback a 2.5s (Android estándar)
+  setTimeout(fireCb, 2500);
+  // Nivel 3: fallback a 4s (Android con batería restringida o MIUI agresivo)
+  setTimeout(fireCb, 4000);
+  // Nivel 4: al recuperar visibilidad (usuario regresa a la app tras ponerla en background)
+  const onVisible = () => {
+    if(document.visibilityState === 'visible') {
+      document.removeEventListener('visibilitychange', onVisible);
+      setTimeout(fireCb, 200);
+    }
+  };
+  document.addEventListener('visibilitychange', onVisible);
 }
 
 function doLogin() {
@@ -3765,10 +3842,21 @@ function enrichUserFromFirebase(userId) {
 
 function hideRegister() {
   const scr = document.getElementById('register-screen');
-  scr.style.opacity='0';
-  scr.style.transition='opacity .4s';
-  setTimeout(()=>{ scr.style.display='none'; }, 400);
-  setTimeout(()=>{ scr.style.display='none'; }, 900); // Android fallback
+  if(!scr) return;
+  scr.style.opacity = '0';
+  // Usar clase CSS + inline styles juntos para máxima compatibilidad
+  const _hide = () => {
+    scr.classList.add('hidden-reg');
+    scr.style.display      = 'none';
+    scr.style.visibility   = 'hidden';
+    scr.style.pointerEvents= 'none';
+    scr.style.zIndex       = '-1';
+  };
+  setTimeout(_hide, 350);  // tras el fade
+  setTimeout(_hide, 600);  // fallback Android
+  setTimeout(_hide, 1500); // fallback Android lento / MIUI
+  // Inmediato también para iOS PWA
+  requestAnimationFrame(() => requestAnimationFrame(_hide));
 }
 
 function buildLoginSection() {
@@ -4554,7 +4642,6 @@ async function deleteSong(songId) {
     }
   }
 
-  await logActivity('musician','🗑️',`"${currentUser.fullName}" eliminó el tema "${s.title}"`);
   toast(`"${s.title}" eliminado de todo`,'warning');
 }
 
@@ -5186,7 +5273,15 @@ function openEvModal() {
   document.getElementById('modal-new-event').classList.remove('hidden');
   refreshAvailPeople();
 }
-function closeEvModal(){ document.getElementById('modal-new-event').classList.add('hidden'); }
+function closeEvModal(){
+  const m = document.getElementById('modal-new-event');
+  if(m){ m.classList.add('hidden'); m.style.display=''; }
+  // Re-habilitar el botón Nuevo Evento inmediatamente para que admin pueda seguir creando
+  if(isAdmin) {
+    const btn = document.getElementById('new-ev-btn');
+    if(btn) btn.disabled = false;
+  }
+}
 
 function refreshAvailPeople() {
   const date   = document.getElementById('nev-date')?.value;
