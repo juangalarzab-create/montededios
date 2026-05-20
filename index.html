@@ -4006,35 +4006,7 @@ function renderProfileModal() {
   const mRecord = musicians[u.id] || {};
   const unavailEntries = Object.entries(mRecord.unavailDates||{}).sort((a,b)=>a[1].localeCompare(b[1]));
   const mySelections = window._mySelections || {};
-  const ownSongs2     = Object.values(songs).filter(s=>s.ownerId===u.id);
-  const ownSel2       = ownSongs2.filter(s=>mySelections[s.id]).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  const ownUnsel2     = ownSongs2.filter(s=>!mySelections[s.id]).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  const mySongs       = [...ownSel2, ...ownUnsel2].slice(0,6);
-  const songRows = mySongs.length ? mySongs.map(s=>{
-    const isSel = !!mySelections[s.id];
-    return `
-    <div data-song-row="${s.id}" style="background:${isSel?'rgba(240,180,41,.04)':'var(--surface)'};border:1px solid ${isSel?'var(--accent)':'var(--border)'};border-radius:9px;
-      padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
-      <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;font-size:13px;">${s.title}
-          <span class="song-tono">${s.tono||''}</span>
-          ${s.bpm?`<span style="background:rgba(92,168,224,.12);color:var(--info);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">${s.bpm} BPM</span>`:''}
-        </div>
-        <div data-song-label="${s.id}" style="font-size:10px;margin-top:2px;color:${isSel?'var(--success)':'var(--muted)'};">
-          ${isSel?'✅ En mi lista':'☆ No en lista'}
-        </div>
-      </div>
-      <div style="display:flex;gap:5px;flex-shrink:0;">
-        <button class="btn btn-ghost btn-sm" data-song-id="${s.id}" onclick="toggleSongSelected('${s.id}')"
-          style="font-size:18px;padding:4px 10px;background:${isSel?'rgba(240,180,41,.15)':''};border-color:${isSel?'var(--accent)':''};"
-          title="${isSel?'Quitar de lista':'Poner en lista'}">${isSel?'⭐':'<span style="opacity:.4;">☆</span>'}</button>
-        <button class="btn btn-ghost btn-sm" onclick="openEditSong('${s.id}')"
-          style="font-size:11px;padding:4px 8px;" title="Editar tema">✏️</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteSong('${s.id}')"
-          style="font-size:11px;padding:4px 8px;" title="Eliminar tema">🗑</button>
-      </div>
-    </div>`;
-  }).join('') : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Sin temas subidos aún</div>';
+  // songRows eliminado — renderProfileSongs() gestiona la lista con paginación de 3 en 3
 
   const unavailHtml = unavailEntries.length
     ? unavailEntries.map(([key,date])=>`
@@ -4126,21 +4098,14 @@ function renderProfileModal() {
             <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center;" onclick="uploadSong()">✓ Guardar tema</button>
           </div>
         </div>
-        <div id="prof-songs-list">${songRows}</div>
-        ${Object.values(songs).filter(s=>s.ownerId===u.id).length > 6
-          ? `<div style="text-align:center;margin-top:6px;">
-              <button onclick="closeProfileModal();switchView('songs',document.querySelector('[onclick*=songs]'))"
-                style="background:none;border:none;color:var(--accent);font-size:12px;
-                cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline;">
-                Ver todos mis temas en Canciones →
-              </button>
-            </div>` : ''}
+        <div id="prof-songs-list"></div>
       </div>
       <div style="display:flex;flex-direction:column;gap:7px;">
         <button class="btn btn-ghost" style="width:100%;justify-content:center;" onclick="showChangePass()">🔑 Cambiar contraseña</button>
         <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="logoutUser()">Cerrar sesión</button>
       </div>
     </div>`;
+  renderProfileSongs(); // llenar lista con paginación 3 en 3
   // Aplicar permiso de subir temas tras renderizar el modal
   requestAnimationFrame(_applyUploadPermission);
 }
@@ -4432,16 +4397,18 @@ async function uploadSong() {
 }
 
 async function _doUploadSong(title, tono, bpm) {
-  const saveBtn = document.querySelector('[onclick="uploadSong()"]');
-  if(saveBtn){ saveBtn.disabled=true; saveBtn.textContent='Guardando…'; }
-
+  // ── Leer valores del form ANTES de limpiarlo ───────────────────────────────
   const ytLink    = document.getElementById('song-yt-inp')?.value.trim()     || '';
   const letraLink = document.getElementById('song-letra-link')?.value.trim() || '';
   const chartLink = document.getElementById('song-chart-link')?.value.trim() || '';
   const letraFile = document.getElementById('song-letra-pdf')?.files[0];
   const chartFile = document.getElementById('song-chart-pdf')?.files[0];
 
-  // ── Upload PDFs to Telegram (if provided) ─────────────────────────────────
+  // ── Mostrar estado "Guardando…" en el botón ────────────────────────────────
+  const saveBtn = document.querySelector('[onclick="uploadSong()"]');
+  if(saveBtn){ saveBtn.disabled=true; saveBtn.textContent='Guardando…'; }
+
+  // ── Upload PDFs a Telegram si hay archivos ─────────────────────────────────
   let letraTG = null, chartTG = null;
   if(letraFile) {
     toast('Subiendo letras a servidor…','info');
@@ -4456,7 +4423,6 @@ async function _doUploadSong(title, tono, bpm) {
     id: gid(), title, tono: tono||'', bpm: bpm||'',
     ownerId: currentUser.id, ownerName: currentUser.fullName,
     ytLink, letraLink, chartLink,
-    // Telegram file references (no base64 storage)
     letraFileId:   letraTG?.fileId   || '',
     letraFileName: letraTG?.fileName || letraFile?.name || '',
     chartFileId:   chartTG?.fileId   || '',
@@ -4464,27 +4430,33 @@ async function _doUploadSong(title, tono, bpm) {
     selected: false, createdAt: Date.now()
   };
 
-  songs[song.id] = song;
-  await fbSet(`songs/${song.id}`, song);
-  await logActivity('musician','🎵',`"${currentUser.fullName}" subió "${title}"`);
-
-  // ── Clear form ─────────────────────────────────────────────────────────────
+  // ── LIMPIAR Y CERRAR FORM INMEDIATAMENTE (antes de await Firebase) ─────────
+  // Limpiar todos los campos
   ['song-title-inp','song-tono-inp','song-bpm-inp','song-yt-inp','song-letra-link','song-chart-link']
-    .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    .forEach(fid=>{ const el=document.getElementById(fid); if(el) el.value=''; });
   ['song-letra-pdf','song-chart-pdf']
-    .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    .forEach(fid=>{ const el=document.getElementById(fid); if(el) el.value=''; });
   ['letra-preview','chart-preview']
-    .forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=''; });
+    .forEach(fid=>{ const el=document.getElementById(fid); if(el) el.textContent=''; });
+  // Restaurar botón guardar
   if(saveBtn){ saveBtn.disabled=false; saveBtn.textContent='✓ Guardar tema'; }
+  // Cerrar el form y resetear el botón "＋ Subir tema"
+  const _form = document.getElementById('song-upload-form');
+  if(_form) _form.style.display = 'none';
+  const _toggleBtn = document.getElementById('upload-toggle-btn');
+  if(_toggleBtn) _toggleBtn.textContent = '＋ Subir tema';
 
+  // ── Actualizar vistas inmediatamente ──────────────────────────────────────
+  songs[song.id] = song; // agregar en memoria para render inmediato
   renderProfileSongs();
   renderSongsList();
-  showSaveSuccess(`✅ "${title}" guardado correctamente`);
-  // FIX Android: cerrar y resetear el formulario explícitamente
-  const _uploadForm = document.getElementById('song-upload-form');
-  if(_uploadForm) _uploadForm.style.display = 'none';
-  const _uploadBtn = document.getElementById('upload-toggle-btn');
-  if(_uploadBtn) _uploadBtn.textContent = '＋ Subir tema';
+  showSaveSuccess(`✅ "${title}" guardado`);
+
+  // ── Guardar en Firebase en paralelo (no bloquea la UI) ────────────────────
+  Promise.all([
+    fbSet(`songs/${song.id}`, song),
+    logActivity('musician','🎵',`"${currentUser.fullName}" subió "${title}"`)
+  ]).catch(e => console.warn('_doUploadSong Firebase:', e));
 }
 
 function showSaveSuccess(msg) {
