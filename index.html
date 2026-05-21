@@ -4574,33 +4574,31 @@ async function saveEditSong(songId) {
   const chartLink = document.getElementById('edit-song-chart')?.value.trim();
   if(!title){ toast('El título no puede estar vacío','error'); return; }
 
-  const btn = document.getElementById('edit-song-save-btn');
-  if(btn){ btn.disabled=true; btn.textContent='Guardando…'; }
-
-  // Actualizar en memoria inmediatamente → UI responde al instante
-  songs[songId] = { ...s, title, tono:tono||'', bpm:bpm||'',
+  const updated = { ...s, title, tono:tono||'', bpm:bpm||'',
     ytLink:ytLink||'', letraLink:letraLink||'', chartLink:chartLink||'' };
 
+  // ── 1. CERRAR OVERLAY INMEDIATAMENTE (antes de cualquier await) ────────────
+  document.getElementById('edit-song-overlay')?.remove();
+
+  // ── 2. ACTUALIZAR EN MEMORIA y re-renderizar al instante ──────────────────
+  songs[songId] = updated;
   renderProfileSongs();
   renderSongsList();
   if(selEv && events[selEv]) renderNextEventHero(events[selEv]);
+  toast(`"${title}" actualizado ✓`, 'success');
 
-  try {
-    await fbUpdate(`songs/${songId}`, {
+  // ── 3. GUARDAR EN FIREBASE en paralelo (no bloquea la UI) ─────────────────
+  // El listener onValue de songs propagará el cambio a TODOS los usuarios en tiempo real
+  Promise.all([
+    fbUpdate(`songs/${songId}`, {
       title, tono:tono||'', bpm:bpm||'',
       ytLink:ytLink||'', letraLink:letraLink||'', chartLink:chartLink||''
-    });
-    await logActivity('musician','✏️',`"${currentUser.fullName}" editó "${title}"`);
-    toast(`"${title}" actualizado ✓`,'success');
-    document.getElementById('edit-song-overlay')?.remove();
-  } catch(e) {
-    // Revertir si falla Firebase
-    songs[songId] = s;
-    renderProfileSongs();
-    renderSongsList();
-    toast('Error al guardar cambios','error');
-    if(btn){ btn.disabled=false; btn.textContent='✓ Guardar cambios'; }
-  }
+    }),
+    logActivity('musician','✏️',`"${currentUser.fullName}" editó "${title}"`)
+  ]).catch(e => {
+    console.warn('saveEditSong Firebase error:', e);
+    toast('Cambios guardados localmente (sin conexión)', 'warning');
+  });
 }
 
 async function deleteSong(songId) {
