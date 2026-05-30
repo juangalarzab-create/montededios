@@ -7326,7 +7326,7 @@ setTimeout(startReminderEngine, 2000);
     // IMPORTANTE: no bloquear los carruseles horizontales de etiquetas.
     // Antes este bloqueo anti rebote de iPhone interceptaba el swipe horizontal
     // y por eso las etiquetas de Ministerio no respondían a la primera.
-    if(e.target.closest && e.target.closest('#min-filter-bar, .horizontal-scroll, .filters')) return;
+    if(e.target.closest && e.target.closest('#min-filter-bar, .hm-people, .horizontal-scroll, .filters')) return;
 
     var scroller = e.target.closest ? e.target.closest('.scroll-area') : null;
     if(!scroller) return;
@@ -7996,6 +7996,148 @@ body:has(#view-events.active) #view-events{
   #view-events .ec-title{font-size:15.5px!important;}
 }
 </style>
+
+
+
+<!-- AJUSTE: Home scroll horizontal nativo + tarjetas mitad/mitad en móvil -->
+<style id="fix-home-horizontal-scroll-and-half-cards">
+/* El carrusel de encargados en Home debe usar el scroll nativo del navegador.
+   Esto evita retrasos táctiles en Android/iPhone y mantiene fluidez. */
+#view-home .hm-people{
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  justify-content:flex-start!important;
+  align-items:flex-start!important;
+  gap:clamp(12px,4vw,18px)!important;
+  width:100%!important;
+  max-width:100%!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  padding:2px 2px 10px 2px!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  box-sizing:border-box!important;
+  -webkit-overflow-scrolling:touch!important;
+  touch-action:pan-x!important;
+  overscroll-behavior-x:contain!important;
+  overscroll-behavior-y:auto!important;
+  scroll-behavior:auto!important;
+  scrollbar-width:none!important;
+  cursor:grab!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+}
+#view-home .hm-people::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;}
+#view-home .hm-people.is-dragging{cursor:grabbing!important;scroll-behavior:auto!important;}
+#view-home .hm-person{
+  flex:0 0 auto!important;
+  min-width:74px!important;
+  max-width:86px!important;
+  text-align:center!important;
+  touch-action:manipulation!important;
+  -webkit-tap-highlight-color:transparent!important;
+}
+
+/* En móviles: Ensayo Programado y Cumpleaños Próximo deben quedar lado a lado, mitad y mitad. */
+@media(max-width:520px){
+  #view-home .hm-bottom-grid{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    gap:8px!important;
+    width:100%!important;
+    max-width:100%!important;
+    overflow:visible!important;
+    margin:0!important;
+  }
+  #view-home .hm-info-card{
+    min-width:0!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-height:132px!important;
+    padding:12px 10px!important;
+    border-radius:16px!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+  }
+  #view-home .hm-info-title{
+    font-size:13.5px!important;
+    line-height:1.03!important;
+    letter-spacing:.55px!important;
+    padding-bottom:7px!important;
+    margin-bottom:8px!important;
+    word-break:normal!important;
+  }
+  #view-home .hm-info-line{
+    font-size:11px!important;
+    line-height:1.18!important;
+    margin:5px 0!important;
+    gap:5px!important;
+    min-width:0!important;
+  }
+  #view-home .hm-info-line i{
+    font-size:11px!important;
+    width:12px!important;
+    min-width:12px!important;
+  }
+}
+@media(max-width:360px){
+  #view-home .hm-bottom-grid{gap:6px!important;}
+  #view-home .hm-info-card{padding:10px 8px!important;min-height:126px!important;}
+  #view-home .hm-info-title{font-size:12px!important;letter-spacing:.45px!important;}
+  #view-home .hm-info-line{font-size:10px!important;}
+}
+
+/* Mantener Ministerio en blanco como se pidió antes, aunque otras capas antiguas definan colores de fondo. */
+#view-musicians .mus-card,
+#view-musicians .mus-card.member-tone-card,
+#view-musicians .mus-table .mus-card,
+#view-musicians #mus-table .mus-card{
+  background:#fff!important;
+}
+</style>
+<script id="fix-home-horizontal-scroll-pc-drag">
+(function(){
+  function enableMouseDrag(el){
+    if(!el || el.dataset.homePcDragReady === '1') return;
+    el.dataset.homePcDragReady = '1';
+    var isDown=false, startX=0, startScroll=0, moved=false;
+    el.addEventListener('mousedown', function(e){
+      if(e.button !== 0) return;
+      isDown=true; moved=false; startX=e.pageX; startScroll=el.scrollLeft;
+      el.classList.add('is-dragging');
+    });
+    window.addEventListener('mousemove', function(e){
+      if(!isDown) return;
+      var dx=e.pageX-startX;
+      if(Math.abs(dx)>4) moved=true;
+      el.scrollLeft=startScroll-dx;
+      if(moved) e.preventDefault();
+    }, {passive:false});
+    window.addEventListener('mouseup', function(){
+      if(!isDown) return;
+      isDown=false;
+      setTimeout(function(){moved=false;},80);
+      el.classList.remove('is-dragging');
+    });
+    el.addEventListener('click', function(e){
+      if(moved){ e.preventDefault(); e.stopPropagation(); }
+    }, true);
+    el.addEventListener('wheel', function(e){
+      if(el.scrollWidth <= el.clientWidth) return;
+      var delta=Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY;
+      el.scrollLeft += delta;
+      e.preventDefault();
+    }, {passive:false});
+  }
+  function init(){
+    document.querySelectorAll('#view-home .hm-people').forEach(enableMouseDrag);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+  // Home se re-renderiza; reactivar después de cada click de pestaña VOCES/MÚSICOS.
+  document.addEventListener('click', function(){ setTimeout(init, 60); }, true);
+})();
+</script>
 
 </html>
 
