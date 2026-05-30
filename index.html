@@ -2032,22 +2032,22 @@ i.fa,i.fas,i.far,i.fab,.fa,.fas,.far,.fab,.fa-solid,.fa-regular,.fa-brands,.song
     <div class="scroll-area">
       <div class="mv-wrap">
         <div class="mv-hdr">
-          <h2>🎤 Ministerio</h2>
+          <h2><i class="fa-solid fa-microphone-lines"></i> Ministerio</h2>
           <span style="font-size:12px;color:var(--muted);" id="mus-count">0 integrantes</span>
         </div>
         <!-- No add form — members appear automatically when they register -->
-        <input class="search-bar" type="text" placeholder="🔍 Buscar integrante..." oninput="filterMusicians(this.value)">
+        <div class="search-wrap min-search"><i class="fa-solid fa-magnifying-glass"></i><input class="search-bar" type="text" placeholder="Buscar integrante..." oninput="filterMusicians(this.value)"></div>
         <!-- Filtros por categoría -->
         <div id="min-filter-bar" style="display:flex;gap:6px;overflow-x:auto;padding:6px 0 4px;
           scrollbar-width:none;-webkit-overflow-scrolling:touch;">
           <button class="min-filter-btn active" onclick="setMinFilter('todos',this)">Todos</button>
-          <button class="min-filter-btn" onclick="setMinFilter('voces',this)">🎤 Voces</button>
-          <button class="min-filter-btn" onclick="setMinFilter('guitarra',this)">🎸 Guitarra</button>
-          <button class="min-filter-btn" onclick="setMinFilter('bajo',this)">🎵 Bajo</button>
-          <button class="min-filter-btn" onclick="setMinFilter('teclado',this)">🎹 Teclado</button>
-          <button class="min-filter-btn" onclick="setMinFilter('bateria',this)">🥁 Batería</button>
-          <button class="min-filter-btn" onclick="setMinFilter('percusion',this)">🪘 Percusión</button>
-          <button class="min-filter-btn" onclick="setMinFilter('otros',this)">➕ Otros</button>
+          <button class="min-filter-btn" onclick="setMinFilter('voces',this)"><i class="fa-solid fa-microphone-lines"></i> Voces</button>
+          <button class="min-filter-btn" onclick="setMinFilter('guitarra',this)"><i class="fa-solid fa-guitar"></i> Guitarra</button>
+          <button class="min-filter-btn" onclick="setMinFilter('bajo',this)"><i class="fa-solid fa-music"></i> Bajo</button>
+          <button class="min-filter-btn" onclick="setMinFilter('teclado',this)"><i class="fa-solid fa-keyboard"></i> Teclado</button>
+          <button class="min-filter-btn" onclick="setMinFilter('bateria',this)"><i class="fa-solid fa-drum"></i> Batería</button>
+          <button class="min-filter-btn" onclick="setMinFilter('percusion',this)"><i class="fa-solid fa-drum-steelpan"></i> Percusión</button>
+          <button class="min-filter-btn" onclick="setMinFilter('otros',this)"><i class="fa-solid fa-plus"></i> Otros</button>
         </div>
         <div class="mus-table" id="mus-table"></div>
       </div>
@@ -2059,10 +2059,10 @@ i.fa,i.fas,i.far,i.fab,.fa,.fas,.far,.fab,.fa-solid,.fa-regular,.fa-brands,.song
     <div class="scroll-area">
       <div style="padding:16px;max-width:680px;margin:0 auto;width:100%;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-          <h2 style="font-family:'Nunito',sans-serif;font-size:20px;">🎵 Canciones</h2>
+          <h2 style="font-family:'Nunito',sans-serif;font-size:20px;"><i class="fa-solid fa-music"></i> Canciones</h2>
           <span style="font-size:11px;color:var(--muted);" id="songs-count"></span>
         </div>
-        <input class="search-bar" type="text" placeholder="🔍 Buscar canción o tono..." oninput="filterSongs(this.value)">
+        <div class="search-wrap songs-search-google"><i class="fa-solid fa-magnifying-glass"></i><input class="search-bar" type="text" placeholder="Buscar canción o tono..." oninput="filterSongs(this.value)"></div>
         <div id="songs-list"></div>
       </div>
     </div>
@@ -2367,6 +2367,20 @@ const pastelByKey = (key, type='song') => {
     {bg:'#ffe9d8', border:'#f2be93', ink:'#071431'}
   ];
   const arr = type === 'member' ? member : song;
+  const str = String(key || '0');
+  let h = 0;
+  for(let i=0;i<str.length;i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  return arr[Math.abs(h) % arr.length];
+};
+const memberSolidByKey = (key) => {
+  const arr = [
+    {solid:'#1fc4d6', ink:'#ffffff'},
+    {solid:'#f5c447', ink:'#071431'},
+    {solid:'#7b5fe8', ink:'#ffffff'},
+    {solid:'#ff7b9c', ink:'#071431'},
+    {solid:'#9bdc7a', ink:'#071431'},
+    {solid:'#ffb12b', ink:'#071431'}
+  ];
   const str = String(key || '0');
   let h = 0;
   for(let i=0;i<str.length;i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
@@ -3703,6 +3717,7 @@ function showMemberCard(musId) {
   if(!m) return;
   const color = rc(m.role);
   const modalTone = pastelByKey(musId || m.name, 'member');
+  const modalSolid = memberSolidByKey(musId || m.name);
   const cargoIco = {Músico:'🎸', Voz:'🎤', Líder:'👑'}[m.cargo||''] || '🎵';
 
   // Instrument: if Músico → role is the instrument; if Voz → Cantante; if Líder → Líder
@@ -3761,7 +3776,7 @@ function showMemberCard(musId) {
   box.innerHTML = `
     <button class="mcm-close" onclick="document.getElementById('modal-member').classList.add('hidden'); if(window._memberCardUnsub){try{window._memberCardUnsub();}catch(e){} window._memberCardUnsub=null;}">✕</button>
     <div class="mcm-header">
-      <div class="mcm-avatar" style="background:${color}22;color:${color};">${m.name[0]}</div>
+      <div class="mcm-avatar" style="background:${modalSolid.solid};color:${modalSolid.ink};">${m.name[0]}</div>
       <div>
         <div class="mcm-name">${m.name}</div>
         <div class="mcm-role">${instrLabel}</div>
@@ -3872,6 +3887,8 @@ function renderMT() {
   const td = today();
   cont.innerHTML = filtered.map(m => {
     const color = rc(m.role);
+    const memberTone = pastelByKey(m.id || m.name, 'member');
+    const memberSolid = memberSolidByKey(m.id || m.name);
     const unavailDates = m.unavailDates ? Object.values(m.unavailDates).sort() : [];
     const isTodayUnavail = unavailDates.includes(td);
     const dotColor = isTodayUnavail ? 'var(--danger)' : 'var(--success)';
@@ -3883,11 +3900,11 @@ function renderMT() {
             padding:2px 8px;font-size:10px;font-weight:600;">🚫 ${fmtDate(d)}</span>`).join('')
       : `<span style="font-size:11px;color:var(--success);">✅ Disponible siempre</span>`;
     const cargoIco = {Músico:'🎸',Voz:'🎤',Líder:'👑'}[m.cargo||'']||'';
-    return `<div class="mus-card" style="transition:border-color .2s;"
-        onmouseenter="this.style.borderColor='var(--accent)'"
-        onmouseleave="this.style.borderColor=''">
+    return `<div class="mus-card member-tone-card" style="--member-card-bg:${memberTone.bg};--member-card-border:${memberTone.border};--member-card-ink:${memberTone.ink};background:${memberTone.bg};border-color:${memberTone.border};transition:border-color .2s,box-shadow .2s,transform .2s;"
+        onmouseenter="this.style.borderColor='${memberTone.ink}'"
+        onmouseleave="this.style.borderColor='${memberTone.border}'">
       <div class="mus-card-main">
-        <div class="mus-av" style="background:${color}22;color:${color};font-size:15px;font-weight:700;cursor:pointer;"
+        <div class="mus-av member-tone-avatar" style="background:${memberSolid.solid};color:${memberSolid.ink};font-size:15px;font-weight:800;cursor:pointer;"
           onclick="showMemberCard('${m.id}')">
           ${m.name[0]}
         </div>
@@ -3909,7 +3926,7 @@ function renderMT() {
             font-size:14px;flex-shrink:0;transition:all .2s;"
           onmouseover="this.style.background='var(--danger)';this.style.color='#fff'"
           onmouseout="this.style.background='rgba(224,92,92,.1)';this.style.color='var(--danger)'">
-          🗑
+          <i class="fa-solid fa-trash-can"></i>
         </button>` : ''}
       </div>
       ${unavailDates.length ? `
@@ -6580,28 +6597,23 @@ function renderSongsList() {
     return;
   }
 
-  // Selecciones personales del usuario actual
   const mySelections = window._mySelections || {};
 
   container.innerHTML = filtered.map(s=>{
     const hasYT    = !!s.ytLink;
     const hasLetra = !!(s.letraLink||s.letraFileId);
     const hasChart = !!(s.chartLink||s.chartFileId);
-
-    // CUALQUIER usuario logueado puede elegir cualquier tema
     const canStar  = !!currentUser;
     const isChosen = canStar && !!mySelections[s.id];
-
     const cardTone = pastelByKey(s.id || s.title, 'song');
+    const tonoHtml = s.tono ? `<span class="song-key-chip">${s.tono}</span>` : '';
+    const bpmHtml  = s.bpm  ? `<span class="song-bpm-chip">${s.bpm} BPM</span>` : '';
+
     const starBtn = canStar ? `
       <button data-catalog-star="${s.id}"
         onclick="toggleSongSelected('${s.id}')"
-        style="background:${isChosen?cardTone.bg:'transparent'};
-          border:1px solid ${isChosen?cardTone.border:'var(--border)'};
-          border-radius:8px;padding:5px 9px;cursor:pointer;
-          box-shadow:${isChosen?'0 0 8px rgba(7,20,49,.10)':'none'};
-          display:flex;align-items:center;justify-content:center;
-          transition:all .2s;flex-shrink:0;"
+        class="song-star-btn ${isChosen?'is-chosen':''}"
+        style="--song-pastel-bg:${cardTone.bg};--song-pastel-border:${cardTone.border};"
         title="${isChosen?'Quitar de mi lista':'Agregar a mi lista'}">
         ${isChosen
           ? '<span style="font-size:18px;line-height:1;">⭐</span>'
@@ -6613,13 +6625,11 @@ function renderSongsList() {
         transition:border-color .2s,background .2s,box-shadow .2s;">
       <div class="song-card-top">
         <div class="song-thumb">🎵</div>
-        <div style="flex:1;min-width:0;">
-          <div class="song-title">${s.title}
-            <span class="song-tono">${s.tono||''}</span>
-            ${s.bpm?`<span style="background:rgba(92,168,224,.12);color:var(--info);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;">${s.bpm} BPM</span>`:''}
-          </div>
+        <div class="song-main-info">
+          <div class="song-title">${s.title}</div>
+          <div class="song-tone-row">${tonoHtml}${bpmHtml}</div>
           <div class="song-meta">${s.ownerName||''}</div>
-          ${canStar?`<div data-catalog-label="${s.id}" style="font-size:10px;margin-top:2px;">
+          ${canStar?`<div data-catalog-label="${s.id}" class="song-list-status">
             ${isChosen
               ? '<span style="color:var(--success);font-weight:700;">✅ En mi lista</span>'
               : '<span style="color:var(--muted);">☆ No en lista</span>'}
@@ -7119,7 +7129,586 @@ buildLoginSection();  // shows AdminLider card with password field
 initApp();
 setTimeout(startReminderEngine, 2000);
 </script>
+
+<script id="fix-ios-pull-blank">
+(function(){
+  var startY = 0;
+  document.addEventListener('touchstart', function(e){
+    if(e.touches && e.touches.length) startY = e.touches[0].clientY;
+  }, {passive:true});
+  document.addEventListener('touchmove', function(e){
+    var scroller = e.target.closest ? e.target.closest('.scroll-area') : null;
+    if(!scroller) return;
+    var y = e.touches && e.touches.length ? e.touches[0].clientY : startY;
+    var dy = y - startY;
+    var atTop = scroller.scrollTop <= 0;
+    var atBottom = Math.ceil(scroller.scrollTop + scroller.clientHeight) >= scroller.scrollHeight;
+    if((atTop && dy > 0) || (atBottom && dy < 0)) e.preventDefault();
+  }, {passive:false});
+})();
+</script>
+
+<style id="ajuste-ministerio-eventos-final-v2">
+/* Ministerio: iconos FontAwesome y buscador claro tipo Google */
+#view-musicians .mv-hdr h2{display:flex!important;align-items:center!important;gap:10px!important;color:#071431!important;font-size:22px!important;font-weight:800!important;letter-spacing:.01em!important;}
+#view-musicians .mv-hdr h2 i{font-size:20px!important;color:#071431!important;font-family:"Font Awesome 6 Free"!important;font-weight:900!important;}
+#view-musicians .search-wrap.min-search{width:100%!important;display:flex!important;align-items:center!important;gap:10px!important;background:#fff!important;border:1px solid #dfe1e5!important;border-radius:24px!important;box-shadow:0 1px 6px rgba(32,33,36,.12)!important;padding:0 14px!important;min-height:46px!important;margin-bottom:14px!important;box-sizing:border-box!important;}
+#view-musicians .search-wrap.min-search:focus-within{box-shadow:0 1px 8px rgba(32,33,36,.18)!important;border-color:#dfe1e5!important;}
+#view-musicians .search-wrap.min-search i{font-family:"Font Awesome 6 Free"!important;font-weight:900!important;font-size:15px!important;color:#9aa0a6!important;flex:0 0 auto!important;}
+#view-musicians .search-wrap.min-search .search-bar{background:transparent!important;border:0!important;box-shadow:none!important;outline:0!important;border-radius:0!important;padding:0!important;height:44px!important;min-height:44px!important;color:#071431!important;font-size:14px!important;}
+#view-musicians .search-wrap.min-search .search-bar::placeholder{color:#80868b!important;opacity:1!important;}
+#view-musicians .min-filter-btn{display:inline-flex!important;align-items:center!important;gap:7px!important;}
+#view-musicians .min-filter-btn i{font-family:"Font Awesome 6 Free"!important;font-weight:900!important;font-size:12px!important;}
+/* Ministerio: iniciales con colores enteros como las fechas de eventos */
+#view-musicians .mus-av.member-tone-avatar,.mcm-avatar{border-radius:14px!important;border:0!important;box-shadow:0 6px 14px rgba(7,20,49,.14)!important;font-weight:900!important;}
+#view-musicians .mus-card.member-tone-card{border-width:1.5px!important;}
+#view-musicians .mus-card-main{align-items:center!important;}
+/* Eventos: tamaños estandarizados con las demás ventanas */
+#view-events .events-toolbar h2{font-size:22px!important;font-weight:800!important;letter-spacing:.01em!important;line-height:1.2!important;}
+#view-events .ev-section-title{font-size:22px!important;font-weight:800!important;letter-spacing:.01em!important;line-height:1.18!important;}
+#view-events .ec-title{font-size:16px!important;font-weight:800!important;letter-spacing:.04em!important;line-height:1.18!important;}
+#view-events .ec-sub{font-size:13px!important;font-weight:400!important;letter-spacing:.01em!important;line-height:1.25!important;}
+#view-events .ev-badge{font-size:11px!important;font-weight:800!important;letter-spacing:.02em!important;}
+#view-events .ev-person-chip{font-size:11px!important;font-weight:700!important;}
+#view-events .ec-side{font-size:13px!important;font-weight:700!important;}
+@media(max-width:430px){
+  #view-events .events-toolbar h2{font-size:21px!important;}
+  #view-events .ev-section-title{font-size:21px!important;}
+  #view-events .ec-title{font-size:15px!important;letter-spacing:.035em!important;}
+  #view-events .ec-sub{font-size:12px!important;}
+  #view-events .ev-badge{font-size:10px!important;padding:5px 9px!important;}
+}
+</style>
+
+
+
+<style id="ajuste-ministerio-drag-pc">
+/* Permite arrastrar con mouse la barra de etiquetas/categorías en PC */
+#min-filter-bar{
+  cursor:grab!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+  scroll-behavior:smooth!important;
+}
+#min-filter-bar.is-dragging{
+  cursor:grabbing!important;
+  scroll-behavior:auto!important;
+}
+#min-filter-bar.is-dragging .min-filter-btn{
+  pointer-events:none!important;
+}
+</style>
+<script id="ajuste-ministerio-drag-pc">
+(function(){
+  function initMinisterioDrag(){
+    const bar = document.getElementById('min-filter-bar');
+    if(!bar || bar.dataset.pcDragReady === '1') return;
+    bar.dataset.pcDragReady = '1';
+
+    let isDown = false;
+    let startX = 0;
+    let startScroll = 0;
+    let moved = false;
+
+    bar.addEventListener('mousedown', function(e){
+      if(e.button !== 0) return;
+      isDown = true;
+      moved = false;
+      startX = e.pageX;
+      startScroll = bar.scrollLeft;
+      bar.classList.add('is-dragging');
+    });
+
+    window.addEventListener('mousemove', function(e){
+      if(!isDown) return;
+      const dx = e.pageX - startX;
+      if(Math.abs(dx) > 4) moved = true;
+      bar.scrollLeft = startScroll - dx;
+      if(moved) e.preventDefault();
+    }, {passive:false});
+
+    window.addEventListener('mouseup', function(){
+      if(!isDown) return;
+      isDown = false;
+      setTimeout(function(){ moved = false; }, 80);
+      bar.classList.remove('is-dragging');
+    });
+
+    bar.addEventListener('click', function(e){
+      if(moved){
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
+
+    // En PC también permite mover las etiquetas con la rueda del mouse.
+    bar.addEventListener('wheel', function(e){
+      if(bar.scrollWidth <= bar.clientWidth) return;
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      bar.scrollLeft += delta;
+      e.preventDefault();
+    }, {passive:false});
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', initMinisterioDrag);
+  }else{
+    initMinisterioDrag();
+  }
+})();
+</script>
+
+
+
+<!-- Ajuste final: canciones limpias + ministerio blanco + etiquetas con paleta -->
+<style id="ajuste-final-canciones-ministerio-limpio">
+  /* Buscador Canciones estilo Google */
+  #view-songs .songs-search-google{
+    width:100%!important;display:flex!important;align-items:center!important;gap:12px!important;
+    background:#fff!important;border:1px solid #dfe1e5!important;border-radius:24px!important;
+    box-shadow:0 1px 6px rgba(32,33,36,.12)!important;padding:0 16px!important;
+    min-height:48px!important;margin-bottom:16px!important;box-sizing:border-box!important;
+  }
+  #view-songs .songs-search-google:focus-within{
+    box-shadow:0 1px 8px rgba(32,33,36,.18)!important;border-color:#dfe1e5!important;
+  }
+  #view-songs .songs-search-google i{
+    font-family:"Font Awesome 6 Free"!important;font-weight:900!important;color:#9aa0a6!important;font-size:15px!important;flex:0 0 auto!important;
+  }
+  #view-songs .songs-search-google .search-bar{
+    flex:1!important;background:transparent!important;border:0!important;box-shadow:none!important;outline:0!important;
+    height:46px!important;min-height:46px!important;padding:0!important;color:#071431!important;font-size:14px!important;
+  }
+  #view-songs .songs-search-google .search-bar::placeholder{color:#80868b!important;opacity:1!important;}
+
+  /* Ministerio: cards blancas; solo iniciales y etiquetas con color */
+  #view-musicians .mus-card.member-tone-card,
+  #view-musicians .mus-card{
+    background:#fff!important;border-color:rgba(7,20,49,.10)!important;border-radius:18px!important;
+    box-shadow:0 6px 14px rgba(7,20,49,.07)!important;
+  }
+  #view-musicians .mus-card:hover{border-color:rgba(7,20,49,.18)!important;}
+  #view-musicians .member-tone-avatar{box-shadow:0 5px 12px rgba(7,20,49,.12)!important;}
+  #view-musicians .min-filter-btn{border-radius:999px!important;font-weight:800!important;}
+  #view-musicians .min-filter-btn:nth-child(1){background:#f4d958!important;border-color:#f4d958!important;color:#071431!important;}
+  #view-musicians .min-filter-btn:nth-child(2){background:#eaf7fb!important;border-color:#bfe8f2!important;color:#0f5f73!important;}
+  #view-musicians .min-filter-btn:nth-child(3){background:#fff1d8!important;border-color:#ffd27a!important;color:#8a5600!important;}
+  #view-musicians .min-filter-btn:nth-child(4){background:#eef8e5!important;border-color:#cae9b1!important;color:#2f6c1f!important;}
+  #view-musicians .min-filter-btn:nth-child(5){background:#f0edff!important;border-color:#d2c9ff!important;color:#443299!important;}
+  #view-musicians .min-filter-btn:nth-child(6){background:#e8f7f7!important;border-color:#b8e6e6!important;color:#16676b!important;}
+  #view-musicians .min-filter-btn:nth-child(7){background:#fff4df!important;border-color:#ffc870!important;color:#7a4d00!important;}
+  #view-musicians .min-filter-btn:nth-child(8){background:#eef3ff!important;border-color:#c8d8ff!important;color:#244a98!important;}
+
+  /* Canciones: todas las tarjetas blancas, solo chips y botones con color */
+  #view-songs #songs-list > .song-card,
+  #view-songs #songs-list > .song-card.song-card-plain,
+  #view-songs #songs-list > .song-card.song-card-chosen{
+    background:#fff!important;border:1px solid rgba(7,20,49,.10)!important;border-radius:16px!important;
+    box-shadow:0 6px 14px rgba(7,20,49,.07)!important;color:#071431!important;
+  }
+  #view-songs .song-card-chosen .song-title{color:#071431!important;}
+  #view-songs .song-thumb{background:#f4f7fb!important;color:#071431!important;}
+  #view-songs .song-tone-row{display:flex!important;gap:7px!important;align-items:center!important;flex-wrap:wrap!important;margin:5px 0 4px!important;}
+  #view-songs .song-key-chip,
+  #view-songs .song-bpm-chip{
+    display:inline-flex!important;align-items:center!important;justify-content:center!important;border-radius:999px!important;
+    padding:3px 10px!important;font-size:11px!important;font-weight:900!important;letter-spacing:.02em!important;
+    border:1px solid transparent!important;line-height:1!important;
+  }
+  #view-songs .song-key-chip{background:#f4d958!important;border-color:#d7b900!important;color:#071431!important;}
+  #view-songs .song-bpm-chip{background:#d9f0fb!important;border-color:#82cae6!important;color:#072f44!important;}
+  #view-songs .song-btn{font-weight:900!important;border-radius:10px!important;}
+  #view-songs .song-btn.song-video{
+    background:#e8f1fb!important;border-color:#9fc1df!important;color:#0b3a5b!important;
+  }
+  #view-songs .song-btn.song-letras{
+    background:#dcf4fb!important;border-color:#8bd4e8!important;color:#07566f!important;
+  }
+  #view-songs .song-btn.song-chart{
+    background:#e7f3ea!important;border-color:#9bcda7!important;color:#14522b!important;
+  }
+  #view-songs .song-btn.disabled{opacity:.45!important;filter:grayscale(.1)!important;}
+
+  @media(max-width:430px){
+    #view-songs .songs-search-google{min-height:46px!important;margin-bottom:14px!important;}
+    #view-songs .song-actions{padding-left:52px!important;display:flex!important;gap:7px!important;flex-wrap:wrap!important;}
+    #view-songs .song-btn{font-size:11px!important;padding:7px 9px!important;}
+  }
+</style>
+<script id="ajuste-final-render-canciones-limpio">
+(function(){
+  const fa = (cls)=>`<i class="fa-solid ${cls}" aria-hidden="true"></i>`;
+  window.renderSongsList = function renderSongsList() {
+    const container = document.getElementById('songs-list');
+    const countEl   = document.getElementById('songs-count');
+    if(!container) return;
+    const all = Object.values(songs).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    if(countEl) countEl.textContent = `${all.length} tema${all.length!==1?'s':''}`;
+    const filtered = songsSearchQ
+      ? all.filter(s=>s.title.toLowerCase().includes(songsSearchQ)||s.tono?.toLowerCase().includes(songsSearchQ)||s.ownerName?.toLowerCase().includes(songsSearchQ))
+      : all;
+    if(!filtered.length){
+      container.innerHTML = `<div class="empty-s"><div class="ei">${fa('fa-music')}</div>${all.length?'Sin resultados':'Aún no hay canciones'}</div>`;
+      return;
+    }
+    const mySelections = window._mySelections || {};
+    container.innerHTML = filtered.map(s=>{
+      const hasYT    = !!s.ytLink;
+      const hasLetra = !!(s.letraLink||s.letraFileId);
+      const hasChart = !!(s.chartLink||s.chartFileId);
+      const canStar  = !!currentUser;
+      const isChosen = canStar && !!mySelections[s.id];
+      const tonoHtml = s.tono ? `<span class="song-key-chip">${s.tono}</span>` : '';
+      const bpmHtml  = s.bpm  ? `<span class="song-bpm-chip">${s.bpm} BPM</span>` : '';
+      const starBtn = canStar ? `
+        <button data-catalog-star="${s.id}"
+          onclick="toggleSongSelected('${s.id}')"
+          class="song-star-btn ${isChosen?'is-chosen':''}"
+          title="${isChosen?'Quitar de mi lista':'Agregar a mi lista'}">
+          ${isChosen ? '<i class="fa-solid fa-star"></i>' : '<i class="fa-regular fa-star"></i>'}
+        </button>` : '';
+      return `<div class="song-card ${isChosen?'song-card-chosen':'song-card-plain'}" data-song-row="${s.id}">
+        <div class="song-card-top">
+          <div class="song-thumb">${fa('fa-music')}</div>
+          <div class="song-main-info">
+            <div class="song-title">${s.title}</div>
+            <div class="song-tone-row">${tonoHtml}${bpmHtml}</div>
+            <div class="song-meta">${s.ownerName||''}</div>
+            ${canStar?`<div data-catalog-label="${s.id}" class="song-list-status">
+              ${isChosen
+                ? '<span style="color:var(--success);font-weight:800;"><i class="fa-solid fa-check"></i> En mi lista</span>'
+                : '<span style="color:var(--muted);"><i class="fa-regular fa-star"></i> No en lista</span>'}
+            </div>`:''}
+          </div>
+          ${starBtn}
+        </div>
+        <div class="song-actions">
+          <button class="song-btn song-video play ${!hasYT?'disabled':''}"
+            onclick="${hasYT?`openSongLink('${s.ytLink}')`:''}"><i class="fa-solid fa-play"></i> Video</button>
+          <button class="song-btn song-letras ${!hasLetra?'disabled':''}"
+            onclick="${s.letraFileId
+              ? `downloadFromTelegram('${s.letraFileId}','${s.letraFileName||s.title+'_letras.pdf'}','Letras de ${s.title}')`
+              : s.letraLink?`openSongLink('${s.letraLink}')`:''}" ><i class="fa-regular fa-file-lines"></i> Letras</button>
+          <button class="song-btn song-chart ${!hasChart?'disabled':''}"
+            onclick="${s.chartFileId
+              ? `downloadFromTelegram('${s.chartFileId}','${s.chartFileName||s.title+'_chart.pdf'}','Chart de ${s.title}')`
+              : s.chartLink?`openSongLink('${s.chartLink}')`:''}" ><i class="fa-solid fa-chart-simple"></i> Chart</button>
+        </div>
+      </div>`;
+    }).join('');
+  };
+})();
+</script>
+
+
+
+<!-- AJUSTE FINAL SOLICITADO: Ministerio blanco + Eventos tipografía igual a Canciones -->
+<style id="ajuste-final-blanco-ministerio-eventos-fuentes">
+  /* Ministerio: cada card de integrante queda en blanco. Solo iniciales y etiquetas conservan color. */
+  #view-musicians .mus-table .mus-card,
+  #view-musicians .mus-table .mus-card.member-tone-card,
+  #view-musicians #mus-table .mus-card,
+  #view-musicians #mus-table .mus-card.member-tone-card{
+    background:#ffffff!important;
+    border-color:rgba(7,20,49,.10)!important;
+    box-shadow:0 6px 14px rgba(7,20,49,.07)!important;
+  }
+  #view-musicians .mus-table .mus-card:hover,
+  #view-musicians #mus-table .mus-card:hover{
+    background:#ffffff!important;
+    border-color:rgba(7,20,49,.18)!important;
+    box-shadow:0 9px 20px rgba(7,20,49,.10)!important;
+  }
+  #view-musicians .mus-table .mus-card-main,
+  #view-musicians #mus-table .mus-card-main{
+    background:transparent!important;
+  }
+  #view-musicians .mus-av.member-tone-avatar,
+  #view-musicians .member-tone-avatar{
+    color:#071431!important;
+    font-weight:900!important;
+  }
+
+  /* Eventos: títulos y subtítulos de cada evento al mismo tamaño visual que Canciones. */
+  #view-events .ev-card .ec-title,
+  #view-events #ev-list .ec-title{
+    font-family:'Nunito',sans-serif!important;
+    font-size:14px!important;
+    line-height:1.22!important;
+    font-weight:800!important;
+    letter-spacing:.01em!important;
+    text-transform:none!important;
+    color:#071431!important;
+  }
+  #view-events .ev-card .ec-sub,
+  #view-events #ev-list .ec-sub,
+  #view-events .ev-card .ec-meta,
+  #view-events #ev-list .ec-meta{
+    font-family:'Nunito',sans-serif!important;
+    font-size:12px!important;
+    line-height:1.25!important;
+    font-weight:400!important;
+    letter-spacing:.01em!important;
+    text-transform:none!important;
+    color:#071431!important;
+  }
+  #view-events .ev-card .ec-chips .chip,
+  #view-events #ev-list .ec-chips .chip,
+  #view-events .ev-card .ev-badge,
+  #view-events #ev-list .ev-badge{
+    font-family:'Nunito',sans-serif!important;
+    font-size:11px!important;
+    line-height:1!important;
+    font-weight:800!important;
+    letter-spacing:.01em!important;
+    text-transform:none!important;
+  }
+
+  @media(max-width:430px){
+    #view-events .ev-card .ec-title,
+    #view-events #ev-list .ec-title,
+    #view-songs .song-title{
+      font-size:14px!important;
+      line-height:1.22!important;
+    }
+    #view-events .ev-card .ec-sub,
+    #view-events #ev-list .ec-sub{
+      font-size:11.5px!important;
+    }
+  }
+</style>
+
 </body>
+
+
+<style id="ajuste-eventos-centrado-como-home">
+/* EVENTOS — centrado y encajado igual que HOME, sin tocar funciones */
+:root{--events-centered-width:760px;--events-centered-mobile-pad:12px;}
+body:has(#view-events.active){
+  overflow-x:hidden!important;
+  background:#f6f8fb!important;
+}
+body:has(#view-events.active) #views-wrap,
+body:has(#view-events.active) #view-events{
+  width:100%!important;
+  max-width:100vw!important;
+  overflow:hidden!important;
+  background:#f6f8fb!important;
+}
+#view-events,
+#view-events *{
+  box-sizing:border-box!important;
+}
+#view-events .scroll-area{
+  width:100%!important;
+  max-width:100vw!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  background:#f6f8fb!important;
+  overscroll-behavior-y:contain!important;
+  -webkit-overflow-scrolling:auto!important;
+}
+#view-events .scroll-area > div{
+  width:100%!important;
+  max-width:100vw!important;
+  margin:0 auto!important;
+  padding-left:0!important;
+  padding-right:0!important;
+  overflow-x:hidden!important;
+}
+
+/* Barra Agenda: grupo centrado y sin desbordar */
+#view-events .events-toolbar{
+  width:100%!important;
+  max-width:100vw!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:0!important;
+  padding:18px 16px 16px!important;
+  background:#071431!important;
+  border-bottom:5px solid #f2d66b!important;
+  overflow:hidden!important;
+}
+#view-events .events-toolbar h2{
+  flex:0 0 auto!important;
+  width:auto!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:0 22px 0 0!important;
+  border-right:2px solid rgba(255,255,255,.78)!important;
+  font-family:'Nunito',sans-serif!important;
+  font-size:26px!important;
+  font-weight:800!important;
+  line-height:1!important;
+  letter-spacing:.02em!important;
+  color:#fff!important;
+  white-space:nowrap!important;
+}
+#view-events .events-actions{
+  flex:0 1 calc(var(--events-centered-width) - 140px)!important;
+  max-width:calc(var(--events-centered-width) - 140px)!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:0 0 0 22px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:12px!important;
+  flex-wrap:nowrap!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  scrollbar-width:none!important;
+}
+#view-events .events-actions::-webkit-scrollbar{display:none!important;}
+#view-events .events-actions .btn:not(.btn-primary){
+  flex:0 0 42px!important;
+  width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;max-width:42px!important;
+}
+
+/* Contenido Eventos: mismo ancho centrado que HOME */
+#view-events .scroll-area > div > div[style*="padding:8px"]{
+  width:100%!important;
+  max-width:var(--events-centered-width)!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  padding:22px 16px calc(96px + env(safe-area-inset-bottom))!important;
+  overflow:hidden!important;
+}
+#view-events .ev-section-title{
+  width:100%!important;
+  max-width:100%!important;
+  margin:0 0 18px!important;
+  padding:0!important;
+  font-family:'Nunito',sans-serif!important;
+  font-size:22px!important;
+  line-height:1.16!important;
+  font-weight:800!important;
+  letter-spacing:.01em!important;
+  color:#071431!important;
+  text-align:left!important;
+}
+#view-events #ev-list{
+  width:100%!important;
+  max-width:100%!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:14px!important;
+  padding:0!important;
+  margin:0 auto!important;
+  overflow:visible!important;
+}
+#view-events .ev-card{
+  width:100%!important;
+  max-width:100%!important;
+  margin:0 auto!important;
+  overflow:hidden!important;
+  border-radius:18px!important;
+  padding:14px!important;
+  grid-template-columns:76px minmax(0,1fr) 36px!important;
+  gap:14px!important;
+  align-items:center!important;
+}
+#view-events .ec-main,
+#view-events .ec-title-row,
+#view-events .ec-sub,
+#view-events .ec-chips{
+  min-width:0!important;
+  max-width:100%!important;
+}
+#view-events .ec-title-row{
+  display:flex!important;
+  align-items:center!important;
+  flex-wrap:wrap!important;
+  gap:8px!important;
+}
+#view-events .ec-title{
+  min-width:0!important;
+  max-width:100%!important;
+  overflow-wrap:anywhere!important;
+  word-break:normal!important;
+  font-size:20px!important;
+  line-height:1.1!important;
+  font-weight:800!important;
+  letter-spacing:.06em!important;
+}
+#view-events .ec-sub{
+  flex-wrap:wrap!important;
+  overflow-wrap:anywhere!important;
+  font-size:13px!important;
+  line-height:1.25!important;
+  text-transform:uppercase!important;
+}
+#view-events .ev-date-badge{
+  width:68px!important;
+  height:82px!important;
+  min-width:68px!important;
+}
+#view-events .ec-side{
+  min-width:30px!important;
+  justify-self:end!important;
+}
+#view-events .fab-new-event{
+  right:max(18px,calc((100vw - var(--events-centered-width))/2 + 18px))!important;
+}
+
+@media(max-width:760px){
+  :root{--events-centered-width:100vw;}
+  #view-events .events-toolbar{
+    justify-content:flex-start!important;
+    padding-left:14px!important;
+    padding-right:14px!important;
+  }
+  #view-events .events-toolbar h2{
+    font-size:24px!important;
+    padding-right:16px!important;
+  }
+  #view-events .events-actions{
+    flex:1 1 auto!important;
+    max-width:none!important;
+    padding-left:14px!important;
+    gap:10px!important;
+  }
+  #view-events .scroll-area > div > div[style*="padding:8px"]{
+    padding-left:var(--events-centered-mobile-pad)!important;
+    padding-right:var(--events-centered-mobile-pad)!important;
+  }
+}
+@media(max-width:520px){
+  #view-events .events-toolbar{padding:16px 12px 14px!important;}
+  #view-events .events-toolbar h2{font-size:22px!important;padding-right:12px!important;}
+  #view-events .events-actions{padding-left:12px!important;gap:8px!important;}
+  #view-events .events-actions .btn:not(.btn-primary){
+    flex-basis:38px!important;width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;max-width:38px!important;
+  }
+  #view-events .scroll-area > div > div[style*="padding:8px"]{padding-top:20px!important;}
+  #view-events .ev-section-title{font-size:21px!important;margin-bottom:15px!important;}
+  #view-events .ev-card{
+    grid-template-columns:62px minmax(0,1fr) 24px!important;
+    gap:10px!important;
+    padding:12px!important;
+    border-radius:17px!important;
+  }
+  #view-events .ev-date-badge{
+    width:56px!important;height:72px!important;min-width:56px!important;border-radius:12px!important;
+  }
+  #view-events .ev-date-badge .day{font-size:27px!important;}
+  #view-events .ev-date-badge .mon{font-size:12px!important;margin-top:6px!important;}
+  #view-events .ec-title{font-size:16.5px!important;letter-spacing:.04em!important;}
+  #view-events .ec-sub{font-size:11.5px!important;}
+  #view-events .ev-badge{font-size:10px!important;padding:5px 9px!important;}
+}
+@media(max-width:360px){
+  #view-events .events-toolbar h2{font-size:20px!important;}
+  #view-events .events-actions .btn:not(.btn-primary){
+    flex-basis:36px!important;width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;max-width:36px!important;
+  }
+  #view-events .ev-card{grid-template-columns:56px minmax(0,1fr) 22px!important;gap:8px!important;}
+  #view-events .ev-date-badge{width:52px!important;height:68px!important;min-width:52px!important;}
+  #view-events .ec-title{font-size:15.5px!important;}
+}
+</style>
+
 </html>
 
 <style id="unificar-home-eventos-ministerio-canciones-v2">
@@ -7464,3 +8053,41 @@ i,.fa,.fas,.far,.fab,.fa-solid,.fa-regular,.fa-brands,
 }
 .fab,.fa-brands{font-family:'Font Awesome 6 Brands'!important;}
 </style>
+
+
+<style id="ajustes-iphone-ministerio-canciones-final">
+html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important;overscroll-behavior-y:none!important;background:#f6f8fb!important;}
+#views-wrap,.view,.scroll-area{max-width:100vw!important;overflow-x:hidden!important;overscroll-behavior-y:contain!important;}
+.view.active{min-width:0!important;}
+#view-songs .scroll-area > div,#view-musicians .mv-wrap,#view-events .scroll-area > div > div,#view-home .home-page{width:min(100%,680px)!important;max-width:100%!important;margin-left:auto!important;margin-right:auto!important;box-sizing:border-box!important;}
+#view-songs .scroll-area > div,#view-musicians .mv-wrap{padding-left:clamp(12px,4vw,18px)!important;padding-right:clamp(12px,4vw,18px)!important;}
+#view-songs #songs-list,.mus-table{width:100%!important;max-width:100%!important;box-sizing:border-box!important;}
+#view-musicians .mus-card.member-tone-card{background:var(--member-card-bg)!important;border:1px solid var(--member-card-border)!important;border-radius:18px!important;box-shadow:0 6px 16px rgba(7,20,49,.08)!important;overflow:hidden!important;}
+#view-musicians .mus-card.member-tone-card:hover{transform:translateY(-1px)!important;box-shadow:0 9px 20px rgba(7,20,49,.11)!important;}
+#view-musicians .mus-av.member-tone-avatar{min-width:54px!important;width:54px!important;height:54px!important;border-radius:14px!important;box-shadow:0 5px 12px rgba(7,20,49,.12)!important;}
+#view-musicians .mus-card-main{min-width:0!important;}
+#view-musicians .mus-info{min-width:0!important;}
+#view-musicians .mus-name span:nth-child(2){min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:normal!important;}
+#modal-member #member-card-content{background:var(--member-modal-bg)!important;border-color:var(--member-modal-border)!important;}
+#modal-member .mcm-avatar{box-shadow:0 5px 14px rgba(7,20,49,.16)!important;}
+#view-home .scroll-area,#view-events .scroll-area,#view-songs .scroll-area{overscroll-behavior-y:contain!important;-webkit-overflow-scrolling:auto!important;background:#f6f8fb!important;}
+#view-home .scroll-area{background:#eef7f6!important;}
+#view-events .scroll-area,#view-songs .scroll-area{background:#f6f8fb!important;}
+#view-songs .song-card{width:100%!important;max-width:100%!important;box-sizing:border-box!important;overflow:hidden!important;border-radius:16px!important;}
+#view-songs .song-card-top{display:flex!important;align-items:flex-start!important;gap:10px!important;width:100%!important;min-width:0!important;}
+#view-songs .song-main-info{flex:1 1 auto!important;min-width:0!important;max-width:100%!important;overflow:hidden!important;}
+#view-songs .song-title{display:block!important;width:100%!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;color:#071431!important;font-weight:800!important;}
+#view-songs .song-tone-row{display:flex!important;align-items:center!important;gap:6px!important;flex-wrap:wrap!important;margin-top:5px!important;min-height:22px!important;}
+#view-songs .song-key-chip,#view-songs .song-bpm-chip,#view-songs .song-tono{display:inline-flex!important;align-items:center!important;justify-content:center!important;border-radius:999px!important;padding:3px 8px!important;font-size:11px!important;line-height:1!important;font-weight:900!important;letter-spacing:.02em!important;border:1px solid transparent!important;}
+#view-songs .song-key-chip,#view-songs .song-tono{background:#fff3c4!important;color:#7a4a00!important;border-color:#d19a00!important;}
+#view-songs .song-bpm-chip{background:#dff1ff!important;color:#034a75!important;border-color:#2492c7!important;}
+#view-songs .song-meta{margin-top:4px!important;color:#687385!important;font-weight:400!important;}
+#view-songs .song-list-status{font-size:10px!important;margin-top:3px!important;}
+#view-songs .song-star-btn{background:transparent!important;border:1px solid var(--border)!important;border-radius:10px!important;padding:7px 9px!important;cursor:pointer!important;box-shadow:none!important;display:flex!important;align-items:center!important;justify-content:center!important;transition:all .2s!important;flex:0 0 auto!important;}
+#view-songs .song-star-btn.is-chosen{background:var(--song-pastel-bg)!important;border-color:var(--song-pastel-border)!important;box-shadow:0 0 8px rgba(7,20,49,.10)!important;}
+#view-songs .song-actions{display:flex!important;gap:6px!important;flex-wrap:wrap!important;width:100%!important;}
+#view-songs .song-btn{flex:0 1 auto!important;min-width:74px!important;}
+@media(max-width:430px){#view-songs .scroll-area > div{padding:14px 12px 96px!important;}#view-songs .song-card{padding:12px!important;margin-bottom:10px!important;}#view-songs .song-thumb{width:42px!important;height:42px!important;min-width:42px!important;border-radius:12px!important;}#view-songs .song-title{font-size:14px!important;}#view-songs .song-actions{padding-left:52px!important;}#view-songs .song-btn{padding:7px 9px!important;font-size:11px!important;}#view-musicians .mv-wrap{padding:18px 12px 104px!important;}#view-musicians .mus-card-main{padding:12px!important;gap:10px!important;}#view-musicians .mus-av.member-tone-avatar{min-width:50px!important;width:50px!important;height:50px!important;}#view-musicians .mus-name{font-size:14px!important;}}
+@media(max-width:360px){#view-songs .song-actions{padding-left:0!important;}#view-songs .song-btn{min-width:68px!important;padding-left:8px!important;padding-right:8px!important;}#view-songs .song-thumb{width:38px!important;height:38px!important;min-width:38px!important;}}
+</style>
+
