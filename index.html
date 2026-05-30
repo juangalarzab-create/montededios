@@ -1833,6 +1833,188 @@ i.fa,i.fas,i.far,i.fab,.fa,.fas,.far,.fab,.fa-solid,.fa-regular,.fa-brands,.song
 }
 
 </style>
+<style>
+
+/* =========================================================
+   AJUSTE FINAL IPHONE / ANCHO CORREGIDO
+   Evita desbordes horizontales en Home, Eventos, Ministerio y Canciones.
+   Mantiene el diseño centrado y ajusta las etiquetas para que no se salgan.
+========================================================= */
+html, body{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden!important;
+  overscroll-behavior-x:none;
+}
+*, *::before, *::after{box-sizing:border-box;}
+#views-wrap,.view,.scroll-area,.home-page,.home-content{
+  max-width:100vw!important;
+  overflow-x:hidden!important;
+}
+img,svg,canvas,video{max-width:100%;height:auto;}
+
+@media (max-width:720px){
+  body{position:relative;}
+  .bottom-nav{left:0;right:0;width:100vw;max-width:100vw;}
+
+  /* HOME: todo dentro del ancho real del iPhone */
+  #view-home .home-page{
+    width:100vw!important;
+    max-width:100vw!important;
+    overflow-x:hidden!important;
+  }
+  #view-home .home-top{
+    width:100vw!important;
+    max-width:100vw!important;
+    grid-template-columns:clamp(30px,8vw,42px) minmax(0,.92fr) minmax(0,1.15fr)!important;
+    column-gap:clamp(7px,2.3vw,12px)!important;
+    padding-left:clamp(10px,3.2vw,16px)!important;
+    padding-right:clamp(10px,3.2vw,16px)!important;
+    overflow:hidden!important;
+  }
+  #view-home .home-user,
+  #view-home .home-next,
+  #view-home .home-next-title,
+  #view-home .home-next-venue,
+  #view-home .home-next-row{
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  #view-home .home-content{
+    width:100vw!important;
+    max-width:100vw!important;
+    padding-left:clamp(12px,4vw,18px)!important;
+    padding-right:clamp(12px,4vw,18px)!important;
+    margin:0 auto!important;
+  }
+  #view-home .home-ministry,
+  #view-home .home-card,
+  #view-home .hm-bottom-grid,
+  #view-home .hm-info-card{
+    width:100%!important;
+    max-width:100%!important;
+    margin-left:0!important;
+    margin-right:0!important;
+    overflow:hidden!important;
+  }
+  #view-home .hm-people{
+    width:100%!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+  }
+  #view-home .home-card-head{
+    gap:8px!important;
+    min-width:0!important;
+  }
+  #view-home .home-card h2{
+    min-width:0!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  /* Canciones del Día en Home: las etiquetas no empujan hacia la derecha */
+  #view-home .hm-song{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    display:flex!important;
+    flex-wrap:wrap!important;
+    align-items:center!important;
+    overflow:hidden!important;
+    padding-right:clamp(8px,2.5vw,12px)!important;
+  }
+  #view-home .hm-song > i{
+    flex:0 0 clamp(18px,5vw,24px)!important;
+  }
+  #view-home .hm-song-title{
+    flex:1 1 calc(100% - 42px)!important;
+    min-width:0!important;
+    max-width:calc(100% - 42px)!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  #view-home .hm-pill{
+    flex:0 1 auto!important;
+    max-width:calc(50% - 6px)!important;
+    margin-left:clamp(26px,8vw,34px)!important;
+    margin-top:2px!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  #view-home .hm-pill + .hm-pill{
+    margin-left:4px!important;
+  }
+
+  /* EVENTS: mismo ancho visual que Home, sin desbordar */
+  #view-events .scroll-area,
+  #view-events .events-toolbar,
+  #view-events .ev-list,
+  #view-events .ev-card{
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:hidden!important;
+  }
+  #view-events .events-toolbar,
+  #view-events .ev-list{
+    padding-left:clamp(12px,4vw,18px)!important;
+    padding-right:clamp(12px,4vw,18px)!important;
+  }
+  #view-events .ev-card{
+    grid-template-columns:clamp(62px,18vw,78px) minmax(0,1fr) auto!important;
+    gap:clamp(8px,2.5vw,12px)!important;
+  }
+  #view-events .ev-date-badge{width:clamp(58px,17vw,70px)!important;height:clamp(58px,17vw,70px)!important;}
+  #view-events .ec-title,
+  #view-events .ec-sub{min-width:0!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+
+  /* Ministerio y Canciones: contenedores centrados, sin ancho extra */
+  #view-ministry .scroll-area,
+  #view-songs .scroll-area,
+  #view-ministry .view-head,
+  #view-songs .view-head,
+  #view-ministry .list,
+  #view-songs .list,
+  #view-ministry .member-card,
+  #view-songs .song-card,
+  #view-songs .song-item{
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:hidden!important;
+  }
+  #view-ministry .view-head,
+  #view-songs .view-head,
+  #view-ministry .list,
+  #view-songs .list{
+    padding-left:clamp(12px,4vw,18px)!important;
+    padding-right:clamp(12px,4vw,18px)!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+  }
+  #view-ministry .filters,
+  #view-songs .filters{
+    max-width:100%!important;
+    overflow-x:auto!important;
+    -webkit-overflow-scrolling:touch;
+  }
+}
+
+@media (max-width:380px){
+  #view-home .home-top{
+    grid-template-columns:30px minmax(0,.82fr) minmax(0,1.18fr)!important;
+    padding-left:10px!important;
+    padding-right:10px!important;
+  }
+  #view-home .initial-avatar{width:48px!important;height:48px!important;flex-basis:48px!important;}
+  #view-home .home-user-name{font-size:13px!important;max-width:82px!important;}
+  #view-home .home-next-title{font-size:14px!important;}
+  #view-home .home-next-venue{font-size:11px!important;}
+  #view-home .home-next-row{font-size:12px!important;}
+  #view-home .hm-pill{max-width:calc(100% - 42px)!important;}
+}
+</style>
 </head>
 <body>
 
