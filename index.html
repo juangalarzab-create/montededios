@@ -8521,3 +8521,2116 @@ html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!import
 @media(max-width:360px){#view-songs .song-actions{padding-left:0!important;}#view-songs .song-btn{min-width:68px!important;padding-left:8px!important;padding-right:8px!important;}#view-songs .song-thumb{width:38px!important;height:38px!important;min-width:38px!important;}}
 </style>
 
+
+
+<!-- PARCHE PUNTUAL 2026-05-30: ajustes home/eventos/perfil/canciones sin reordenar la app base -->
+<style id="parche-puntual-home-agenda-perfil-canciones-v1">
+:root{
+  --mdios-blue:#071431;
+  --mdios-blue-2:#0a1c43;
+  --mdios-celeste-home:#d9f2fb;
+  --mdios-celeste-soft:#e5f7fd;
+  --mdios-muted-strong:#465469;
+  --mdios-heart:#e94767;
+}
+
+/* 1 y 2: Home - celeste más visible y textos de designación más notorios */
+#view-home .home-ministry{
+  background:linear-gradient(180deg,var(--mdios-celeste-home),var(--mdios-celeste-soft))!important;
+  border-color:rgba(7,20,49,.08)!important;
+}
+#view-home .hm-tabs span,
+#view-home .hm-tabs span.active{
+  color:var(--mdios-blue)!important;
+  font-weight:900!important;
+  letter-spacing:.04em!important;
+}
+#view-home .hm-name{
+  color:var(--mdios-blue)!important;
+  font-weight:900!important;
+}
+#view-home .hm-role{
+  color:var(--mdios-muted-strong)!important;
+  font-weight:850!important;
+  opacity:1!important;
+  letter-spacing:.045em!important;
+}
+
+/* 3: barras superiores fijas y con el mismo azul */
+#view-home .home-top,
+#view-events .events-toolbar,
+#view-musicians .mv-hdr,
+#view-songs .scroll-area > div > div:first-child{
+  position:sticky!important;
+  top:0!important;
+  z-index:240!important;
+  background:var(--mdios-blue)!important;
+  color:#fff!important;
+  border-bottom:5px solid var(--accent)!important;
+  box-shadow:0 10px 22px rgba(7,20,49,.18)!important;
+}
+#view-home .home-top{border-radius:0 0 22px 22px!important;}
+#view-events .events-toolbar{border-radius:0 0 22px 22px!important;}
+#view-musicians .mv-hdr,
+#view-songs .scroll-area > div > div:first-child{
+  margin-left:calc(50% - 50vw)!important;
+  margin-right:calc(50% - 50vw)!important;
+  width:100vw!important;
+  box-sizing:border-box!important;
+  padding:16px max(14px,calc((100vw - 680px)/2 + 16px)) 14px!important;
+}
+#view-songs .scroll-area > div > div:first-child{margin-bottom:14px!important;}
+#view-musicians .mv-hdr h2,
+#view-musicians .mv-hdr span,
+#view-songs .scroll-area > div > div:first-child h2,
+#view-songs .scroll-area > div > div:first-child span,
+#view-events .events-toolbar h2,
+#view-events .events-toolbar .btn,
+#view-home .home-user-name,
+#view-home .home-user-role,
+#view-home .home-next-title,
+#view-home .home-next-venue,
+#view-home .home-next-row{
+  color:#fff!important;
+}
+#view-musicians .mv-hdr h2,
+#view-songs .scroll-area > div > div:first-child h2,
+#view-events .events-toolbar h2{font-weight:900!important;}
+#view-musicians .mv-wrap,
+#view-songs .scroll-area > div{padding-top:0!important;}
+body:has(#view-musicians.active) > header,
+body:has(#view-songs.active) > header{display:none!important;}
+
+/* 4: icono FontAwesome antes de Agenda */
+#view-events .events-toolbar h2::before{
+  content:"\f073";
+  font-family:"Font Awesome 6 Free"!important;
+  font-weight:900!important;
+  color:#fff!important;
+  display:inline-block;
+  margin-right:9px;
+  font-size:.92em;
+  vertical-align:baseline;
+}
+
+/* 5: nuevos cardviews de Ensayo y Cumpleaños */
+#view-home .hm-bottom-grid{align-items:stretch!important;gap:12px!important;}
+#view-home .hm-info-card.hm-mini-ref{
+  min-height:156px!important;
+  border-radius:22px!important;
+  border:0!important;
+  box-shadow:0 12px 24px rgba(7,20,49,.10)!important;
+  padding:18px 18px 16px!important;
+  position:relative!important;
+  overflow:hidden!important;
+}
+#view-home .hm-info-card.hm-mini-ref .hm-info-title{
+  font-size:20px!important;
+  line-height:1!important;
+  color:var(--mdios-blue)!important;
+  font-weight:950!important;
+  letter-spacing:.055em!important;
+  text-transform:uppercase!important;
+  padding-bottom:10px!important;
+  border-bottom:4px solid var(--mdios-blue)!important;
+  margin-bottom:15px!important;
+}
+#view-home .hm-info-card.hm-mini-ref.ensayo{
+  background:#e9f9d9!important;
+}
+#view-home .hm-info-card.hm-mini-ref.bday{
+  background:#ffdbe5!important;
+  text-align:center!important;
+}
+#view-home .hm-ensayo-lines{display:flex!important;flex-direction:column!important;gap:8px!important;margin-right:84px!important;}
+#view-home .hm-info-card.hm-mini-ref .hm-info-line{
+  color:var(--mdios-blue)!important;
+  font-size:15px!important;
+  font-weight:800!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:9px!important;
+  margin:0!important;
+}
+#view-home .hm-info-card.hm-mini-ref .hm-info-line i{color:#1eaed6!important;font-size:17px!important;min-width:18px!important;}
+#view-home .hm-clef{
+  position:absolute!important;
+  right:18px!important;
+  bottom:5px!important;
+  font-family:Georgia,'Times New Roman',serif!important;
+  font-size:116px!important;
+  line-height:.85!important;
+  color:#050a12!important;
+  transform:rotate(-2deg)!important;
+  pointer-events:none!important;
+}
+#view-home .hm-bday-party{display:flex!important;align-items:center!important;justify-content:center!important;gap:10px!important;margin:7px 0 6px!important;font-size:30px!important;}
+#view-home .hm-bday-avatar{
+  width:68px!important;height:68px!important;border-radius:50%!important;background:#fff!important;
+  border:3px solid #fff!important;box-shadow:0 5px 13px rgba(7,20,49,.14)!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;overflow:hidden!important;
+  color:var(--mdios-blue)!important;font-weight:900!important;font-size:18px!important;
+}
+#view-home .hm-bday-avatar img{width:100%!important;height:100%!important;object-fit:cover!important;display:block!important;}
+#view-home .hm-bday-name{font-size:24px!important;line-height:1.1!important;color:#050a12!important;font-weight:500!important;margin-top:3px!important;}
+#view-home .hm-bday-date{font-size:18px!important;line-height:1.15!important;color:#050a12!important;font-weight:800!important;margin-top:7px!important;}
+@media(max-width:430px){
+  #view-home .hm-info-card.hm-mini-ref{min-height:145px!important;padding:16px 15px!important;}
+  #view-home .hm-info-card.hm-mini-ref .hm-info-title{font-size:17px!important;border-bottom-width:3px!important;}
+  #view-home .hm-clef{font-size:92px!important;right:12px!important;bottom:4px!important;}
+  #view-home .hm-ensayo-lines{margin-right:68px!important;}
+  #view-home .hm-info-card.hm-mini-ref .hm-info-line{font-size:13px!important;}
+  #view-home .hm-bday-avatar{width:58px!important;height:58px!important;}
+  #view-home .hm-bday-name{font-size:21px!important;}
+  #view-home .hm-bday-date{font-size:15px!important;}
+}
+
+/* 6: chips de encargados en eventos con iniciales de nombre + apellido */
+#view-events .ec-chips{display:flex!important;gap:8px!important;flex-wrap:wrap!important;margin-top:8px!important;}
+#view-events .ev-person-chip{
+  display:inline-flex!important;align-items:center!important;gap:7px!important;
+  background:var(--mdios-blue)!important;color:#fff!important;border-radius:999px!important;
+  padding:5px 10px!important;min-height:27px!important;font-weight:850!important;
+  box-shadow:0 5px 12px rgba(7,20,49,.16)!important;line-height:1!important;
+}
+#view-events .ev-person-chip b{color:#f4d15f!important;font-weight:950!important;letter-spacing:.04em!important;}
+#view-events .ev-person-chip span{color:#fff!important;font-weight:850!important;}
+#view-events .ev-person-chip small{
+  margin-left:1px!important;background:rgba(255,255,255,.13)!important;border:1px solid rgba(255,255,255,.16)!important;
+  color:#fff!important;border-radius:999px!important;padding:2px 5px!important;font-size:9px!important;font-weight:950!important;
+}
+
+/* 7: modales de eventos en azul oscuro */
+#modal-ev-detail .ev-detail-modal,
+#modal-new-event .ev-card-modal,
+#modal-edit-event .ev-card-modal,
+#modal-ev-detail #ev-detail-modal-body,
+#modal-new-event .ev-card-modal,
+#modal-edit-event .ev-card-modal{
+  background:var(--mdios-blue)!important;
+  color:#fff!important;
+  border-color:rgba(255,255,255,.14)!important;
+}
+#modal-ev-detail .ev-detail-modal *,
+#modal-new-event .ev-card-modal *,
+#modal-edit-event .ev-card-modal *{color:inherit;}
+#modal-ev-detail .ev-detail-title,
+#modal-ev-detail .ev-detail-date,
+#modal-ev-detail .sec-title,
+#modal-new-event h3,
+#modal-edit-event h3,
+#modal-new-event label,
+#modal-edit-event label{color:#fff!important;}
+#modal-ev-detail .ev-modal-close,
+#modal-new-event .ev-modal-close,
+#modal-edit-event .ev-modal-close{background:rgba(255,255,255,.12)!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;}
+#modal-ev-detail input,#modal-ev-detail textarea,#modal-ev-detail select,
+#modal-new-event input,#modal-new-event textarea,#modal-new-event select,
+#modal-edit-event input,#modal-edit-event textarea,#modal-edit-event select{
+  background:rgba(255,255,255,.10)!important;color:#fff!important;border-color:rgba(255,255,255,.20)!important;
+}
+#modal-ev-detail input::placeholder,#modal-ev-detail textarea::placeholder,
+#modal-new-event input::placeholder,#modal-new-event textarea::placeholder,
+#modal-edit-event input::placeholder,#modal-edit-event textarea::placeholder{color:rgba(255,255,255,.55)!important;}
+#modal-ev-detail .asgn-row,#modal-ev-detail .notes-box,#modal-new-event .avail-people-list,#modal-new-event #selected-people-summary,#modal-edit-event .assign-box{
+  background:rgba(255,255,255,.08)!important;border-color:rgba(255,255,255,.14)!important;color:#fff!important;
+}
+
+/* 8: modal de edición de perfil */
+#modal-profile-edit .profile-edit-card{
+  width:min(94vw,420px);max-height:88vh;overflow:auto;background:#fff;color:var(--mdios-blue);
+  border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.35);border:1px solid rgba(7,20,49,.12);
+}
+#modal-profile-edit .profile-edit-head{background:var(--mdios-blue);color:#fff;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+#modal-profile-edit .profile-edit-head h3{margin:0;color:#fff!important;font-size:18px;font-weight:900;}
+#modal-profile-edit .profile-edit-close{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18);color:#fff;border-radius:12px;padding:7px 10px;cursor:pointer;}
+#modal-profile-edit .profile-edit-body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:11px;}
+#modal-profile-edit label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#677184;font-weight:900;margin-bottom:5px;display:block;}
+#modal-profile-edit input,#modal-profile-edit select{width:100%;background:#f6f8fb;border:1px solid rgba(7,20,49,.12);border-radius:12px;padding:10px 12px;color:var(--mdios-blue);outline:none;}
+#modal-profile-edit .profile-img-preview{width:78px;height:78px;border-radius:18px;background:#e8f2ff;color:var(--mdios-blue);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:24px;font-weight:950;border:1px solid rgba(7,20,49,.12);}
+#modal-profile-edit .profile-img-preview img{width:100%;height:100%;object-fit:cover;display:block;}
+#modal-profile-edit .profile-edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+#modal-profile-edit .profile-file-actions{display:flex;gap:8px;flex-wrap:wrap;}
+#modal-profile-edit .profile-file-actions label{margin:0;text-transform:none;letter-spacing:0;font-size:12px;}
+#modal-profile-edit .profile-edit-actions{display:flex;gap:8px;margin-top:4px;}
+#modal-profile-edit .profile-edit-actions .btn{flex:1;justify-content:center;}
+
+/* 9: botón flotante más estable para Android */
+#view-events .fab-new-event,
+.fab-new-event{
+  background:var(--mdios-blue)!important;
+  color:#fff!important;
+  border:2px solid rgba(255,255,255,.18)!important;
+  box-shadow:0 12px 30px rgba(7,20,49,.38)!important;
+  z-index:999!important;
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+  -webkit-tap-highlight-color:transparent!important;
+}
+#view-events .fab-new-event:disabled{opacity:.42!important;filter:grayscale(.15)!important;}
+
+/* 10: estrellas apagadas y botón de me gusta */
+#view-songs .song-star-btn:not(.is-chosen),
+#view-songs .song-star-btn.is-off{background:transparent!important;border-color:rgba(7,20,49,.10)!important;box-shadow:none!important;}
+#view-songs .song-star-btn:not(.is-chosen) i,
+#view-songs .song-star-btn.is-off i{color:#9aa6b2!important;opacity:.58!important;}
+#view-songs .song-star-btn.is-chosen i{color:#0b84d8!important;opacity:1!important;}
+#view-songs .song-like-row{display:flex!important;justify-content:flex-end!important;margin-top:8px!important;width:100%!important;}
+#view-songs .song-like-btn{
+  display:inline-flex!important;align-items:center!important;gap:6px!important;background:rgba(233,71,103,.08)!important;
+  color:#8a1f35!important;border:1px solid rgba(233,71,103,.20)!important;border-radius:999px!important;
+  padding:6px 10px!important;font-size:12px!important;font-weight:900!important;cursor:pointer!important;
+  touch-action:manipulation!important;-webkit-tap-highlight-color:transparent!important;
+}
+#view-songs .song-like-btn i{color:#8a1f35!important;}
+#view-songs .song-like-btn.liked{background:rgba(233,71,103,.16)!important;border-color:rgba(233,71,103,.35)!important;color:var(--mdios-heart)!important;}
+#view-songs .song-like-btn.liked i{color:var(--mdios-heart)!important;}
+@media(max-width:430px){#view-songs .song-like-row{padding-left:52px!important;}}
+</style>
+
+<script id="parche-puntual-home-agenda-perfil-canciones-v1">
+(function(){
+  const MD_BLUE = '#071431';
+  const PROFILE_IMG_MAX = 520;
+
+  const htmlEscape = (v='') => String(v ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  const jsEscape = (v='') => String(v ?? '').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,' ');
+  const norm = (v='') => String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+
+  function fullNameOf(a){
+    return (a?.fullName || a?.name || [a?.nombres,a?.apellidos].filter(Boolean).join(' ') || a?.displayName || 'Integrante').trim();
+  }
+  function initialsNameLast(a){
+    const full = fullNameOf(a).replace(/\s+/g,' ').trim();
+    const parts = full.split(' ').filter(Boolean);
+    if(!parts.length) return '—';
+    const first = parts[0]?.[0] || '';
+    const last  = (parts.length > 1 ? parts[parts.length-1]?.[0] : (parts[0]?.[1] || '')) || '';
+    return (first + last).toUpperCase();
+  }
+  function firstName(a){ return (fullNameOf(a).split(/\s+/)[0] || 'Integrante'); }
+  function currentMemberFor(a){
+    const id = a?.musId || a?.id;
+    return id && window.musicians && musicians[id] ? {...a, ...musicians[id], id} : a;
+  }
+  function roleText(a){ return (a?.rolEvento || a?.role || a?.cargo || '').trim(); }
+  function isVoice(a){ const r = norm(roleText(a)); return r.includes('voz') || r.includes('coro') || r.includes('cantante') || r.includes('principal') || r.includes('director'); }
+  function isBass(a){ const r = norm(roleText(a)); return r.includes('baj'); }
+  function isDrums(a){ const r = norm(roleText(a)); return r.includes('bater') || r.includes('drum'); }
+  function isRelevantEventChip(a){ return isVoice(a) || isBass(a) || isDrums(a); }
+  function roleShort(a){
+    const r = norm(roleText(a));
+    if(r.includes('bater')) return 'Bat';
+    if(r.includes('baj')) return 'Baj';
+    if(r.includes('principal')) return 'VP';
+    if(r.includes('coro')) return 'Cor';
+    if(r.includes('director')) return 'Dir';
+    return '';
+  }
+  function chipOrder(a){
+    const r = norm(roleText(a));
+    if(r.includes('principal')) return 0;
+    if(r.includes('director')) return 1;
+    if(r.includes('voz')) return 2;
+    if(r.includes('coro')) return 3;
+    if(r.includes('baj')) return 4;
+    if(r.includes('bater')) return 5;
+    return 9;
+  }
+  function personAvatarHTML(a, cls='mini-avatar', fallback=''){
+    const m = currentMemberFor(a) || {};
+    const img = m.profileImage || a?.profileImage || '';
+    const initials = fallback || initialsNameLast(m);
+    if(img) return `<div class="${cls}"><img src="${htmlEscape(img)}" alt="${htmlEscape(fullNameOf(m))}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;"></div>`;
+    return `<div class="${cls}">${htmlEscape(initials)}</div>`;
+  }
+  function bdayAvatarHTML(bday){ return personAvatarHTML(bday || {}, 'hm-bday-avatar', initialsNameLast(bday || {})); }
+  function eventChipsHTML(assignees){
+    const people = (assignees || []).map(currentMemberFor).filter(isRelevantEventChip).sort((a,b)=>chipOrder(a)-chipOrder(b));
+    if(!people.length) return `<span class="ev-person-chip"><b>—</b><span>Sin asignar</span></span>`;
+    return people.map(a=>{
+      const sig = roleShort(a);
+      return `<span class="ev-person-chip" title="${htmlEscape(roleText(a)||'Asignado')}"><b>${htmlEscape(initialsNameLast(a))}</b><span>${htmlEscape(firstName(a))}</span>${sig?`<small>${htmlEscape(sig)}</small>`:''}</span>`;
+    }).join('');
+  }
+  window._mdiosEventChipsHTML = eventChipsHTML;
+
+  // HOME con cardviews nuevos y avatares de perfil.
+  window.renderHomeDashboard = function renderHomeDashboard(nextEv) {
+    const home = document.getElementById('home-dashboard');
+    if(!home) return;
+    const td = today();
+    const evArr = Object.values(events).sort((a,b) => {
+      const aP = a.date < td, bP = b.date < td;
+      if(!aP && bP) return -1; if(aP && !bP) return 1;
+      return aP ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
+    });
+    const ev = nextEv || evArr.find(e => e.date >= td) || evArr[0] || null;
+    const userName = currentUser?.displayName || currentUser?.fullName || currentUser?.loginLabel || 'Invitado';
+    const userRole = currentUser?.cargo || currentUser?.role || 'Voz';
+    const assignees = ev?.assignees ? Object.values(ev.assignees).map(currentMemberFor) : [];
+    const vozP = assignees.find(a => a.rolEvento === 'Voz Principal') || assignees.find(a => a.cargo === 'Voz' || a.role === 'Cantante') || assignees[0];
+
+    window._homeMinistryTab = window._homeMinistryTab || 'voices';
+    const isMusicianRole = (a) => {
+      const r = norm(roleText(a));
+      return r.includes('guit') || r.includes('tecl') || r.includes('baj') || r.includes('bater') ||
+             r.includes('perc') || r.includes('tromp') || r.includes('saxo') || r.includes('violin') ||
+             r.includes('musico') || r.includes('instrument');
+    };
+    const sortPeople = (arr) => arr.slice().sort((a,b)=>chipOrder(a)-chipOrder(b));
+    const voicesPeople = sortPeople(assignees.filter(isVoice));
+    const musiciansPeople = sortPeople(assignees.filter(a => isMusicianRole(a) && !isVoice(a)));
+    const activePeople = window._homeMinistryTab === 'musicians' ? musiciansPeople : voicesPeople;
+    const emptyLabel = window._homeMinistryTab === 'musicians' ? 'Sin músicos asignados' : 'Sin voces asignadas';
+    const peopleHtml = activePeople.length ? activePeople.map((a,i)=>{
+      const rol = roleText(a) || (window._homeMinistryTab==='musicians'?'MÚSICO':(i===0?'VOZ':'COROS'));
+      return `<div class="hm-person">
+        ${personAvatarHTML(a, `mini-avatar ${i>0?'other':''}`)}
+        <div class="hm-name">${htmlEscape(firstName(a))}</div>
+        <div class="hm-role">${htmlEscape(rol)}</div>
+      </div>`;
+    }).join('') : `<div class="hm-empty">${emptyLabel}</div>`;
+
+    const songsForDay = _mdEventSongs(ev, vozP).slice(0,5);
+    const songsHtml = songsForDay.length ? songsForDay.map(s => `<div class="hm-song">
+        <i class="fa-solid fa-music"></i><div class="hm-song-title">${htmlEscape(s.title)}</div>
+        <span class="hm-pill"><i class="fa-solid fa-bell"></i> Tono ${htmlEscape(s.tono || '—')}</span>
+        <span class="hm-pill"><i class="fa-solid fa-gauge-high"></i> ${s.bpm ? htmlEscape(s.bpm + ' BPM') : 'BPM —'}</span>
+      </div>`).join('') : `<div class="hm-empty">${vozP ? `${htmlEscape(firstName(vozP))} no tiene canciones elegidas` : 'Sin voz principal asignada'}</div>`;
+
+    const ensayo = _mdNearestPractice();
+    const bday = _mdNextBirthday();
+    const bdayDate = bday ? fmtDate(bday.bday).replace(/\s\d{4}$/,'') : '—';
+    home.innerHTML = `
+      <div class="home-top">
+        <button class="home-menu-btn" onclick="openProfileModal()"><i class="fa-solid fa-bars"></i></button>
+        <div class="home-user" onclick="openProfileModal()">
+          ${currentUser?.profileImage ? `<div class="initial-avatar"><img src="${htmlEscape(currentUser.profileImage)}" alt="perfil" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;"></div>` : `<div class="initial-avatar">${htmlEscape(typeof _mdInitials==='function' ? _mdInitials(userName) : initialsNameLast({name:userName}))}</div>`}
+          <div><div class="home-user-name">${htmlEscape(userName)}</div><div class="home-user-role">${htmlEscape(userRole)}</div></div>
+        </div>
+        <div class="home-next" onclick="${ev?`openEvDetailModal('${jsEscape(ev.id)}')`:''}">
+          <div class="home-next-title">${htmlEscape(ev?.title || 'CULTO GENERAL')}</div>
+          <div class="home-next-venue">${htmlEscape(ev?.venue || 'MONTE DE DIOS')}</div>
+          <div class="home-next-row"><i class="fa-solid fa-calendar-days"></i> ${ev ? fmtDateShortDay(ev.date) : 'Sin fecha'}</div>
+          <div class="home-next-row"><i class="fa-solid fa-clock"></i> ${htmlEscape(ev?.time || '—')}</div>
+        </div>
+      </div>
+      <div class="home-content">
+        <section class="home-ministry">
+          <div class="hm-tabs">
+            <span class="${window._homeMinistryTab==='voices'?'active':''}" onclick="window._homeMinistryTab='voices'; renderHomeDashboard()">VOCES</span>
+            <span class="${window._homeMinistryTab==='musicians'?'active':''}" onclick="window._homeMinistryTab='musicians'; renderHomeDashboard()">MÚSICOS</span>
+          </div>
+          <div class="hm-people">${peopleHtml}</div>
+          <button class="hm-min-btn" onclick="switchView('musicians', document.querySelector(\`.bnav-btn[onclick*=\\'musicians\\']\`))">VER MINISTERIO</button>
+        </section>
+        <section class="home-card">
+          <div class="home-card-head"><h2>Canciones del Día</h2><button class="hm-list-btn" onclick="switchView('songs', document.querySelector(\`.bnav-btn[onclick*=\\'songs\\']\`))"><i class="fa-solid fa-list"></i> CANCIONES</button></div>
+          ${songsHtml}
+        </section>
+        <div class="hm-bottom-grid">
+          <section class="hm-info-card hm-mini-ref ensayo" onclick="${ensayo?`openEvDetailModal('${jsEscape(ensayo.id)}')`:''}">
+            <div class="hm-info-title">ENSAYO</div>
+            <div class="hm-ensayo-lines">
+              <div class="hm-info-line"><i class="fa-solid fa-calendar-days"></i> ${ensayo ? fmtDate(ensayo.date).replace(/\s\d{4}$/,'') : 'Sin ensayo'}</div>
+              <div class="hm-info-line"><i class="fa-solid fa-clock"></i> ${htmlEscape(ensayo?.time || '—')}</div>
+              <div class="hm-info-line"><i class="fa-solid fa-location-dot"></i> ${htmlEscape(ensayo?.venue || '—')}</div>
+            </div>
+            <div class="hm-clef">𝄞</div>
+          </section>
+          <section class="hm-info-card hm-mini-ref bday" onclick="openBirthdayPanel()">
+            <div class="hm-info-title">CUMPLEAÑOS</div>
+            <div class="hm-bday-party"><span>🎉</span>${bdayAvatarHTML(bday)}<span>🎉</span></div>
+            <div class="hm-bday-name">${htmlEscape(bday ? firstName(bday) : 'Sin datos')}</div>
+            <div class="hm-bday-date">¡ ${htmlEscape(bdayDate)} !</div>
+          </section>
+        </div>
+      </div>`;
+  };
+
+  // EVENTOS: chips de iniciales nombre+apellido para voces, baterista y bajista.
+  window.renderEL = function renderEL() {
+    const c = document.getElementById('ev-list');
+    const td = today();
+    const evArr = Object.values(events).sort((a,b) => {
+      const aP = a.date < td, bP = b.date < td;
+      if(!aP && bP) return -1;
+      if(aP && !bP) return 1;
+      if(aP && bP) return b.date.localeCompare(a.date);
+      return a.date.localeCompare(b.date);
+    });
+    const nextEv = evArr.find(ev => ev.date >= td) || evArr[0] || null;
+    renderHomeDashboard(nextEv);
+    if(!c) return;
+    if(!evArr.length) { c.innerHTML=`<div class="empty-s"><div class="ei"><i class="fa-solid fa-music"></i></div>Sin eventos aún</div>`; return; }
+    c.innerHTML = evArr.map((ev, idx) => {
+      const isT=ev.date===td, isPast=ev.date<td;
+      const badge=isT?'<span class="ev-badge bdg-t">HOY</span>':isPast?'<span class="ev-badge bdg-d">PASADO</span>':'<span class="ev-badge bdg-p">PRÓXIMO</span>';
+      const assignees = ev.assignees ? Object.values(ev.assignees) : [];
+      const venue = ev.venue || 'IGLESIA MONTE';
+      const chips = eventChipsHTML(assignees);
+      const chipCount = assignees.map(currentMemberFor).filter(isRelevantEventChip).length || assignees.length;
+      return `<div class="ev-card ev-tone-${idx % 5}" onclick="openEvDetailModal('${jsEscape(ev.id)}')">
+        <div class="ev-date-badge"><div class="day">${_mdDay(ev.date)}</div><div class="mon">${_mdMonth(ev.date)}</div></div>
+        <div class="ec-main">
+          <div class="ec-title-row"><span class="ec-title">${htmlEscape(ev.title)}</span>${badge}</div>
+          <div class="ec-sub"><i class="fa-solid fa-location-dot"></i><span>${htmlEscape(venue)}</span><span>${htmlEscape(ev.time || '')}</span></div>
+          <div class="ec-chips">${chips}</div>
+        </div>
+        <div class="ec-side"><i class="fa-solid fa-users"></i><span>${chipCount}</span></div>
+      </div>`;
+    }).join('');
+  };
+
+  // PERFIL: avatar en el modal actual.
+  const _oldRenderProfileModal = window.renderProfileModal;
+  window.renderProfileModal = function renderProfileModal(){
+    try { if(typeof _oldRenderProfileModal === 'function') _oldRenderProfileModal(); } catch(err){ console.warn('renderProfileModal base falló:', err); }
+    patchProfileAvatar();
+  };
+  function patchProfileAvatar(){
+    const box = document.getElementById('prof-modal-content');
+    if(!box || !currentUser) return;
+    const u = currentUser;
+    const avatar = box.querySelector('div[style*="width:50px"][style*="height:50px"]');
+    if(avatar && u.profileImage){
+      avatar.innerHTML = `<img src="${htmlEscape(u.profileImage)}" alt="perfil" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;">`;
+      avatar.style.overflow = 'hidden';
+      avatar.style.background = '#fff';
+    }
+  }
+
+  function ensureProfileEditModal(){
+    let modal = document.getElementById('modal-profile-edit');
+    if(modal) return modal;
+    modal = document.createElement('div');
+    modal.className = 'overlay hidden';
+    modal.id = 'modal-profile-edit';
+    modal.innerHTML = `<div class="profile-edit-card">
+      <div class="profile-edit-head"><h3><i class="fa-solid fa-user-pen"></i> Editar perfil</h3><button class="profile-edit-close" onclick="closeUserEditModal()">✕</button></div>
+      <div class="profile-edit-body">
+        <div style="display:flex;gap:12px;align-items:center;">
+          <div class="profile-img-preview" id="profile-img-preview"></div>
+          <div style="flex:1;min-width:0;">
+            <label>Foto de perfil</label>
+            <div class="profile-file-actions">
+              <label class="btn btn-ghost btn-sm" style="cursor:pointer;">📁 Archivos<input type="file" id="profile-img-file" accept="image/*" style="display:none" onchange="previewProfileImage(this)"></label>
+              <label class="btn btn-ghost btn-sm" style="cursor:pointer;">📷 Cámara<input type="file" id="profile-img-camera" accept="image/*" capture="environment" style="display:none" onchange="previewProfileImage(this)"></label>
+            </div>
+            <div style="font-size:10px;color:#718096;margin-top:6px;">Se guarda comprimida para cargar más rápido.</div>
+          </div>
+        </div>
+        <div class="profile-edit-grid">
+          <div><label>Nombres</label><input type="text" id="edit-prof-nombres"></div>
+          <div><label>Apellidos</label><input type="text" id="edit-prof-apellidos"></div>
+        </div>
+        <div class="profile-edit-grid">
+          <div><label>Fecha de nacimiento</label><input type="date" id="edit-prof-bday"></div>
+          <div><label>Cargo</label><select id="edit-prof-cargo" onchange="toggleProfileCargoFields()"><option>Voz</option><option>Músico</option><option>Líder</option></select></div>
+        </div>
+        <div id="edit-prof-instr-wrap" style="display:none;"><label>Instrumento</label><select id="edit-prof-role"><option>Guitarrista</option><option>Tecladista</option><option>Bajista</option><option>Baterista</option><option>Percusionista</option><option>Trompetista</option><option>Saxofonista</option><option>Violinista</option><option>Flautista</option></select></div>
+        <div class="profile-edit-actions"><button class="btn btn-ghost" onclick="closeUserEditModal()">Cancelar</button><button class="btn btn-primary" onclick="saveUserProfileFull()">Guardar cambios</button></div>
+      </div>
+    </div>`;
+    modal.addEventListener('click', e => { if(e.target === modal) closeUserEditModal(); });
+    document.body.appendChild(modal);
+    return modal;
+  }
+  window.toggleProfileCargoFields = function toggleProfileCargoFields(){
+    const cargo = document.getElementById('edit-prof-cargo')?.value || 'Voz';
+    const wrap = document.getElementById('edit-prof-instr-wrap');
+    if(wrap) wrap.style.display = cargo === 'Músico' ? 'block' : 'none';
+  };
+  window.previewProfileImage = async function previewProfileImage(input){
+    const file = input?.files?.[0];
+    if(!file) return;
+    try{
+      window._pendingProfileImage = await readCompressedImage(file);
+      renderProfileEditPreview(window._pendingProfileImage);
+    }catch(err){ console.error(err); toast('No se pudo cargar la imagen','error'); }
+  };
+  function renderProfileEditPreview(img){
+    const prev = document.getElementById('profile-img-preview');
+    if(!prev || !currentUser) return;
+    if(img){ prev.innerHTML = `<img src="${htmlEscape(img)}" alt="perfil">`; }
+    else { prev.innerHTML = htmlEscape(initialsNameLast(currentUser)); }
+  }
+  async function readCompressedImage(file){
+    if(!file.type || !file.type.startsWith('image/')) throw new Error('Archivo no es imagen');
+    const url = URL.createObjectURL(file);
+    try{
+      const img = await new Promise((resolve,reject)=>{ const im = new Image(); im.onload=()=>resolve(im); im.onerror=reject; im.src=url; });
+      const scale = Math.min(1, PROFILE_IMG_MAX / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      return canvas.toDataURL('image/jpeg', 0.76);
+    } finally { URL.revokeObjectURL(url); }
+  }
+  window.editUserCargo = function editUserCargo(){
+    if(!currentUser) return;
+    const modal = ensureProfileEditModal();
+    const u = currentUser;
+    const full = (u.fullName || [u.nombres,u.apellidos].filter(Boolean).join(' ') || '').trim();
+    const parts = full.split(/\s+/).filter(Boolean);
+    document.getElementById('edit-prof-nombres').value = u.nombres || parts.slice(0, Math.max(1, parts.length-1)).join(' ') || '';
+    document.getElementById('edit-prof-apellidos').value = u.apellidos || (parts.length>1 ? parts.slice(-1).join(' ') : '') || '';
+    document.getElementById('edit-prof-bday').value = u.bday || '';
+    document.getElementById('edit-prof-cargo').value = u.cargo || 'Voz';
+    const roleSel = document.getElementById('edit-prof-role');
+    if(roleSel && u.role && [...roleSel.options].some(o=>o.value===u.role)) roleSel.value = u.role;
+    window._pendingProfileImage = u.profileImage || '';
+    renderProfileEditPreview(window._pendingProfileImage);
+    toggleProfileCargoFields();
+    modal.classList.remove('hidden');
+  };
+  window.closeUserEditModal = function closeUserEditModal(){ document.getElementById('modal-profile-edit')?.classList.add('hidden'); };
+  window.saveUserProfileFull = async function saveUserProfileFull(){
+    if(!currentUser) return;
+    const nombres = (document.getElementById('edit-prof-nombres')?.value || '').trim();
+    const apellidos = (document.getElementById('edit-prof-apellidos')?.value || '').trim();
+    const bday = document.getElementById('edit-prof-bday')?.value || '';
+    const cargo = document.getElementById('edit-prof-cargo')?.value || 'Voz';
+    if(!nombres || !apellidos){ toast('Completa nombres y apellidos','error'); return; }
+    let role = cargo === 'Voz' ? 'Cantante' : cargo === 'Líder' ? 'Líder' : (document.getElementById('edit-prof-role')?.value || 'Músico');
+    const fullName = `${nombres} ${apellidos}`.replace(/\s+/g,' ').trim();
+    const displayName = `${nombres.split(/\s+/)[0]}.${(apellidos.split(/\s+/)[0]||'')[0] || ''}`;
+    const profileImage = window._pendingProfileImage || currentUser.profileImage || '';
+    const update = {nombres, apellidos, fullName, name: fullName, displayName, bday, cargo, role, profileImage};
+
+    Object.assign(currentUser, update);
+    localStorage.setItem('mdios_user', JSON.stringify(currentUser));
+    if(currentUser.id){
+      musicians[currentUser.id] = {...(musicians[currentUser.id]||{}), ...update, id:currentUser.id};
+      for(const ev of Object.values(events)){
+        if(ev.assignees?.[currentUser.id]) ev.assignees[currentUser.id] = {...ev.assignees[currentUser.id], name:fullName, fullName, cargo, role, profileImage};
+      }
+      for(const s of Object.values(songs)) if(s.ownerId === currentUser.id) s.ownerName = fullName;
+    }
+    try{
+      if(currentUser.id){
+        await fbUpdate(`musicians/${currentUser.id}`, update);
+        await fbUpdate(`users/${currentUser.id}`, update);
+        const writes = [];
+        for(const [evId, ev] of Object.entries(events)){
+          if(ev.assignees?.[currentUser.id]) writes.push(fbUpdate(`events/${evId}/assignees/${currentUser.id}`, {name:fullName, fullName, cargo, role, profileImage}));
+        }
+        for(const [sid, s] of Object.entries(songs)){
+          if(s.ownerId === currentUser.id) writes.push(fbUpdate(`songs/${sid}`, {ownerName:fullName}));
+        }
+        await Promise.allSettled(writes);
+        await logActivity('musician','✏️',`"${fullName}" actualizó su perfil`);
+      }
+    }catch(err){ console.error(err); toast('Se guardó localmente, pero falló Firebase','warning'); }
+    localStorage.setItem('gm_songs', JSON.stringify(songs));
+    closeUserEditModal();
+    toast('Perfil actualizado ✓','success');
+    updateUserUI();
+    renderProfileModal();
+    renderEL();
+    renderMT();
+    if(typeof renderSongsList === 'function') renderSongsList();
+  };
+
+  // Sincronización de perfil en tiempo real para que foto/nombre/cargo se vean en todos.
+  window.enrichUserFromFirebase = function enrichUserFromFirebase(userId){
+    if(!userId || !fbReady) return;
+    const { db, ref, onValue:ov } = window._fb;
+    if(window._profileRealtimeUnsub){ try{ window._profileRealtimeUnsub(); }catch(e){} }
+    window._profileRealtimeUnsub = ov(ref(db, `musicians/${userId}`), snap => {
+      const data = snap.val ? snap.val() : snap;
+      if(!data || !currentUser || currentUser.id !== userId) return;
+      ['bday','nombres','apellidos','fullName','name','displayName','cargo','role','profileImage'].forEach(k=>{ if(data[k] !== undefined) currentUser[k] = data[k]; });
+      localStorage.setItem('mdios_user', JSON.stringify(currentUser));
+      if(!document.getElementById('modal-profile')?.classList.contains('hidden')) renderProfileModal();
+      renderEL();
+      renderMT();
+    });
+  };
+
+  // Ministerio: mantener lo existente, pero mostrar foto cuando exista.
+  const _oldRenderMT = window.renderMT;
+  window.renderMT = function renderMT(){
+    try{ if(typeof _oldRenderMT === 'function') _oldRenderMT(); }catch(err){ console.warn('renderMT base falló:', err); }
+    try{
+      document.querySelectorAll('#view-musicians .mus-card').forEach(card => {
+        const info = card.querySelector('.mus-info');
+        const name = info?.querySelector('.mus-name span:nth-child(2)')?.textContent?.trim();
+        const av = card.querySelector('.mus-av');
+        if(!name || !av) return;
+        const m = Object.values(musicians).find(x => (x.name||x.fullName) === name);
+        if(m?.profileImage){ av.innerHTML = `<img src="${htmlEscape(m.profileImage)}" alt="${htmlEscape(name)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;">`; av.style.overflow='hidden'; }
+      });
+    }catch(e){}
+  };
+  const _oldShowMemberCard = window.showMemberCard;
+  window.showMemberCard = function showMemberCard(id){
+    if(typeof _oldShowMemberCard === 'function') _oldShowMemberCard(id);
+    const m = musicians[id];
+    const av = document.querySelector('#modal-member .mcm-avatar');
+    if(m?.profileImage && av){ av.innerHTML = `<img src="${htmlEscape(m.profileImage)}" alt="${htmlEscape(m.name||'perfil')}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;">`; av.style.overflow='hidden'; }
+  };
+
+  // Canciones: estrellas solo azules cuando están elegidas + likes por canción.
+  const fa = (cls)=>`<i class="fa-solid ${cls}" aria-hidden="true"></i>`;
+  window.songLikeCount = function songLikeCount(s){ return s?.likes ? Object.keys(s.likes).length : 0; };
+  window.toggleSongLike = async function toggleSongLike(songId){
+    if(!currentUser){ toast('Ingresa para dar me gusta','warning'); return; }
+    const s = songs[songId];
+    if(!s) return;
+    const uid = currentUser.id || 'local-user';
+    if(!s.likes) s.likes = {};
+    const liked = !!s.likes[uid];
+    if(liked) delete s.likes[uid]; else s.likes[uid] = true;
+    localStorage.setItem('gm_songs', JSON.stringify(songs));
+    renderSongsList();
+    try{
+      if(fbReady){
+        const {db,ref,set,remove} = window._fb;
+        if(liked) await remove(ref(db, `songs/${songId}/likes/${uid}`));
+        else await set(ref(db, `songs/${songId}/likes/${uid}`), true);
+      }
+    }catch(err){ console.error(err); toast('No se pudo sincronizar el me gusta','warning'); }
+  };
+  window.renderSongsList = function renderSongsList() {
+    const container = document.getElementById('songs-list');
+    const countEl   = document.getElementById('songs-count');
+    if(!container) return;
+    const all = Object.values(songs).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    if(countEl) countEl.textContent = `${all.length} tema${all.length!==1?'s':''}`;
+    const q = String(songsSearchQ || '').toLowerCase();
+    const filtered = q
+      ? all.filter(s=>String(s.title||'').toLowerCase().includes(q)||String(s.tono||'').toLowerCase().includes(q)||String(s.ownerName||'').toLowerCase().includes(q))
+      : all;
+    if(!filtered.length){
+      container.innerHTML = `<div class="empty-s"><div class="ei">${fa('fa-music')}</div>${all.length?'Sin resultados':'Aún no hay canciones'}</div>`;
+      return;
+    }
+    const mySelections = window._mySelections || {};
+    container.innerHTML = filtered.map(s=>{
+      const hasYT    = !!s.ytLink;
+      const hasLetra = !!(s.letraLink||s.letraFileId);
+      const hasChart = !!(s.chartLink||s.chartFileId);
+      const canStar  = !!currentUser;
+      const isChosen = canStar && !!mySelections[s.id];
+      const likes = songLikeCount(s);
+      const liked = !!(currentUser && s.likes && s.likes[currentUser.id]);
+      const tonoHtml = s.tono ? `<span class="song-key-chip">${htmlEscape(s.tono)}</span>` : '';
+      const bpmHtml  = s.bpm  ? `<span class="song-bpm-chip">${htmlEscape(s.bpm)} BPM</span>` : '';
+      const sid = jsEscape(s.id);
+      const stitle = htmlEscape(s.title || 'Tema');
+      const starBtn = canStar ? `
+        <button data-catalog-star="${sid}"
+          onclick="toggleSongSelected('${sid}')"
+          class="song-star-btn ${isChosen?'is-chosen':'is-off'}"
+          title="${isChosen?'Quitar de mi lista':'Agregar a mi lista'}">
+          ${isChosen ? '<i class="fa-solid fa-star"></i>' : '<i class="fa-regular fa-star"></i>'}
+        </button>` : '';
+      return `<div class="song-card ${isChosen?'song-card-chosen':'song-card-plain'}" data-song-row="${sid}">
+        <div class="song-card-top">
+          <div class="song-thumb">${fa('fa-music')}</div>
+          <div class="song-main-info">
+            <div class="song-title">${stitle}</div>
+            <div class="song-tone-row">${tonoHtml}${bpmHtml}</div>
+            <div class="song-meta">${htmlEscape(s.ownerName||'')}</div>
+            ${canStar?`<div data-catalog-label="${sid}" class="song-list-status">
+              ${isChosen
+                ? '<span style="color:var(--success);font-weight:800;"><i class="fa-solid fa-check"></i> En mi lista</span>'
+                : '<span style="color:var(--muted);"><i class="fa-regular fa-star"></i> No en lista</span>'}
+            </div>`:''}
+          </div>
+          ${starBtn}
+        </div>
+        <div class="song-actions">
+          <button class="song-btn song-video play ${!hasYT?'disabled':''}"
+            onclick="${hasYT?`openSongLink('${jsEscape(s.ytLink)}')`:''}"><i class="fa-solid fa-play"></i> Video</button>
+          <button class="song-btn song-letras ${!hasLetra?'disabled':''}"
+            onclick="${s.letraFileId
+              ? `downloadFromTelegram('${jsEscape(s.letraFileId)}','${jsEscape(s.letraFileName||s.title+'_letras.pdf')}','Letras de ${jsEscape(s.title)}')`
+              : s.letraLink?`openSongLink('${jsEscape(s.letraLink)}')`:''}" ><i class="fa-regular fa-file-lines"></i> Letras</button>
+          <button class="song-btn song-chart ${!hasChart?'disabled':''}"
+            onclick="${s.chartFileId
+              ? `downloadFromTelegram('${jsEscape(s.chartFileId)}','${jsEscape(s.chartFileName||s.title+'_chart.pdf')}','Chart de ${jsEscape(s.title)}')`
+              : s.chartLink?`openSongLink('${jsEscape(s.chartLink)}')`:''}" ><i class="fa-solid fa-chart-simple"></i> Chart</button>
+        </div>
+        <div class="song-like-row"><button class="song-like-btn ${liked?'liked':''}" onclick="toggleSongLike('${sid}')" title="Me gusta"><i class="${liked?'fa-solid':'fa-regular'} fa-heart"></i><span>${likes}</span></button></div>
+      </div>`;
+    }).join('');
+  };
+
+  // FAB Android: listener táctil adicional sin cambiar permisos existentes.
+  function bindFabTouch(){
+    const fab = document.getElementById('new-ev-fab');
+    if(!fab || fab.dataset.mdiosTouchBound === '1') return;
+    fab.dataset.mdiosTouchBound = '1';
+    fab.addEventListener('touchend', function(e){
+      if(this.disabled) return;
+      e.preventDefault();
+      e.stopPropagation();
+      try{ openNewEvForm(); }catch(err){ try{ openEvModal(); }catch(e2){} }
+    }, {passive:false});
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindFabTouch); else bindFabTouch();
+  setTimeout(bindFabTouch, 1200);
+
+  // Primer refresco cuando el parche ya está cargado.
+  setTimeout(()=>{
+    try{ renderEL(); }catch(e){}
+    try{ renderMT(); }catch(e){}
+    try{ if(typeof renderSongsList === 'function') renderSongsList(); }catch(e){}
+  }, 300);
+})();
+</script>
+
+<style id="parche-puntual-role-selector-modal-bg-v1">
+/* Refuerzo: selector de roles abierto desde eventos también usa el azul oscuro de la app. */
+.role-sel-overlay > div,
+.rol-selector-overlay .rol-selector-box{
+  background:#071431!important;
+  color:#fff!important;
+  border-color:rgba(255,255,255,.16)!important;
+}
+.role-sel-overlay > div *,
+.rol-selector-overlay .rol-selector-box *{color:#fff!important;}
+.role-sel-overlay button,
+.rol-selector-overlay .rol-item,
+.rol-selector-overlay .btn{
+  background:rgba(255,255,255,.09)!important;
+  border-color:rgba(255,255,255,.16)!important;
+  color:#fff!important;
+}
+</style>
+
+<style id="parche-puntual-2026-05-30-ajustes-visuales-v2">
+/* ═════════════════════════════════════════════════════════════════════════════
+   AJUSTES PUNTUALES V2
+   - Solo CSS final, sin tocar datos, funciones, IDs ni comportamiento.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+:root{
+  --mdios-gold-soft:#f4d958;
+  --mdios-gold-deep:#e7c84b;
+  --mdios-ink:#071431;
+}
+
+/* 1) HOME: centrar VOCES / MÚSICOS dentro de su tarjeta */
+#view-home .home-ministry,
+#view-home .home-ministry .hm-tabs{
+  text-align:center!important;
+}
+#view-home .home-ministry .hm-tabs{
+  justify-content:center!important;
+}
+#view-home .home-ministry .hm-people{
+  width:100%!important;
+  justify-content:center!important;
+  justify-items:center!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  scroll-padding-left:18px!important;
+  scroll-padding-right:18px!important;
+}
+#view-home .home-ministry .hm-person,
+#view-home .home-ministry .hm-person-card{
+  text-align:center!important;
+}
+
+/* 2) HOME: Ensayo / Cumpleaños alineados, clave de sol completa */
+#view-home .hm-bottom-grid{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  align-items:stretch!important;
+}
+#view-home .hm-info-card.hm-mini-ref{
+  min-height:158px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:flex-start!important;
+  overflow:hidden!important;
+}
+#view-home .hm-info-card.hm-mini-ref .hm-info-title{
+  margin-top:0!important;
+  margin-bottom:15px!important;
+  min-height:31px!important;
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:flex-start!important;
+  text-align:left!important;
+  width:100%!important;
+}
+#view-home .hm-info-card.hm-mini-ref.bday{
+  text-align:left!important;
+}
+#view-home .hm-info-card.hm-mini-ref.bday .hm-bday-party,
+#view-home .hm-info-card.hm-mini-ref.bday .hm-bday-name,
+#view-home .hm-info-card.hm-mini-ref.bday .hm-bday-date{
+  align-self:center!important;
+  text-align:center!important;
+}
+#view-home .hm-clef{
+  font-size:96px!important;
+  line-height:1!important;
+  right:20px!important;
+  bottom:10px!important;
+  transform:rotate(-2deg)!important;
+  max-height:112px!important;
+}
+@media(max-width:430px){
+  #view-home .hm-bottom-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:10px!important;
+  }
+  #view-home .hm-info-card.hm-mini-ref{
+    min-height:145px!important;
+    padding:14px 13px!important;
+  }
+  #view-home .hm-info-card.hm-mini-ref .hm-info-title{
+    font-size:16px!important;
+    min-height:27px!important;
+    margin-bottom:12px!important;
+  }
+  #view-home .hm-clef{
+    font-size:72px!important;
+    right:10px!important;
+    bottom:10px!important;
+    max-height:84px!important;
+  }
+  #view-home .hm-ensayo-lines{margin-right:54px!important;}
+}
+
+/* 3) EVENTOS: barra fija, chips de nombres sin negrita fuerte y badge a la derecha */
+#view-events .events-toolbar{
+  position:sticky!important;
+  top:0!important;
+  z-index:1200!important;
+  background:var(--mdios-ink)!important;
+}
+#view-events .ec-title-row{
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  width:100%!important;
+  min-width:0!important;
+}
+#view-events .ec-title-row .ec-title{
+  min-width:0!important;
+  flex:1 1 auto!important;
+}
+#view-events .ec-title-row .ev-badge{
+  margin-left:auto!important;
+  flex:0 0 auto!important;
+  justify-self:flex-end!important;
+}
+#view-events .ev-person-chip{
+  font-weight:650!important;
+}
+#view-events .ev-person-chip span{
+  font-weight:600!important;
+}
+#view-events .ev-person-chip small{
+  font-weight:700!important;
+}
+
+/* 4) MINISTERIO: barra fija, micrófono asegurado y contador a la derecha */
+#view-musicians .mv-hdr{
+  position:sticky!important;
+  top:0!important;
+  z-index:1200!important;
+  background:var(--mdios-ink)!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:16px!important;
+}
+#view-musicians .mv-hdr h2{
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  margin:0!important;
+  color:#fff!important;
+}
+#view-musicians .mv-hdr h2 > i{
+  display:none!important;
+}
+#view-musicians .mv-hdr h2::before{
+  content:"\f130";
+  font-family:"Font Awesome 6 Free"!important;
+  font-weight:900!important;
+  color:#fff!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-size:.95em!important;
+  line-height:1!important;
+}
+#view-musicians .mv-hdr #mus-count{
+  margin-left:auto!important;
+  color:#fff!important;
+  font-weight:800!important;
+  font-size:13px!important;
+  white-space:nowrap!important;
+  opacity:.98!important;
+}
+
+/* 5) CANCIONES: corazón en la misma fila que Video / Letras / Chart, a la derecha */
+#view-songs #songs-list > .song-card{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  grid-template-areas:
+    "top top"
+    "actions likes"!important;
+  column-gap:10px!important;
+  row-gap:8px!important;
+  align-items:center!important;
+}
+#view-songs #songs-list > .song-card .song-card-top{
+  grid-area:top!important;
+  margin-bottom:0!important;
+}
+#view-songs #songs-list > .song-card .song-actions{
+  grid-area:actions!important;
+  margin:0!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  flex-wrap:wrap!important;
+  min-width:0!important;
+}
+#view-songs #songs-list > .song-card .song-like-row{
+  grid-area:likes!important;
+  width:auto!important;
+  min-width:48px!important;
+  margin:0!important;
+  padding:0!important;
+  display:flex!important;
+  justify-content:flex-end!important;
+  align-items:center!important;
+  align-self:center!important;
+}
+#view-songs #songs-list > .song-card .song-like-btn{
+  white-space:nowrap!important;
+}
+@media(max-width:430px){
+  #view-songs #songs-list > .song-card{
+    grid-template-columns:minmax(0,1fr) auto!important;
+    column-gap:8px!important;
+  }
+  #view-songs #songs-list > .song-card .song-actions{
+    padding-left:52px!important;
+    gap:6px!important;
+  }
+  #view-songs #songs-list > .song-card .song-like-row{
+    padding-left:0!important;
+  }
+}
+
+/* 6) MODAL EVENTO: tarjetas Fecha / Hora / Lugar y temas en dorado legible */
+#modal-ev-detail .meta-grid .mc{
+  background:var(--mdios-gold-soft)!important;
+  color:var(--mdios-ink)!important;
+  border:1px solid var(--mdios-gold-deep)!important;
+  box-shadow:0 6px 14px rgba(0,0,0,.14)!important;
+}
+#modal-ev-detail .meta-grid .mc,
+#modal-ev-detail .meta-grid .mc *{
+  color:var(--mdios-ink)!important;
+}
+#modal-ev-detail .meta-grid .mc .mc-l{
+  color:rgba(7,20,49,.72)!important;
+  font-weight:950!important;
+}
+#modal-ev-detail [id^="ev-detail-songs-"] > div{
+  background:var(--mdios-gold-soft)!important;
+  color:var(--mdios-ink)!important;
+  border:1px solid var(--mdios-gold-deep)!important;
+  box-shadow:0 4px 10px rgba(0,0,0,.10)!important;
+}
+#modal-ev-detail [id^="ev-detail-songs-"] > div,
+#modal-ev-detail [id^="ev-detail-songs-"] > div *{
+  color:var(--mdios-ink)!important;
+}
+#modal-ev-detail [id^="ev-detail-songs-"] .song-tono,
+#modal-ev-detail [id^="ev-detail-songs-"] span[style*="BPM"]{
+  background:rgba(7,20,49,.10)!important;
+  border:1px solid rgba(7,20,49,.18)!important;
+  color:var(--mdios-ink)!important;
+}
+</style>
+
+<style id="parche-puntual-2026-05-30-modales-paleta-v3">
+/* ═════════════════════════════════════════════════════════════════════════════
+   AJUSTES PUNTUALES V3
+   - Modales con la misma paleta clara/lila del card de integrante.
+   - Cierre al hacer click fuera vía JS final.
+   - Separación real entre cerrar (X) y eliminar.
+   - Barra Agenda fija.
+   ═════════════════════════════════════════════════════════════════════════════ */
+:root{
+  --mdios-navy:#071431;
+  --mdios-cream:#fffdf8;
+  --mdios-lilac:#fbf8ff;
+  --mdios-lilac-2:#f4efff;
+  --mdios-soft-card:#ffffff;
+  --mdios-soft-line:#e7ddff;
+  --mdios-muted:#8a94a6;
+  --mdios-gold:#f4d15f;
+  --mdios-gold-2:#ffe87a;
+  --mdios-gold-pale:#fff2ad;
+  --mdios-danger:#ef5570;
+  --mdios-green:#20bf6b;
+}
+
+/* Backdrop uniforme para todos los overlays */
+.overlay,
+.rol-selector-overlay,
+#battery-modal{
+  background:rgba(7,20,49,.74)!important;
+  backdrop-filter:blur(2px)!important;
+  -webkit-backdrop-filter:blur(2px)!important;
+}
+
+/* Base visual común de todos los modales principales */
+.overlay > .modal,
+.overlay > .date-picker-modal,
+.overlay > .pin-modal,
+.overlay > .prof-modal-box,
+.overlay > .member-card-modal,
+.overlay > .ev-card-modal,
+.overlay > .ev-detail-modal,
+#modal-profile-edit .profile-edit-card,
+.rol-selector-overlay > div,
+#battery-modal > div{
+  background:linear-gradient(180deg,var(--mdios-lilac) 0%, var(--mdios-cream) 100%)!important;
+  color:var(--mdios-navy)!important;
+  border:1px solid var(--mdios-soft-line)!important;
+  box-shadow:0 24px 70px rgba(7,20,49,.32)!important;
+  border-radius:22px!important;
+}
+
+.overlay > .modal *,
+.overlay > .date-picker-modal *,
+.overlay > .pin-modal *,
+.overlay > .prof-modal-box *,
+.overlay > .member-card-modal *,
+.overlay > .ev-card-modal *,
+.overlay > .ev-detail-modal *,
+#modal-profile-edit .profile-edit-card *,
+.rol-selector-overlay > div *,
+#battery-modal > div *{
+  color:inherit;
+}
+
+/* Títulos y encabezados */
+.overlay h2,
+.overlay h3,
+.overlay .mcm-name,
+.overlay .prof-name,
+.overlay .asgn-name,
+.overlay .d-top h2,
+#modal-profile-edit .profile-edit-head h3{
+  color:var(--mdios-navy)!important;
+  font-weight:900!important;
+}
+
+/* Textos secundarios */
+.overlay p,
+.overlay label,
+.overlay .mcm-role,
+.overlay .mcm-row-label,
+.overlay .mcm-unavail-label,
+.overlay .asgn-role,
+.overlay .mc-l,
+.overlay .muted,
+.overlay small,
+#modal-profile-edit label{
+  color:var(--mdios-muted)!important;
+}
+
+/* Tarjetas internas comunes */
+#modal-profile .prof-modal-box [style*="var(--surface2)"],
+#modal-profile .prof-modal-box [style*="var(--surface)"],
+#modal-member .mcm-row,
+#modal-member .mcm-unavail,
+#modal-member [id^="member-songs-"] > div,
+#modal-new-event .avail-people-list,
+#modal-new-event #selected-people-summary,
+#modal-edit-event .assign-box,
+#modal-edit-event .form-row,
+#modal-ev-detail .asgn-row,
+#modal-ev-detail .notes-box,
+#modal-ev-detail .assign-box,
+#modal-confirm .modal,
+#modal-avail .date-picker-modal,
+#modal-pin .pin-modal{
+  background:rgba(255,255,255,.72)!important;
+  border-color:var(--mdios-soft-line)!important;
+  color:var(--mdios-navy)!important;
+}
+
+/* Inputs legibles en todos los modales */
+.overlay input,
+.overlay textarea,
+.overlay select,
+#modal-profile-edit input,
+#modal-profile-edit select,
+#modal-profile-edit textarea,
+.rol-selector-overlay input,
+.rol-selector-overlay textarea,
+.rol-selector-overlay select{
+  background:#ffffff!important;
+  color:var(--mdios-navy)!important;
+  border:1px solid rgba(7,20,49,.12)!important;
+  border-radius:12px!important;
+  box-shadow:none!important;
+}
+.overlay input::placeholder,
+.overlay textarea::placeholder,
+#modal-profile-edit input::placeholder,
+#modal-profile-edit textarea::placeholder{
+  color:#9aa5b6!important;
+}
+
+/* Botones de cerrar, todos iguales y bien separados */
+.overlay .mcm-close,
+.overlay .ev-modal-close,
+#modal-profile-edit .profile-edit-close{
+  position:absolute!important;
+  top:14px!important;
+  right:14px!important;
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  min-height:34px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border-radius:12px!important;
+  background:#eef7fb!important;
+  color:#6e7b8e!important;
+  border:1px solid rgba(7,20,49,.10)!important;
+  box-shadow:0 3px 10px rgba(7,20,49,.08)!important;
+  z-index:30!important;
+  font-size:16px!important;
+  line-height:1!important;
+  cursor:pointer!important;
+}
+.overlay .mcm-close:hover,
+.overlay .ev-modal-close:hover,
+#modal-profile-edit .profile-edit-close:hover{
+  background:#e6f0f6!important;
+  color:var(--mdios-navy)!important;
+}
+
+/* Separar X global de los botones Editar / Borrar del detalle de evento */
+#modal-ev-detail .ev-detail-modal{
+  padding:24px!important;
+  overflow-x:hidden!important;
+}
+#modal-ev-detail .d-top{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  align-items:start!important;
+  gap:12px!important;
+  padding-right:48px!important;
+  margin-bottom:18px!important;
+}
+#modal-ev-detail .d-top h2{
+  min-width:0!important;
+  max-width:none!important;
+  margin:0!important;
+  padding-top:2px!important;
+}
+#modal-ev-detail .d-acts{
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  flex-wrap:nowrap!important;
+  margin-right:0!important;
+  padding-right:0!important;
+}
+#modal-ev-detail .d-acts .btn{
+  min-height:34px!important;
+  border-radius:10px!important;
+  white-space:nowrap!important;
+}
+#modal-ev-detail .d-acts .btn-danger{
+  width:38px!important;
+  min-width:38px!important;
+  padding-left:0!important;
+  padding-right:0!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:#fff0f3!important;
+  color:var(--mdios-danger)!important;
+  border:1px solid rgba(239,85,112,.28)!important;
+}
+#modal-ev-detail .d-acts .btn-ghost{
+  background:#fff!important;
+  color:var(--mdios-navy)!important;
+  border:1px solid rgba(7,20,49,.10)!important;
+}
+
+/* Fecha / Hora / Lugar en dorado, pero dentro de la paleta clara */
+#modal-ev-detail .meta-grid{
+  gap:10px!important;
+}
+#modal-ev-detail .meta-grid .mc{
+  background:var(--mdios-gold-pale)!important;
+  color:var(--mdios-navy)!important;
+  border:1px solid #ecd362!important;
+  border-radius:12px!important;
+  box-shadow:0 7px 16px rgba(7,20,49,.08)!important;
+}
+#modal-ev-detail .meta-grid .mc,
+#modal-ev-detail .meta-grid .mc *{
+  color:var(--mdios-navy)!important;
+}
+#modal-ev-detail .meta-grid .mc .mc-l{
+  color:rgba(7,20,49,.64)!important;
+  font-weight:950!important;
+}
+
+/* Secciones del detalle de evento */
+#modal-ev-detail .sec{
+  color:var(--mdios-navy)!important;
+  border-bottom:1px solid var(--mdios-soft-line)!important;
+  font-weight:900!important;
+  letter-spacing:.08em!important;
+}
+#modal-ev-detail .sec span{
+  color:#c49712!important;
+}
+#modal-ev-detail .asgn-row,
+#modal-ev-detail .notes-box,
+#modal-ev-detail .assign-box{
+  background:rgba(255,255,255,.78)!important;
+  border:1px solid var(--mdios-soft-line)!important;
+  color:var(--mdios-navy)!important;
+  box-shadow:0 6px 14px rgba(7,20,49,.05)!important;
+}
+#modal-ev-detail .asgn-av{
+  background:var(--mdios-lilac-2)!important;
+  color:var(--mdios-navy)!important;
+}
+#modal-ev-detail .rm-btn{
+  flex:0 0 auto!important;
+  margin-left:12px!important;
+  background:#fff0f3!important;
+  color:var(--mdios-danger)!important;
+  border:1px solid rgba(239,85,112,.25)!important;
+  width:30px!important;
+  height:30px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border-radius:10px!important;
+}
+
+/* Temas dentro de detalle: dorado claro y texto azul */
+#modal-ev-detail [id^="ev-detail-songs-"] > div{
+  background:var(--mdios-gold-pale)!important;
+  color:var(--mdios-navy)!important;
+  border:1px solid #ecd362!important;
+  border-radius:10px!important;
+  box-shadow:0 4px 10px rgba(7,20,49,.06)!important;
+}
+#modal-ev-detail [id^="ev-detail-songs-"] > div,
+#modal-ev-detail [id^="ev-detail-songs-"] > div *{
+  color:var(--mdios-navy)!important;
+}
+
+/* Perfil: misma paleta clara/lila, con botones separados */
+#modal-profile .prof-modal-box{
+  background:linear-gradient(180deg,var(--mdios-lilac) 0%, var(--mdios-cream) 100%)!important;
+  color:var(--mdios-navy)!important;
+  padding-top:0!important;
+}
+#modal-profile .prof-modal-box > div:first-of-type{
+  background:transparent!important;
+  border-bottom:1px solid var(--mdios-soft-line)!important;
+  padding-right:58px!important;
+}
+#modal-profile .prof-modal-box [data-song-row],
+#modal-profile #song-upload-form,
+#modal-profile #prof-unavail-list > div{
+  background:#fff!important;
+  color:var(--mdios-navy)!important;
+  border-color:var(--mdios-gold)!important;
+}
+#modal-profile .prof-modal-box button[onclick^="deleteSong"],
+#modal-profile .prof-modal-box button[onclick*="remove"],
+#modal-profile .prof-modal-box .btn-danger{
+  color:var(--mdios-danger)!important;
+  border-color:rgba(239,85,112,.30)!important;
+  background:#fff0f3!important;
+}
+
+/* Member modal: reforzar la paleta que se usó como referencia */
+#modal-member .member-card-modal{
+  background:linear-gradient(180deg,var(--mdios-lilac) 0%, var(--mdios-cream) 100%)!important;
+  color:var(--mdios-navy)!important;
+  border-color:var(--mdios-soft-line)!important;
+}
+#modal-member .mcm-header{
+  border-bottom:1px solid var(--mdios-soft-line)!important;
+  padding-right:58px!important;
+}
+#modal-member .mcm-row,
+#modal-member .mcm-unavail{
+  background:rgba(255,255,255,.76)!important;
+  border:1px solid rgba(231,221,255,.55)!important;
+  color:var(--mdios-navy)!important;
+}
+
+/* Nuevo / editar evento con paleta clara */
+#modal-new-event .ev-card-modal,
+#modal-edit-event .ev-card-modal{
+  background:linear-gradient(180deg,var(--mdios-lilac) 0%, var(--mdios-cream) 100%)!important;
+  color:var(--mdios-navy)!important;
+  padding-top:24px!important;
+}
+#modal-new-event .ev-card-modal h3,
+#modal-edit-event .ev-card-modal h3{
+  padding-right:50px!important;
+}
+#modal-new-event label,
+#modal-edit-event label{
+  color:var(--mdios-muted)!important;
+  font-weight:900!important;
+}
+#modal-new-event .avail-people-list,
+#modal-new-event #selected-people-summary,
+#modal-edit-event .assign-box{
+  background:rgba(255,255,255,.78)!important;
+  color:var(--mdios-navy)!important;
+}
+
+/* Confirmación, PIN y disponibilidad */
+#modal-confirm .modal,
+#modal-avail .date-picker-modal,
+#modal-pin .pin-modal{
+  color:var(--mdios-navy)!important;
+}
+#modal-confirm .modal h3,
+#modal-avail .date-picker-modal h3,
+#modal-pin .pin-modal h3{
+  color:var(--mdios-navy)!important;
+}
+#modal-confirm .modal-acts .btn-danger{
+  background:#fff0f3!important;
+  color:var(--mdios-danger)!important;
+  border:1px solid rgba(239,85,112,.30)!important;
+}
+
+/* Role selector dinámico */
+.rol-selector-overlay > div button,
+.role-sel-overlay > div button{
+  background:#fff!important;
+  color:var(--mdios-navy)!important;
+  border-color:var(--mdios-soft-line)!important;
+}
+
+/* Barra superior de Eventos fija y con ancho correcto */
+#view-events .events-toolbar{
+  position:sticky!important;
+  top:0!important;
+  z-index:1600!important;
+  background:var(--mdios-navy)!important;
+  color:#fff!important;
+  border-bottom:5px solid var(--mdios-gold)!important;
+  box-shadow:0 10px 24px rgba(7,20,49,.18)!important;
+}
+#view-events .events-toolbar h2,
+#view-events .events-toolbar h2::before{
+  color:#fff!important;
+}
+
+@media(max-width:640px){
+  #modal-ev-detail .d-top{
+    grid-template-columns:1fr!important;
+    padding-right:48px!important;
+  }
+  #modal-ev-detail .d-acts{
+    justify-content:flex-start!important;
+    flex-wrap:wrap!important;
+  }
+  #modal-ev-detail .meta-grid{
+    grid-template-columns:1fr!important;
+  }
+}
+</style>
+
+<script id="parche-puntual-2026-05-30-modales-click-fuera-v3">
+(function(){
+  if(window.__mdiosModalOutsidePatchV3) return;
+  window.__mdiosModalOutsidePatchV3 = true;
+
+  function closeOverlayById(id, overlay){
+    try{
+      switch(id){
+        case 'modal-ev-detail':
+          if(typeof window.closeEvDetailModal === 'function') return window.closeEvDetailModal();
+          break;
+        case 'modal-new-event':
+          if(typeof window.closeEvModal === 'function') return window.closeEvModal();
+          break;
+        case 'modal-edit-event':
+          if(typeof window.closeEditEvModal === 'function') return window.closeEditEvModal();
+          break;
+        case 'modal-profile':
+          if(typeof window.closeProfileModal === 'function') return window.closeProfileModal();
+          break;
+        case 'modal-avail':
+          if(typeof window.closeAvailModal === 'function') return window.closeAvailModal();
+          break;
+        case 'modal-pin':
+          if(typeof window.closePinModal === 'function') return window.closePinModal();
+          break;
+        case 'modal-confirm':
+          if(typeof window.closeConfirm === 'function') return window.closeConfirm();
+          break;
+        case 'modal-member':
+          if(window._memberCardUnsub){
+            try{ window._memberCardUnsub(); }catch(e){}
+            window._memberCardUnsub = null;
+          }
+          break;
+        case 'modal-profile-edit':
+          if(typeof window.closeUserEditModal === 'function') return window.closeUserEditModal();
+          break;
+        default:
+          break;
+      }
+    }catch(err){ console.warn('modal close fallback:', err); }
+    if(overlay) overlay.classList.add('hidden');
+  }
+
+  function wireModalOutsideClose(){
+    document.querySelectorAll('.overlay').forEach(function(overlay){
+      if(overlay.dataset.outsideCloseV3 === '1') return;
+      overlay.dataset.outsideCloseV3 = '1';
+      overlay.addEventListener('click', function(e){
+        if(e.target === overlay) closeOverlayById(overlay.id, overlay);
+      }, true);
+    });
+
+    var battery = document.getElementById('battery-modal');
+    if(battery && battery.dataset.outsideCloseV3 !== '1'){
+      battery.dataset.outsideCloseV3 = '1';
+      battery.addEventListener('click', function(e){
+        if(e.target === battery) battery.classList.remove('show');
+      }, true);
+    }
+  }
+
+  function normalizeDynamicModals(){
+    wireModalOutsideClose();
+    // El selector de roles se crea dinámicamente; permitir cerrarlo tocando fuera.
+    document.querySelectorAll('.role-sel-overlay,.rol-selector-overlay').forEach(function(overlay){
+      if(overlay.dataset.outsideCloseV3 === '1') return;
+      overlay.dataset.outsideCloseV3 = '1';
+      overlay.addEventListener('click', function(e){
+        if(e.target === overlay) overlay.remove();
+      }, true);
+    });
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', normalizeDynamicModals);
+  }else{
+    normalizeDynamicModals();
+  }
+
+  // Observa modales que se agreguen luego, sin tocar la lógica existente.
+  var mo = new MutationObserver(function(){ normalizeDynamicModals(); });
+  try{ mo.observe(document.documentElement, {childList:true, subtree:true}); }catch(e){}
+})();
+</script>
+
+<style id="parche-puntual-2026-05-30-v4-barra-eventos-y-modales-perfil">
+/* ═══════════════════════════════════════
+   V4 — Barra Agenda fija real + modales de perfil en paleta azul/dorado.
+   Solo diseño: no cambia funciones, IDs, onclick, Firebase ni datos.
+═══════════════════════════════════════ */
+:root{
+  --md4-navy:#071431;
+  --md4-gold:#f2d66b;
+  --md4-gold-strong:#f0b429;
+  --md4-gold-pale:#fff2ad;
+  --md4-gold-soft:#fff7d6;
+  --md4-white:#ffffff;
+  --md4-line:rgba(242,214,107,.35);
+  --md4-soft:rgba(255,255,255,.09);
+  --md4-muted:rgba(255,255,255,.72);
+  --events-fixed-h:112px;
+}
+
+/* 1) EVENTOS: la barra Agenda queda fija y no se mueve con el scroll */
+body:has(#view-events.active) #view-events .events-toolbar{
+  position:fixed!important;
+  top:0!important;
+  left:50%!important;
+  right:auto!important;
+  transform:translateX(-50%)!important;
+  width:min(100vw,680px)!important;
+  max-width:680px!important;
+  z-index:460!important; /* debajo del overlay modal (500) y encima de la lista */
+  background:var(--md4-navy)!important;
+  color:#fff!important;
+  border-bottom:5px solid var(--md4-gold)!important;
+  box-shadow:0 12px 26px rgba(7,20,49,.18)!important;
+  border-radius:0!important;
+  box-sizing:border-box!important;
+}
+body:has(#view-events.active) #view-events .events-toolbar h2,
+body:has(#view-events.active) #view-events .events-toolbar h2 *,
+body:has(#view-events.active) #view-events .events-toolbar h2::before{
+  color:#fff!important;
+}
+body:has(#view-events.active) #view-events .scroll-area > div{
+  padding-top:var(--events-fixed-h)!important;
+}
+body:has(#view-events.active) #view-events .scroll-area > div > .events-toolbar{
+  margin-left:0!important;
+  margin-right:0!important;
+}
+body:has(#view-events.active) #view-events .scroll-area > div > div[style*="padding:8px"]{
+  margin-top:0!important;
+}
+@media(min-width:761px){
+  :root{--events-fixed-h:118px;}
+}
+@media(max-width:760px){
+  body:has(#view-events.active) #view-events .events-toolbar{
+    width:100vw!important;
+    max-width:100vw!important;
+    padding-left:16px!important;
+    padding-right:16px!important;
+  }
+  :root{--events-fixed-h:102px;}
+}
+@media(max-width:420px){
+  :root{--events-fixed-h:96px;}
+}
+
+/* 2) MODAL EVENTO: título visible en blanco */
+#modal-ev-detail .d-top h2,
+#modal-ev-detail #ev-detail-modal-body .d-top h2{
+  color:#fff!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.20)!important;
+  opacity:1!important;
+}
+#modal-ev-detail .d-acts{
+  padding-right:42px!important; /* espacio extra para que no choque con la X */
+}
+#modal-ev-detail .ev-modal-close{
+  z-index:3!important;
+}
+
+/* 3) PERFIL PROPIO: misma paleta azul oscuro + dorado */
+#modal-profile .prof-modal-box{
+  background:var(--md4-navy)!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.14)!important;
+  box-shadow:0 24px 70px rgba(7,20,49,.42)!important;
+  border-radius:22px!important;
+}
+#modal-profile .prof-modal-box > div:first-of-type{
+  background:rgba(255,255,255,.035)!important;
+  border-bottom:1px solid var(--md4-line)!important;
+  padding-right:58px!important;
+}
+#modal-profile .prof-modal-box > div:first-of-type > div:first-child{
+  background:var(--md4-gold)!important;
+  color:var(--md4-navy)!important;
+  box-shadow:0 8px 18px rgba(242,214,107,.24)!important;
+}
+#modal-profile .prof-modal-box > div:first-of-type > div:nth-child(2) > div:first-child{
+  color:#fff!important;
+  font-weight:900!important;
+}
+#modal-profile .prof-modal-box > div:first-of-type > div:nth-child(2) > div:nth-child(2),
+#modal-profile .prof-modal-box label,
+#modal-profile .prof-modal-box [style*="color:var(--muted)"],
+#modal-profile .prof-modal-box [style*="color:#718096"]{
+  color:var(--md4-muted)!important;
+}
+#modal-profile .prof-modal-box span[style*="border-radius:20px"]{
+  background:rgba(242,214,107,.16)!important;
+  color:var(--md4-gold)!important;
+  border:1px solid var(--md4-line)!important;
+}
+#modal-profile .prof-modal-box button[onclick="editUserCargo()"]{
+  color:var(--md4-gold)!important;
+}
+
+/* Tarjetas internas del perfil: fondo dorado claro, texto azul */
+#modal-profile .prof-modal-box [style*="background:var(--surface2)"],
+#modal-profile .prof-modal-box [style*="background:var(--surface)"],
+#modal-profile #prof-unavail-list > div,
+#modal-profile .prof-modal-box [data-song-row],
+#modal-profile .prof-modal-box .song-row,
+#modal-profile .prof-modal-box .profile-song-row{
+  background:var(--md4-gold-soft)!important;
+  border:1px solid #ecd362!important;
+  color:var(--md4-navy)!important;
+  box-shadow:0 6px 14px rgba(0,0,0,.08)!important;
+}
+#modal-profile .prof-modal-box [style*="background:var(--surface2)"] *,
+#modal-profile .prof-modal-box [style*="background:var(--surface)"] *,
+#modal-profile #prof-unavail-list > div *,
+#modal-profile .prof-modal-box [data-song-row] *,
+#modal-profile .prof-modal-box .song-row *,
+#modal-profile .prof-modal-box .profile-song-row *{
+  color:var(--md4-navy)!important;
+}
+#modal-profile #song-upload-form{
+  background:rgba(255,255,255,.08)!important;
+  border:1px solid var(--md4-line)!important;
+  color:#fff!important;
+}
+#modal-profile #song-upload-form *,
+#modal-profile #song-upload-form label{
+  color:#fff!important;
+}
+#modal-profile .prof-modal-box input,
+#modal-profile .prof-modal-box textarea,
+#modal-profile .prof-modal-box select{
+  background:rgba(255,255,255,.96)!important;
+  color:var(--md4-navy)!important;
+  border:1px solid rgba(242,214,107,.55)!important;
+}
+#modal-profile .prof-modal-box input::placeholder,
+#modal-profile .prof-modal-box textarea::placeholder{
+  color:rgba(7,20,49,.48)!important;
+}
+#modal-profile .prof-modal-box .btn-ghost,
+#modal-profile .prof-modal-box button:not(.mcm-close):not(.btn-danger){
+  background:#fff!important;
+  color:var(--md4-navy)!important;
+  border:1px solid rgba(242,214,107,.45)!important;
+}
+#modal-profile .prof-modal-box .btn-primary{
+  background:linear-gradient(135deg,var(--md4-gold),var(--md4-gold-strong))!important;
+  color:var(--md4-navy)!important;
+  border:0!important;
+}
+#modal-profile .prof-modal-box .btn-danger,
+#modal-profile .prof-modal-box button[onclick^="deleteSong"],
+#modal-profile .prof-modal-box button[onclick*="remove"]{
+  background:#fff0f3!important;
+  color:#ef5570!important;
+  border:1px solid rgba(239,85,112,.35)!important;
+}
+
+/* 4) PERFIL DE CADA INTEGRANTE: azul oscuro + tarjetas doradas */
+#modal-member .member-card-modal{
+  background:var(--md4-navy)!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.14)!important;
+  box-shadow:0 24px 70px rgba(7,20,49,.42)!important;
+  border-radius:22px!important;
+}
+#modal-member .mcm-header{
+  background:rgba(255,255,255,.035)!important;
+  border-bottom:1px solid var(--md4-line)!important;
+  padding-right:58px!important;
+}
+#modal-member .mcm-avatar{
+  background:var(--md4-gold)!important;
+  color:var(--md4-navy)!important;
+  box-shadow:0 8px 18px rgba(242,214,107,.24)!important;
+}
+#modal-member .mcm-name{
+  color:#fff!important;
+  font-weight:900!important;
+}
+#modal-member .mcm-role{
+  color:var(--md4-muted)!important;
+}
+#modal-member .mcm-header span{
+  background:rgba(242,214,107,.16)!important;
+  color:var(--md4-gold)!important;
+  border:1px solid var(--md4-line)!important;
+}
+#modal-member .mcm-body{
+  background:transparent!important;
+}
+#modal-member .mcm-row,
+#modal-member .mcm-unavail,
+#modal-member #member-card-content [id^="member-songs-"] > div{
+  background:var(--md4-gold-soft)!important;
+  border:1px solid #ecd362!important;
+  color:var(--md4-navy)!important;
+  box-shadow:0 6px 14px rgba(0,0,0,.08)!important;
+}
+#modal-member .mcm-row *,
+#modal-member .mcm-unavail *,
+#modal-member #member-card-content [id^="member-songs-"] > div *{
+  color:var(--md4-navy)!important;
+}
+#modal-member .mcm-row-label,
+#modal-member .mcm-unavail-label{
+  color:rgba(7,20,49,.62)!important;
+  font-weight:950!important;
+}
+
+/* Cierre de modales: visible y separado */
+#modal-profile .mcm-close,
+#modal-member .mcm-close,
+#modal-ev-detail .ev-modal-close{
+  top:14px!important;
+  right:14px!important;
+  width:34px!important;
+  height:34px!important;
+  border-radius:12px!important;
+  background:rgba(255,255,255,.12)!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.18)!important;
+  box-shadow:0 7px 18px rgba(0,0,0,.20)!important;
+}
+#modal-profile .mcm-close:hover,
+#modal-member .mcm-close:hover,
+#modal-ev-detail .ev-modal-close:hover{
+  background:rgba(242,214,107,.20)!important;
+  color:var(--md4-gold)!important;
+  border-color:var(--md4-line)!important;
+}
+
+@media(max-width:640px){
+  #modal-ev-detail .d-acts{
+    padding-right:0!important;
+    padding-top:6px!important;
+  }
+  #modal-profile .prof-modal-box,
+  #modal-member .member-card-modal{
+    width:min(94vw,480px)!important;
+  }
+}
+</style>
+
+<script id="parche-puntual-2026-05-30-v4-medicion-barra-eventos">
+(function(){
+  if(window.__mdiosV4FixedEventsBar) return;
+  window.__mdiosV4FixedEventsBar = true;
+  function setEventsToolbarSpace(){
+    try{
+      var active = document.getElementById('view-events');
+      var bar = document.querySelector('#view-events .events-toolbar');
+      if(!active || !bar || !active.classList.contains('active')) return;
+      var h = Math.ceil(bar.getBoundingClientRect().height || 0);
+      if(h > 20) document.documentElement.style.setProperty('--events-fixed-h', (h + 26) + 'px');
+    }catch(e){}
+  }
+  ['resize','orientationchange'].forEach(function(ev){ window.addEventListener(ev, setEventsToolbarSpace, {passive:true}); });
+  document.addEventListener('click', function(){ setTimeout(setEventsToolbarSpace, 80); }, true);
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(setEventsToolbarSpace, 120); });
+  else setTimeout(setEventsToolbarSpace, 120);
+  try{
+    new MutationObserver(function(){ setTimeout(setEventsToolbarSpace, 60); })
+      .observe(document.documentElement, {attributes:true, childList:true, subtree:true, attributeFilter:['class','style']});
+  }catch(e){}
+})();
+</script>
+
+<style id="parche-puntual-2026-05-30-v5-modales-perfil-azul-dorado">
+/* ══════════════════════════════════════════════════════════════════════════════
+   V5 — Modales de perfil/integrante/editar perfil con paleta azul oscuro + dorado.
+   Solo visual: no cambia IDs, funciones, Firebase ni eventos onclick.
+   ══════════════════════════════════════════════════════════════════════════════ */
+:root{
+  --md5-navy:#06142f;
+  --md5-navy-2:#0a1a3d;
+  --md5-gold:#f2d66b;
+  --md5-gold-2:#e9c94e;
+  --md5-gold-soft:#fff4bd;
+  --md5-gold-soft-2:#fff8d9;
+  --md5-line:rgba(242,214,107,.46);
+  --md5-white:#ffffff;
+  --md5-muted:rgba(255,255,255,.76);
+  --md5-ink:#06142f;
+}
+
+/* Contenedores principales */
+#modal-member #member-card-content,
+#modal-member .member-card-modal,
+#modal-profile #prof-modal-content,
+#modal-profile .prof-modal-box,
+#modal-profile-edit .profile-edit-card{
+  background:var(--md5-navy)!important;
+  color:var(--md5-white)!important;
+  border:1px solid rgba(242,214,107,.38)!important;
+  border-radius:22px!important;
+  box-shadow:0 26px 75px rgba(0,0,0,.46)!important;
+  overflow:hidden!important;
+}
+
+#modal-profile #prof-modal-content,
+#modal-profile .prof-modal-box{
+  max-height:88vh!important;
+  overflow-y:auto!important;
+}
+#modal-member #member-card-content,
+#modal-member .member-card-modal{
+  max-height:88vh!important;
+  overflow-y:auto!important;
+}
+
+/* Cabeceras de perfil, integrante y editar perfil */
+#modal-member #member-card-content .mcm-header,
+#modal-member .member-card-modal .mcm-header,
+#modal-profile #prof-modal-content > div:first-of-type,
+#modal-profile .prof-modal-box > div:first-of-type,
+#modal-profile-edit .profile-edit-head{
+  background:linear-gradient(135deg,var(--md5-navy),var(--md5-navy-2))!important;
+  color:var(--md5-white)!important;
+  border-bottom:1px solid var(--md5-line)!important;
+  padding-right:62px!important;
+}
+
+#modal-member .mcm-name,
+#modal-profile #prof-modal-content > div:first-of-type div[style*="font-size:17px"],
+#modal-profile .prof-modal-box > div:first-of-type div[style*="font-size:17px"],
+#modal-profile-edit .profile-edit-head h3{
+  color:var(--md5-white)!important;
+  font-weight:900!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.20)!important;
+}
+
+#modal-member .mcm-role,
+#modal-profile #prof-modal-content > div:first-of-type div[style*="color:var(--muted)"],
+#modal-profile .prof-modal-box > div:first-of-type div[style*="color:var(--muted)"],
+#modal-profile-edit .profile-edit-body label{
+  color:var(--md5-muted)!important;
+}
+
+/* Avatares e insignias */
+#modal-member .mcm-avatar,
+#modal-profile #prof-modal-content > div:first-of-type > div:first-child,
+#modal-profile .prof-modal-box > div:first-of-type > div:first-child,
+#modal-profile-edit .profile-img-preview{
+  background:linear-gradient(135deg,var(--md5-gold),var(--md5-gold-2))!important;
+  color:var(--md5-ink)!important;
+  border:1px solid rgba(255,255,255,.18)!important;
+  box-shadow:0 10px 22px rgba(242,214,107,.28)!important;
+}
+
+#modal-member .mcm-header span,
+#modal-profile #prof-modal-content span[style*="border-radius:20px"],
+#modal-profile .prof-modal-box span[style*="border-radius:20px"]{
+  background:rgba(242,214,107,.18)!important;
+  color:var(--md5-gold)!important;
+  border:1px solid var(--md5-line)!important;
+}
+
+/* Cuerpo de los modales */
+#modal-member .mcm-body,
+#modal-profile #prof-modal-content > div:nth-of-type(2),
+#modal-profile .prof-modal-box > div:nth-of-type(2),
+#modal-profile-edit .profile-edit-body{
+  background:var(--md5-navy)!important;
+  color:var(--md5-white)!important;
+}
+
+/* Tarjetas internas: dorado claro con texto azul oscuro */
+#modal-member .mcm-row,
+#modal-member .mcm-unavail,
+#modal-member #member-card-content [id^="member-songs-"] > div,
+#modal-profile #prof-modal-content [style*="background:var(--surface2)"],
+#modal-profile #prof-modal-content [style*="background:var(--surface)"],
+#modal-profile .prof-modal-box [style*="background:var(--surface2)"],
+#modal-profile .prof-modal-box [style*="background:var(--surface)"],
+#modal-profile #prof-unavail-list > div,
+#modal-profile #prof-songs-list > div,
+#modal-profile .profile-song-row,
+#modal-profile .song-row,
+#modal-profile [data-song-row],
+#modal-profile-edit .profile-edit-body > div:not(.profile-edit-actions){
+  background:linear-gradient(135deg,var(--md5-gold-soft),var(--md5-gold-soft-2))!important;
+  color:var(--md5-ink)!important;
+  border:1px solid rgba(233,201,78,.92)!important;
+  border-radius:14px!important;
+  box-shadow:0 8px 18px rgba(0,0,0,.10)!important;
+}
+
+#modal-member .mcm-row *,
+#modal-member .mcm-unavail *,
+#modal-member #member-card-content [id^="member-songs-"] > div *,
+#modal-profile #prof-modal-content [style*="background:var(--surface2)"] *,
+#modal-profile #prof-modal-content [style*="background:var(--surface)"] *,
+#modal-profile .prof-modal-box [style*="background:var(--surface2)"] *,
+#modal-profile .prof-modal-box [style*="background:var(--surface)"] *,
+#modal-profile #prof-unavail-list > div *,
+#modal-profile #prof-songs-list > div *,
+#modal-profile .profile-song-row *,
+#modal-profile .song-row *,
+#modal-profile [data-song-row] *,
+#modal-profile-edit .profile-edit-body > div:not(.profile-edit-actions) *{
+  color:var(--md5-ink)!important;
+}
+
+#modal-member .mcm-row-label,
+#modal-member .mcm-unavail-label,
+#modal-profile #prof-modal-content [style*="text-transform:uppercase"],
+#modal-profile .prof-modal-box [style*="text-transform:uppercase"]{
+  color:rgba(6,20,47,.66)!important;
+  font-weight:950!important;
+}
+
+/* Inputs y formularios dentro de perfil */
+#modal-profile input,
+#modal-profile textarea,
+#modal-profile select,
+#modal-profile-edit input,
+#modal-profile-edit textarea,
+#modal-profile-edit select{
+  background:#fffdf1!important;
+  color:var(--md5-ink)!important;
+  border:1px solid rgba(233,201,78,.90)!important;
+  border-radius:12px!important;
+  box-shadow:none!important;
+}
+#modal-profile input::placeholder,
+#modal-profile textarea::placeholder,
+#modal-profile-edit input::placeholder,
+#modal-profile-edit textarea::placeholder{
+  color:rgba(6,20,47,.48)!important;
+}
+
+/* Botones: conservar jerarquía, pero dentro de la paleta */
+#modal-member button:not(.mcm-close),
+#modal-profile button:not(.mcm-close),
+#modal-profile-edit button:not(.profile-edit-close):not(.btn-danger){
+  border-radius:12px!important;
+}
+#modal-profile .btn-primary,
+#modal-profile-edit .btn-primary{
+  background:linear-gradient(135deg,var(--md5-gold),var(--md5-gold-2))!important;
+  color:var(--md5-ink)!important;
+  border:0!important;
+}
+#modal-profile .btn-ghost,
+#modal-profile-edit .btn-ghost,
+#modal-member .song-btn{
+  background:#ffffff!important;
+  color:var(--md5-ink)!important;
+  border:1px solid rgba(233,201,78,.75)!important;
+}
+#modal-profile .btn-danger,
+#modal-profile button[onclick^="deleteSong"],
+#modal-profile button[onclick*="remove"],
+#modal-profile-edit .btn-danger{
+  background:#fff0f3!important;
+  color:#d83c5a!important;
+  border:1px solid rgba(216,60,90,.38)!important;
+}
+
+/* X de cierre: visible, separada y sin chocar con otros botones */
+#modal-member .mcm-close,
+#modal-profile .mcm-close,
+#modal-profile-edit .profile-edit-close{
+  top:14px!important;
+  right:14px!important;
+  width:36px!important;
+  height:36px!important;
+  min-width:36px!important;
+  min-height:36px!important;
+  border-radius:12px!important;
+  background:rgba(255,255,255,.13)!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.24)!important;
+  box-shadow:0 8px 20px rgba(0,0,0,.24)!important;
+  z-index:9!important;
+}
+#modal-member .mcm-close:hover,
+#modal-profile .mcm-close:hover,
+#modal-profile-edit .profile-edit-close:hover{
+  background:rgba(242,214,107,.22)!important;
+  color:var(--md5-gold)!important;
+  border-color:var(--md5-line)!important;
+}
+
+@media(max-width:640px){
+  #modal-member #member-card-content,
+  #modal-member .member-card-modal,
+  #modal-profile #prof-modal-content,
+  #modal-profile .prof-modal-box,
+  #modal-profile-edit .profile-edit-card{
+    width:min(94vw,480px)!important;
+    max-height:86vh!important;
+  }
+}
+</style>
+
+<script id="parche-puntual-2026-05-30-v5-aplicar-paleta-modal-inline">
+(function(){
+  if(window.__mdiosV5ModalPalette) return;
+  window.__mdiosV5ModalPalette = true;
+  var NAVY = '#06142f', NAVY2 = '#0a1a3d', GOLD = '#f2d66b', GOLD2 = '#e9c94e', SOFT = '#fff4bd', INK = '#06142f';
+  function imp(el, prop, value){ if(el) el.style.setProperty(prop, value, 'important'); }
+  function each(sel, cb){ document.querySelectorAll(sel).forEach(cb); }
+  function goldCard(el){
+    if(!el) return;
+    imp(el,'background','linear-gradient(135deg,'+SOFT+',#fff8d9)');
+    imp(el,'color',INK);
+    imp(el,'border','1px solid rgba(233,201,78,.92)');
+    imp(el,'border-radius','14px');
+    imp(el,'box-shadow','0 8px 18px rgba(0,0,0,.10)');
+    el.querySelectorAll('*').forEach(function(x){ imp(x,'color',INK); });
+  }
+  function navyBox(el){
+    if(!el) return;
+    imp(el,'background',NAVY);
+    imp(el,'color','#fff');
+    imp(el,'border','1px solid rgba(242,214,107,.38)');
+    imp(el,'border-radius','22px');
+    imp(el,'box-shadow','0 26px 75px rgba(0,0,0,.46)');
+  }
+  function apply(){
+    navyBox(document.getElementById('member-card-content'));
+    navyBox(document.getElementById('prof-modal-content'));
+    each('#modal-profile-edit .profile-edit-card', navyBox);
+
+    each('#member-card-content .mcm-header, #prof-modal-content > div:first-of-type, #modal-profile-edit .profile-edit-head', function(h){
+      imp(h,'background','linear-gradient(135deg,'+NAVY+','+NAVY2+')');
+      imp(h,'color','#fff');
+      imp(h,'border-bottom','1px solid rgba(242,214,107,.46)');
+      imp(h,'padding-right','62px');
+    });
+
+    each('#member-card-content .mcm-avatar, #prof-modal-content > div:first-of-type > div:first-child, #modal-profile-edit .profile-img-preview', function(a){
+      imp(a,'background','linear-gradient(135deg,'+GOLD+','+GOLD2+')');
+      imp(a,'color',INK);
+      imp(a,'border','1px solid rgba(255,255,255,.18)');
+      imp(a,'box-shadow','0 10px 22px rgba(242,214,107,.28)');
+    });
+
+    each('#member-card-content .mcm-body, #prof-modal-content > div:nth-of-type(2), #modal-profile-edit .profile-edit-body', function(b){
+      imp(b,'background',NAVY);
+      imp(b,'color','#fff');
+    });
+
+    each('#member-card-content .mcm-row, #member-card-content .mcm-unavail, #member-card-content [id^="member-songs-"] > div, #prof-modal-content [style*="background:var(--surface2)"], #prof-modal-content [style*="background:var(--surface)"], #prof-unavail-list > div, #prof-songs-list > div, #prof-modal-content .profile-song-row, #prof-modal-content .song-row, #prof-modal-content [data-song-row], #modal-profile-edit .profile-edit-body > div:not(.profile-edit-actions)', goldCard);
+
+    each('#member-card-content .mcm-name, #modal-profile-edit .profile-edit-head h3', function(t){ imp(t,'color','#fff'); imp(t,'font-weight','900'); });
+    each('#member-card-content .mcm-role, #modal-profile-edit .profile-edit-body label', function(t){ imp(t,'color','rgba(255,255,255,.76)'); });
+
+    each('#modal-member .mcm-close, #modal-profile .mcm-close, #modal-profile-edit .profile-edit-close', function(c){
+      imp(c,'top','14px'); imp(c,'right','14px'); imp(c,'width','36px'); imp(c,'height','36px');
+      imp(c,'min-width','36px'); imp(c,'min-height','36px'); imp(c,'border-radius','12px');
+      imp(c,'background','rgba(255,255,255,.13)'); imp(c,'color','#fff');
+      imp(c,'border','1px solid rgba(255,255,255,.24)'); imp(c,'z-index','9');
+    });
+  }
+  var scheduled = false;
+  function schedule(){ if(scheduled) return; scheduled = true; requestAnimationFrame(function(){ scheduled = false; apply(); }); }
+  document.addEventListener('DOMContentLoaded', schedule);
+  document.addEventListener('click', function(){ setTimeout(schedule, 40); }, true);
+  try{ new MutationObserver(schedule).observe(document.body || document.documentElement, {childList:true, subtree:true, attributes:true, attributeFilter:['class','style']}); }catch(e){}
+  schedule();
+})();
+</script>
