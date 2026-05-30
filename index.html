@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Monte de Dios</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
@@ -60,7 +60,7 @@ window.dispatchEvent(new Event('fbready'));
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overscroll-behavior:none;}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);
   display:flex;flex-direction:column;max-width:100vw;overflow-x:hidden;}
 
 /* ── FIREBASE BANNER ── */
@@ -76,18 +76,18 @@ header{background:linear-gradient(135deg,#16161a,#1e1e24);border-bottom:1px soli
 .logo{display:flex;align-items:center;gap:9px;}
 .logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent2));
   border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;}
-.logo h1{font-family:'Playfair Display',serif;font-size:18px;}
+.logo h1{font-family:'Nunito',sans-serif;font-size:18px;}
 .logo span{color:var(--accent);}
 .hdr-r{display:flex;gap:7px;align-items:center;}
 
 /* ── INSTALL PROMPT ── */
 #install-btn{display:none;background:linear-gradient(135deg,var(--accent),var(--accent2));
   color:#0d0d0f;border:none;border-radius:8px;padding:7px 13px;font-size:12px;
-  font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;}
+  font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;}
 #install-btn.show{display:flex;align-items:center;gap:5px;}
 
 /* ── ROLE BADGE ── */
-.role-pill{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:700;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;}
+.role-pill{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:700;cursor:pointer;border:none;font-family:'Nunito',sans-serif;}
 .role-pill.admin{background:rgba(240,180,41,.2);color:var(--accent);border:1px solid rgba(240,180,41,.4);}
 .role-pill.viewer{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
 
@@ -96,7 +96,7 @@ header{background:linear-gradient(135deg,#16161a,#1e1e24);border-bottom:1px soli
   flex-shrink:0;position:sticky;bottom:0;z-index:200;}
 .bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:3px;padding:10px 4px;border:none;background:transparent;color:var(--muted);
-  cursor:pointer;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:500;
+  cursor:pointer;font-family:'Nunito',sans-serif;font-size:10px;font-weight:500;
   transition:color .2s;border-top:2px solid transparent;}
 .bnav-btn.active{color:var(--accent);border-top-color:var(--accent);}
 .bnav-icon{font-size:20px;line-height:1;}
@@ -110,7 +110,7 @@ header{background:linear-gradient(135deg,#16161a,#1e1e24);border-bottom:1px soli
 
 /* ── BUTTONS ── */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:9px;border:none;
-  font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;}
+  font-family:'Nunito',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;}
 .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#0d0d0f;font-weight:700;}
 .btn-primary:hover{opacity:.88;}
 .btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
@@ -125,7 +125,7 @@ header{background:linear-gradient(135deg,#16161a,#1e1e24);border-bottom:1px soli
 .form-row label{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;}
 input[type=text],input[type=date],input[type=time],input[type=password],select,textarea{
   background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;
-  padding:8px 11px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;
+  padding:8px 11px;font-family:'Nunito',sans-serif;font-size:13px;width:100%;
   transition:border-color .2s;outline:none;}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);}
 input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1);}
@@ -153,7 +153,7 @@ textarea{resize:vertical;min-height:64px;}
   padding:14px 16px 10px;}
 .ev-hero-badge{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;
   color:var(--accent);margin-bottom:6px;display:flex;align-items:center;gap:5px;}
-.ev-hero-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;
+.ev-hero-title{font-family:'Nunito',sans-serif;font-size:20px;font-weight:700;
   color:var(--text);margin-bottom:4px;line-height:1.2;}
 .ev-hero-meta{font-size:11px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;}
 .ev-hero-section{padding:10px 16px;border-top:1px solid rgba(255,255,255,.05);}
@@ -197,7 +197,7 @@ textarea{resize:vertical;min-height:64px;}
 .ev-detail-modal::-webkit-scrollbar{width:3px;}
 .ev-detail-modal::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 .d-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;}
-.d-top h2{font-family:'Playfair Display',serif;font-size:20px;outline:none;max-width:340px;}
+.d-top h2{font-family:'Nunito',sans-serif;font-size:20px;outline:none;max-width:340px;}
 .d-acts{display:flex;gap:6px;flex-shrink:0;}
 .meta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px;}
 .mc{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;}
@@ -235,13 +235,13 @@ textarea{resize:vertical;min-height:64px;}
 ══════════════════════════════════════════════ */
 .mv-wrap{padding:18px;max-width:700px;margin:0 auto;width:100%;}
 .mv-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
-.mv-hdr h2{font-family:'Playfair Display',serif;font-size:20px;}
+.mv-hdr h2{font-family:'Nunito',sans-serif;font-size:20px;}
 .mv-form{background:var(--surface);border:1px solid var(--border);border-radius:12px;
   padding:16px;margin-bottom:16px;}
 .mv-form-row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;}
 .mv-form-row .form-row{flex:1;min-width:130px;margin-bottom:0;}
 .search-bar{background:var(--surface2);border:1px solid var(--border);border-radius:9px;
-  padding:8px 12px;width:100%;margin-bottom:12px;color:var(--text);font-family:'DM Sans',sans-serif;
+  padding:8px 12px;width:100%;margin-bottom:12px;color:var(--text);font-family:'Nunito',sans-serif;
   font-size:13px;outline:none;}
 .search-bar:focus{border-color:var(--accent);}
 .mus-table{display:flex;flex-direction:column;gap:6px;}
@@ -372,12 +372,12 @@ textarea{resize:vertical;min-height:64px;}
 .song-actions{display:flex;gap:6px;flex-wrap:wrap;}
 .song-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:8px;
   border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;
-  font-weight:600;cursor:pointer;text-decoration:none;transition:all .15s;font-family:'DM Sans',sans-serif;}
+  font-weight:600;cursor:pointer;text-decoration:none;transition:all .15s;font-family:'Nunito',sans-serif;}
 .song-btn:hover{border-color:var(--accent);color:var(--accent);}
 .song-btn.disabled{opacity:.3;cursor:not-allowed;pointer-events:none;}
 .min-filter-btn{flex-shrink:0;background:var(--surface2);border:1px solid var(--border);
   border-radius:20px;padding:5px 13px;font-size:11px;font-weight:600;color:var(--muted);
-  cursor:pointer;white-space:nowrap;transition:all .2s;font-family:'DM Sans',sans-serif;}
+  cursor:pointer;white-space:nowrap;transition:all .2s;font-family:'Nunito',sans-serif;}
 .min-filter-btn.active{background:var(--accent);border-color:var(--accent);color:#0d0d0f;}
 .min-filter-btn:hover:not(.active){border-color:var(--accent);color:var(--accent);}
 #min-filter-bar::-webkit-scrollbar{display:none;}
@@ -390,7 +390,7 @@ textarea{resize:vertical;min-height:64px;}
 .upload-form h4{font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text);}
 .upload-tabs{display:flex;gap:0;margin-bottom:10px;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
 .utab{flex:1;padding:7px;text-align:center;font-size:11px;font-weight:600;cursor:pointer;
-  background:var(--surface2);color:var(--muted);border:none;font-family:'DM Sans',sans-serif;transition:all .2s;}
+  background:var(--surface2);color:var(--muted);border:none;font-family:'Nunito',sans-serif;transition:all .2s;}
 .utab.active{background:var(--accent);color:#0d0d0f;}
 
 /* ── PROFILE MODAL ── */
@@ -421,7 +421,7 @@ textarea{resize:vertical;min-height:64px;}
   display: flex; align-items: center; justify-content: center;
   font-size: 24px; font-weight: 700; flex-shrink: 0;
 }
-.mcm-name { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; line-height: 1.2; }
+.mcm-name { font-family: 'Nunito',sans-serif; font-size: 18px; font-weight: 700; line-height: 1.2; }
 .mcm-role { font-size: 12px; color: var(--muted); margin-top: 3px; }
 .mcm-body { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 10px; }
 .mcm-row {
@@ -464,7 +464,7 @@ textarea{resize:vertical;min-height:64px;}
 .reg-box::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 .reg-logo{text-align:center;margin-bottom:22px;}
 .reg-logo .ri{font-size:40px;margin-bottom:6px;}
-.reg-logo h2{font-family:'Playfair Display',serif;font-size:22px;}
+.reg-logo h2{font-family:'Nunito',sans-serif;font-size:22px;}
 .reg-logo h2 span{color:var(--accent);}
 .reg-logo p{font-size:12px;color:var(--muted);margin-top:4px;}
 .reg-step{display:none;} .reg-step.active{display:block;}
@@ -494,7 +494,7 @@ textarea{resize:vertical;min-height:64px;}
   display:flex;align-items:center;gap:14px;}
 .prof-avatar{width:60px;height:60px;border-radius:14px;display:flex;align-items:center;
   justify-content:center;font-size:26px;font-weight:700;flex-shrink:0;}
-.prof-name{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;}
+.prof-name{font-family:'Nunito',sans-serif;font-size:20px;font-weight:700;}
 .prof-role{font-size:12px;color:var(--muted);margin-top:2px;}
 .prof-cargo-tag{display:inline-block;font-size:10px;padding:3px 9px;border-radius:20px;
   font-weight:700;margin-top:5px;}
@@ -516,7 +516,7 @@ textarea{resize:vertical;min-height:64px;}
   width:min(520px,96vw);max-height:88vh;overflow-y:auto;padding:24px;position:relative;}
 .ev-card-modal::-webkit-scrollbar{width:3px;}
 .ev-card-modal::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
-.ev-card-modal h3{font-family:'Playfair Display',serif;font-size:20px;margin-bottom:16px;}
+.ev-card-modal h3{font-family:'Nunito',sans-serif;font-size:20px;margin-bottom:16px;}
 .ev-modal-close{position:absolute;top:16px;right:16px;background:var(--surface2);
   border:1px solid var(--border);border-radius:8px;width:30px;height:30px;
   display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;
@@ -564,7 +564,7 @@ header{background:#071431;color:#fff;border-bottom:7px solid var(--accent);paddi
 #role-btn{background:transparent!important;border:0!important;color:#fff!important;font-size:0!important;padding:0!important;width:78px;justify-content:flex-start;position:relative;}
 #role-btn::before{content:attr(data-initials);width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#ffec76,#ff4f67);display:flex;align-items:center;justify-content:center;color:#071431;font-size:19px;font-weight:900;box-shadow:0 8px 16px rgba(0,0,0,.2);}
 #role-btn::after{content:'PERFIL';font-size:9px;color:rgba(255,255,255,.62);position:absolute;left:62px;bottom:5px;letter-spacing:.8px;}
-.btn,.role-pill{font-family:'DM Sans',sans-serif;}
+.btn,.role-pill{font-family:'Nunito',sans-serif;}
 .btn-primary{background:#071431;color:#fff;}
 .btn-ghost{background:#fff;color:#071431;border:1px solid var(--border);box-shadow:0 4px 10px rgba(7,20,49,.08);}
 .bottom-nav{background:#071431;border-top:none;height:72px;box-shadow:0 -8px 22px rgba(7,20,49,.16);}
@@ -584,7 +584,7 @@ header{background:#071431;color:#fff;border-bottom:7px solid var(--accent);paddi
 .home-next{min-width:260px;max-width:360px;cursor:pointer;}
 .home-next-title{font-size:22px;font-weight:900;border-bottom:3px solid var(--accent);padding-bottom:7px;margin-bottom:7px;}
 .home-next-venue{font-size:15px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.9);}
-.home-next-row{display:flex;align-items:center;gap:10px;font-size:20px;font-family:'Playfair Display',serif;margin-top:7px;}
+.home-next-row{display:flex;align-items:center;gap:10px;font-size:20px;font-family:'Nunito',sans-serif;margin-top:7px;}
 .home-next-row i{font-size:18px;color:#fff;width:20px;text-align:center;}
 .home-content{padding:0 24px 26px;max-width:780px;margin:0 auto;}
 .home-ministry{background:#dff6ff;margin:0 -2px 26px;border-radius:0 0 2px 2px;padding:14px 10px 18px;box-shadow:0 2px 9px rgba(7,20,49,.09);}
@@ -680,6 +680,1156 @@ header{background:#071431;color:#fff;border-bottom:7px solid var(--accent);paddi
   .ec-title{font-size:20px;}.ec-sub{font-size:12px;}
   .events-actions .btn{padding:11px 13px;font-size:12px;}
   .fab-new-event{right:20px;bottom:86px;width:66px;height:66px;font-size:30px;}
+}
+
+
+/* ═══════════════════════════════════════
+   HOME RESPONSIVO ESTÉTICO — referencia enviada por usuario
+   Solo modifica interfaz visual; mantiene onclick/funciones.
+   Objetivo: encajar sin scroll, pero con aire visual y proporción.
+══════════════════════════════════════════════ */
+body:has(#view-home.active) > header{display:none!important;}
+body:has(#view-home.active){background:#ffffff;}
+body:has(#view-home.active) #views-wrap{min-height:0;}
+#view-home .scroll-area{overflow:hidden!important;background:#fff;}
+#view-home .home-page{height:calc(100dvh - 72px);min-height:0;padding-bottom:0!important;background:#fff;display:flex;flex-direction:column;overflow:hidden;}
+#view-home .home-top{flex:0 0 auto;background:#071431;border-bottom:clamp(4px,.7dvh,6px) solid #f2d66b;padding:clamp(12px,2.1dvh,22px) clamp(14px,4vw,28px) clamp(10px,1.6dvh,16px);display:grid;grid-template-columns:minmax(34px,44px) minmax(132px,1fr) minmax(170px,1.35fr);align-items:center;gap:clamp(10px,2.6vw,22px);}
+#view-home .home-menu-btn{width:clamp(34px,8vw,44px);height:clamp(34px,8vw,44px);font-size:clamp(23px,5.5vw,30px);margin:0;}
+#view-home .home-user{display:flex!important;flex-direction:row!important;align-items:center!important;text-align:left!important;gap:clamp(9px,2.4vw,14px);min-width:0;flex:initial;margin:0;}
+#view-home .initial-avatar{width:clamp(52px,12.5vw,70px);height:clamp(52px,12.5vw,70px);flex:0 0 clamp(52px,12.5vw,70px);border:2px solid rgba(242,214,107,.8);background:#071431;color:#f2d66b;box-shadow:none;font-size:clamp(18px,4.8vw,25px);}
+#view-home .home-user-name{font-size:clamp(13px,3.5vw,18px);line-height:1.08;color:#f2d66b;max-width:clamp(78px,22vw,150px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.9px;}
+#view-home .home-user-role{font-size:clamp(10px,2.3vw,13px);letter-spacing:1.3px;color:rgba(255,255,255,.62);line-height:1.05;margin-top:3px;}
+#view-home .home-next{min-width:0;max-width:none;width:100%;}
+#view-home .home-next-title{font-size:clamp(15px,3.9vw,22px);line-height:1.08;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #f2d66b;padding-bottom:clamp(5px,.9dvh,8px);margin-bottom:clamp(5px,.8dvh,8px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#view-home .home-next-venue{font-size:clamp(11px,2.8vw,15px);letter-spacing:.7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#view-home .home-next-row{font-size:clamp(12px,3.2vw,18px);margin-top:clamp(5px,.8dvh,8px);gap:clamp(6px,1.6vw,10px);font-family:'Nunito',sans-serif;white-space:nowrap;}
+#view-home .home-next-row i{font-size:clamp(12px,2.9vw,16px);width:clamp(13px,3vw,18px);color:#fff;}
+#view-home .home-content{flex:1;min-height:0;width:100%;max-width:clamp(360px,92vw,690px);padding:0 clamp(14px,4vw,26px) clamp(8px,1.4dvh,18px);margin:0 auto;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:clamp(9px,1.5dvh,18px);overflow:hidden;}
+#view-home .home-ministry{background:#eaf7fb;margin:0;border-radius:0 0 clamp(12px,3vw,20px) clamp(12px,3vw,20px);padding:clamp(10px,1.7dvh,16px) clamp(10px,3vw,18px) clamp(11px,1.8dvh,18px);box-shadow:0 5px 14px rgba(7,20,49,.08);min-height:0;}
+#view-home .hm-tabs{display:flex;justify-content:center;gap:clamp(42px,15vw,110px);font-size:clamp(13px,3.2vw,18px);margin-bottom:clamp(8px,1.3dvh,14px);}
+#view-home .hm-tabs span:first-child{padding:0 clamp(16px,6vw,34px) clamp(5px,.7dvh,7px);border-bottom:2px solid #071431;}
+#view-home .hm-people{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(6px,2vw,15px);overflow:hidden;padding:0 0 clamp(5px,.8dvh,8px);align-items:start;}
+#view-home .hm-person{min-width:0;max-width:none;text-align:center;}
+#view-home .mini-avatar{width:clamp(42px,10.8vw,58px);height:clamp(42px,10.8vw,58px);margin:0 auto clamp(5px,.8dvh,8px);background:#ffc24a!important;color:#071431;font-size:clamp(13px,3.2vw,17px);box-shadow:0 5px 12px rgba(7,20,49,.12);}
+#view-home .hm-person:nth-child(2) .mini-avatar{background:#f48aa0!important;}
+#view-home .hm-person:nth-child(3) .mini-avatar{background:#b9e6a6!important;}
+#view-home .hm-person:nth-child(4) .mini-avatar{background:#bfe8bd!important;}
+#view-home .hm-person:nth-child(5) .mini-avatar{background:#c39af2!important;}
+#view-home .hm-name{font-size:clamp(11px,2.9vw,15px);line-height:1.08;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#view-home .hm-role{font-size:clamp(8.5px,2.2vw,11px);letter-spacing:.45px;color:rgba(7,20,49,.45);line-height:1.15;text-transform:uppercase;}
+#view-home .hm-min-btn{margin:clamp(4px,.8dvh,8px) auto 0;border-radius:999px;padding:clamp(7px,1.1dvh,10px) clamp(22px,8vw,36px);font-size:clamp(10px,2.5vw,12px);background:#f2d66b;box-shadow:0 4px 9px rgba(7,20,49,.12);}
+#view-home .home-card{min-height:0;overflow:hidden;border-radius:clamp(20px,5vw,30px);padding:clamp(12px,1.8dvh,18px) clamp(13px,3.5vw,20px) clamp(12px,1.8dvh,18px);margin:0;border:1px solid #edf2f5;box-shadow:0 6px 16px rgba(7,20,49,.11);display:flex;flex-direction:column;}
+#view-home .home-card-head{flex:0 0 auto;padding-bottom:clamp(7px,1dvh,11px);margin-bottom:clamp(7px,1dvh,11px);border-bottom:2px solid #f2d66b;}
+#view-home .home-card h2{font-size:clamp(18px,4.6vw,26px);font-weight:800;letter-spacing:.2px;white-space:nowrap;}
+#view-home .hm-list-btn{border-radius:999px;padding:clamp(7px,1.1dvh,10px) clamp(12px,3vw,17px);font-size:clamp(10px,2.5vw,12px);gap:6px;background:#071431;color:#fff;}
+#view-home .hm-song{border-radius:clamp(13px,3vw,18px);margin:clamp(5px,.75dvh,8px) 0;padding:clamp(6px,.9dvh,9px) clamp(8px,2.5vw,13px);gap:clamp(7px,2vw,11px);box-shadow:0 3px 9px rgba(7,20,49,.12);min-height:clamp(35px,5.8dvh,46px);}
+#view-home .hm-song > i{font-size:clamp(15px,3.7vw,20px);min-width:clamp(17px,4vw,22px);color:#071431;}
+#view-home .hm-song-title{font-size:clamp(12px,3.2vw,16px);font-weight:800;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#view-home .hm-pill{font-size:clamp(9px,2.4vw,12px);padding:clamp(5px,.8dvh,8px) clamp(7px,2.2vw,12px);border-radius:999px;margin-left:2px;gap:4px;white-space:nowrap;}
+#view-home .hm-pill:last-child{background:#dff3ff;}
+#view-home .hm-bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(12px,3.5vw,22px);margin:0;min-height:0;}
+#view-home .hm-info-card{min-height:0;border-radius:clamp(18px,4.5vw,26px);padding:clamp(11px,1.7dvh,17px) clamp(12px,3.4vw,18px);box-shadow:0 6px 14px rgba(7,20,49,.11);overflow:hidden;}
+#view-home .hm-info-card.ensayo{background:#e8f7d8;}
+#view-home .hm-info-card.bday{background:#ffdfe7;}
+#view-home .hm-info-title{font-size:clamp(12px,3.2vw,17px);font-weight:900;letter-spacing:.75px;border-bottom:2px solid rgba(7,20,49,.26);padding-bottom:clamp(5px,.8dvh,8px);margin-bottom:clamp(7px,1dvh,10px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#view-home .hm-info-line{font-size:clamp(10.5px,2.9vw,14px);line-height:1.15;margin:clamp(5px,.85dvh,8px) 0;gap:clamp(6px,1.8vw,9px);font-weight:700;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#view-home .hm-info-line i{font-size:clamp(12px,3.1vw,15px);width:clamp(13px,3vw,17px);flex:0 0 auto;}
+#view-home .hm-empty{font-size:clamp(11px,2.8vw,13px);padding:8px;}
+#role-btn::before{background:#f2d66b!important;color:#071431!important;}
+@media(max-width:390px){#view-home .home-top{grid-template-columns:34px minmax(110px,1fr) minmax(145px,1.22fr);gap:9px;padding-left:12px;padding-right:12px;}#view-home .home-content{max-width:100%;padding-left:12px;padding-right:12px;}#view-home .hm-pill{padding-left:6px;padding-right:6px;}}
+@media(max-width:340px){#view-home .home-top{grid-template-columns:30px minmax(98px,1fr) minmax(130px,1.12fr);gap:7px;}#view-home .home-menu-btn{width:30px;height:30px;}#view-home .home-user-name{max-width:66px;}#view-home .hm-list-btn span{display:none;}#view-home .hm-pill i{display:none;}}
+@media(max-height:720px){#view-home .home-page{height:calc(100dvh - 68px);}#view-home .home-top{padding-top:10px;padding-bottom:9px;}#view-home .home-content{gap:8px;padding-bottom:7px;}#view-home .home-ministry{padding-top:8px;padding-bottom:9px;}#view-home .hm-tabs{margin-bottom:7px;}#view-home .hm-min-btn{padding-top:6px;padding-bottom:6px;}#view-home .home-card{padding-top:10px;padding-bottom:10px;}#view-home .hm-song{margin:4px 0;min-height:32px;}#view-home .hm-bottom-grid{gap:10px;}#view-home .hm-info-card{padding-top:9px;padding-bottom:9px;}#view-home .hm-info-line{margin:4px 0;}}
+@media(max-height:620px){#view-home .home-top{padding-top:8px;padding-bottom:7px;}#view-home .initial-avatar{width:46px;height:46px;flex-basis:46px;}#view-home .mini-avatar{width:38px;height:38px;}#view-home .home-content{gap:6px;padding-bottom:6px;}#view-home .home-ministry{padding-top:7px;padding-bottom:7px;}#view-home .hm-tabs{margin-bottom:5px;}#view-home .hm-min-btn{margin-top:3px;}#view-home .home-card-head{padding-bottom:5px;margin-bottom:5px;}#view-home .hm-song{padding-top:4px;padding-bottom:4px;margin:3px 0;min-height:29px;}#view-home .hm-bottom-grid{gap:8px;}#view-home .hm-info-title{padding-bottom:4px;margin-bottom:5px;}#view-home .hm-info-line{margin:3px 0;}}
+@media(min-width:760px){#view-home .home-page{height:calc(100dvh - 76px);}#view-home .home-content{max-width:720px;}}
+
+
+
+/* ══════════════════════════════════════════════
+   HOME RESPONSIVO PC / TABLET - SIN AMONTONAR
+   Ajuste: en pantallas grandes deja de escalar como móvil.
+   Usa más ancho, aire visual y distribución por columnas.
+   ══════════════════════════════════════════════ */
+@media (min-width: 900px){
+  #view-home .home-page{
+    height:calc(100dvh - 76px);
+    overflow:hidden;
+  }
+
+  #view-home .home-top{
+    padding:24px clamp(34px,5vw,72px) 22px;
+    grid-template-columns:54px minmax(250px,380px) minmax(430px,1fr);
+    gap:clamp(26px,4vw,54px);
+    align-items:center;
+  }
+
+  #view-home .home-menu-btn{
+    width:48px;
+    height:48px;
+    font-size:30px;
+  }
+
+  #view-home .initial-avatar{
+    width:74px;
+    height:74px;
+    flex-basis:74px;
+    font-size:25px;
+  }
+
+  #view-home .home-user{
+    gap:16px;
+  }
+
+  #view-home .home-user-name{
+    font-size:18px;
+    max-width:260px;
+  }
+
+  #view-home .home-user-role{
+    font-size:12px;
+  }
+
+  #view-home .home-next-title{
+    font-size:21px;
+    max-width:680px;
+  }
+
+  #view-home .home-next-venue{
+    font-size:14px;
+  }
+
+  #view-home .home-next-row{
+    font-size:16px;
+  }
+
+  #view-home .home-content{
+    max-width:min(1180px,calc(100vw - 72px));
+    padding:0 0 16px;
+    grid-template-columns:minmax(590px,1.35fr) minmax(330px,.75fr);
+    grid-template-rows:auto minmax(0,1fr);
+    gap:20px 24px;
+    align-items:stretch;
+  }
+
+  #view-home .home-ministry{
+    grid-column:1 / -1;
+    padding:18px 34px 20px;
+    border-radius:0 0 22px 22px;
+  }
+
+  #view-home .hm-tabs{
+    gap:110px;
+    font-size:17px;
+    margin-bottom:15px;
+  }
+
+  #view-home .hm-people{
+    max-width:680px;
+    margin:0 auto;
+    gap:22px;
+  }
+
+  #view-home .mini-avatar{
+    width:62px;
+    height:62px;
+    font-size:17px;
+    margin-bottom:8px;
+  }
+
+  #view-home .hm-name{
+    font-size:15px;
+  }
+
+  #view-home .hm-role{
+    font-size:10px;
+  }
+
+  #view-home .hm-min-btn{
+    padding:10px 38px;
+    font-size:12px;
+    margin-top:12px;
+  }
+
+  #view-home .home-card{
+    grid-column:1;
+    grid-row:2;
+    padding:22px 22px 18px;
+    border-radius:28px;
+  }
+
+  #view-home .home-card h2{
+    font-size:26px;
+  }
+
+  #view-home .home-card-head{
+    padding-bottom:12px;
+    margin-bottom:12px;
+  }
+
+  #view-home .hm-list-btn{
+    padding:10px 18px;
+    font-size:12px;
+  }
+
+  #view-home .hm-song{
+    min-height:48px;
+    margin:8px 0;
+    padding:9px 13px;
+    gap:12px;
+  }
+
+  #view-home .hm-song > i{
+    font-size:20px;
+    min-width:24px;
+  }
+
+  #view-home .hm-song-title{
+    font-size:15px;
+  }
+
+  #view-home .hm-pill{
+    font-size:11px;
+    padding:8px 11px;
+  }
+
+  #view-home .hm-bottom-grid{
+    grid-column:2;
+    grid-row:2;
+    grid-template-columns:1fr;
+    gap:18px;
+    align-content:stretch;
+  }
+
+  #view-home .hm-info-card{
+    padding:20px 22px;
+    border-radius:26px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+
+  #view-home .hm-info-title{
+    font-size:17px;
+    line-height:1.05;
+    margin-bottom:12px;
+    padding-bottom:9px;
+  }
+
+  #view-home .hm-info-line{
+    font-size:14px;
+    line-height:1.25;
+    margin:7px 0;
+  }
+}
+
+@media (min-width: 900px) and (max-height: 760px){
+  #view-home .home-top{padding-top:16px;padding-bottom:15px;}
+  #view-home .initial-avatar{width:62px;height:62px;flex-basis:62px;}
+  #view-home .home-content{gap:14px 20px;max-width:min(1120px,calc(100vw - 64px));padding-bottom:10px;}
+  #view-home .home-ministry{padding-top:12px;padding-bottom:14px;}
+  #view-home .hm-tabs{margin-bottom:10px;}
+  #view-home .mini-avatar{width:52px;height:52px;margin-bottom:6px;}
+  #view-home .hm-min-btn{margin-top:8px;padding-top:8px;padding-bottom:8px;}
+  #view-home .home-card{padding-top:16px;padding-bottom:14px;}
+  #view-home .hm-song{min-height:40px;margin:5px 0;padding-top:7px;padding-bottom:7px;}
+  #view-home .hm-info-card{padding-top:15px;padding-bottom:15px;}
+  #view-home .hm-info-line{margin:5px 0;}
+}
+
+@media (min-width: 900px) and (max-height: 660px){
+  #view-home .home-top{padding-top:12px;padding-bottom:12px;}
+  #view-home .home-next-title{font-size:18px;}
+  #view-home .home-next-row{font-size:14px;margin-top:4px;}
+  #view-home .home-content{grid-template-rows:auto minmax(0,1fr);gap:10px 18px;}
+  #view-home .home-ministry{padding-top:9px;padding-bottom:10px;}
+  #view-home .hm-tabs{font-size:15px;margin-bottom:7px;}
+  #view-home .mini-avatar{width:46px;height:46px;}
+  #view-home .hm-min-btn{padding:7px 32px;margin-top:5px;}
+  #view-home .home-card-head{padding-bottom:8px;margin-bottom:8px;}
+  #view-home .home-card h2{font-size:22px;}
+  #view-home .hm-song{min-height:34px;margin:4px 0;padding-top:5px;padding-bottom:5px;}
+  #view-home .hm-bottom-grid{gap:10px;}
+  #view-home .hm-info-card{padding:12px 18px;}
+  #view-home .hm-info-title{font-size:15px;margin-bottom:7px;padding-bottom:6px;}
+  #view-home .hm-info-line{font-size:12px;margin:4px 0;}
+}
+
+@media (min-width: 900px) and (max-width: 1080px){
+  #view-home .home-content{
+    max-width:min(980px,calc(100vw - 48px));
+    grid-template-columns:1fr;
+    grid-template-rows:auto auto auto;
+  }
+  #view-home .home-ministry,
+  #view-home .home-card,
+  #view-home .hm-bottom-grid{
+    grid-column:1;
+    grid-row:auto;
+  }
+  #view-home .hm-bottom-grid{
+    grid-template-columns:1fr 1fr;
+  }
+}
+
+
+/* ══════════════════════════════════════════════
+   AJUSTE FINAL — HOME SCROLLABLE Y RESPIRABLE
+   Pedido: dejar Home con scroll para que no se comprima ni se amontone.
+   Mantiene funciones intactas: solo CSS visual.
+   ══════════════════════════════════════════════ */
+body:has(#view-home.active){
+  overflow-x:hidden!important;
+}
+body:has(#view-home.active) #views-wrap{
+  min-height:0!important;
+  overflow:hidden!important;
+}
+#view-home.active{
+  min-height:0!important;
+  overflow:hidden!important;
+}
+#view-home .scroll-area{
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  -webkit-overflow-scrolling:touch;
+  background:#fff!important;
+}
+#view-home .home-page{
+  height:auto!important;
+  min-height:calc(100dvh - 72px)!important;
+  overflow:visible!important;
+  display:block!important;
+  padding-bottom:calc(92px + env(safe-area-inset-bottom))!important;
+}
+#view-home .home-content{
+  height:auto!important;
+  min-height:auto!important;
+  overflow:visible!important;
+  grid-template-rows:auto auto auto!important;
+  align-items:start!important;
+  padding-bottom:28px!important;
+}
+#view-home .home-ministry,
+#view-home .home-card,
+#view-home .hm-bottom-grid,
+#view-home .hm-info-card{
+  min-height:auto!important;
+  overflow:visible!important;
+}
+#view-home .home-card{
+  display:block!important;
+}
+#view-home .hm-song{
+  flex-wrap:nowrap;
+}
+#view-home .hm-bottom-grid{
+  align-items:stretch!important;
+}
+
+@media (min-width:900px){
+  #view-home .home-page{
+    height:auto!important;
+    min-height:calc(100dvh - 76px)!important;
+    overflow:visible!important;
+  }
+  #view-home .home-content{
+    max-width:min(1180px,calc(100vw - 72px))!important;
+    grid-template-columns:minmax(580px,1.35fr) minmax(340px,.75fr)!important;
+    grid-template-rows:auto auto!important;
+    gap:24px!important;
+    padding-bottom:34px!important;
+  }
+  #view-home .home-ministry{
+    grid-column:1 / -1!important;
+    grid-row:1!important;
+  }
+  #view-home .home-card{
+    grid-column:1!important;
+    grid-row:2!important;
+  }
+  #view-home .hm-bottom-grid{
+    grid-column:2!important;
+    grid-row:2!important;
+    grid-template-columns:1fr!important;
+    gap:22px!important;
+    align-content:start!important;
+  }
+}
+
+@media (min-width:900px) and (max-width:1080px){
+  #view-home .home-content{
+    max-width:min(980px,calc(100vw - 48px))!important;
+    grid-template-columns:1fr!important;
+    grid-template-rows:auto auto auto!important;
+  }
+  #view-home .home-ministry,
+  #view-home .home-card,
+  #view-home .hm-bottom-grid{
+    grid-column:1!important;
+    grid-row:auto!important;
+  }
+  #view-home .hm-bottom-grid{
+    grid-template-columns:1fr 1fr!important;
+  }
+}
+
+@media (max-width:899px){
+  #view-home .home-content{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    grid-template-rows:auto auto auto!important;
+    gap:16px!important;
+    max-width:min(720px,100%)!important;
+  }
+}
+
+@media (max-width:560px){
+  #view-home .home-page{
+    padding-bottom:calc(86px + env(safe-area-inset-bottom))!important;
+  }
+  #view-home .home-content{
+    gap:14px!important;
+    padding-left:14px!important;
+    padding-right:14px!important;
+  }
+  #view-home .hm-bottom-grid{
+    grid-template-columns:1fr!important;
+  }
+  #view-home .hm-song{
+    min-height:44px!important;
+  }
+}
+
+
+
+/* ═══════════════════════════════════════
+   EVENTOS — DISEÑO REFERENCIA AGENDA
+   Solo interfaz visual: conserva onclick, ids y funciones.
+═══════════════════════════════════════ */
+#view-events{background:#fff;}
+#view-events .scroll-area{background:#fff;overflow-y:auto;}
+#view-events .scroll-area > div{padding-bottom:110px!important;}
+.events-toolbar{
+  background:#071431!important;
+  color:#fff!important;
+  border-bottom:7px solid #f2d969!important;
+  padding:clamp(24px,4vw,46px) clamp(22px,4.5vw,54px) clamp(20px,3vw,34px)!important;
+}
+.events-toolbar h2{
+  color:#fff!important;
+  font-size:clamp(38px,5.2vw,58px)!important;
+  line-height:1!important;
+  letter-spacing:.5px!important;
+  font-weight:800!important;
+  margin:0 0 clamp(22px,3vw,34px)!important;
+}
+.events-actions{
+  display:flex!important;
+  gap:clamp(12px,2vw,22px)!important;
+  align-items:center!important;
+  flex-wrap:wrap!important;
+  overflow:visible!important;
+}
+.events-actions .btn{
+  background:#fff!important;
+  color:#071431!important;
+  border:0!important;
+  border-radius:14px!important;
+  box-shadow:0 6px 14px rgba(0,0,0,.13)!important;
+  padding:clamp(12px,1.4vw,18px) clamp(18px,2.4vw,30px)!important;
+  min-height:48px!important;
+  font-weight:900!important;
+  font-size:clamp(14px,1.25vw,18px)!important;
+  letter-spacing:.1px!important;
+}
+.events-actions .btn i{font-size:1em!important;color:#071431!important;}
+#view-events .scroll-area > div > div[style*="padding:8px"]{
+  width:min(100%,980px)!important;
+  margin:0 auto!important;
+  padding:clamp(24px,3vw,42px) clamp(18px,3.2vw,32px)!important;
+}
+.ev-section-title{
+  color:#071431!important;
+  font-size:clamp(26px,3vw,36px)!important;
+  font-weight:900!important;
+  margin:0 0 clamp(22px,3vw,34px)!important;
+  letter-spacing:.3px!important;
+}
+#ev-list{display:flex!important;flex-direction:column!important;gap:clamp(18px,2.5vw,28px)!important;}
+.ev-card{
+  border:0!important;
+  border-radius:26px!important;
+  padding:clamp(18px,2.3vw,28px)!important;
+  display:grid!important;
+  grid-template-columns:clamp(86px,10vw,120px) minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:clamp(18px,2.2vw,30px)!important;
+  min-height:clamp(126px,13vw,168px)!important;
+  box-shadow:0 8px 22px rgba(7,20,49,.13)!important;
+  cursor:pointer!important;
+  transition:transform .18s ease, box-shadow .18s ease!important;
+}
+.ev-card:hover{transform:translateY(-2px)!important;box-shadow:0 12px 26px rgba(7,20,49,.18)!important;}
+.ev-tone-0{background:#eaf9ff!important;}.ev-tone-1{background:#e9f8e5!important;}.ev-tone-2{background:#eeeaff!important;}.ev-tone-3{background:#fff0df!important;}.ev-tone-4{background:#ffe5ed!important;}
+.ev-date-badge{
+  width:clamp(78px,8vw,104px)!important;
+  height:clamp(92px,9vw,112px)!important;
+  border-radius:17px!important;
+  background:#13c8ed!important;
+  color:#fff!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  box-shadow:0 7px 16px rgba(7,20,49,.14)!important;
+  text-transform:uppercase!important;
+}
+.ev-tone-1 .ev-date-badge{background:#12c9df!important;}.ev-tone-2 .ev-date-badge{background:#7866e8!important;}.ev-tone-3 .ev-date-badge{background:#ffb42f!important;}.ev-tone-4 .ev-date-badge{background:#ee4d78!important;}
+.ev-date-badge .day{font-size:clamp(34px,4vw,48px)!important;font-weight:500!important;line-height:.92!important;letter-spacing:1px!important;}
+.ev-date-badge .mon{font-size:clamp(16px,1.8vw,23px)!important;font-weight:800!important;margin-top:12px!important;letter-spacing:1px!important;}
+.ec-main{min-width:0!important;}
+.ec-title-row{display:flex!important;align-items:center!important;gap:clamp(14px,2vw,28px)!important;flex-wrap:wrap!important;}
+.ec-title{color:#071431!important;font-size:clamp(24px,2.7vw,34px)!important;font-weight:900!important;line-height:1.05!important;letter-spacing:1.2px!important;text-transform:uppercase!important;}
+.ev-badge{border-radius:18px!important;padding:8px 18px!important;font-size:clamp(12px,1.1vw,15px)!important;font-weight:900!important;letter-spacing:.6px!important;margin:0!important;white-space:nowrap!important;}
+.bdg-t{background:#ef6a91!important;color:#fff!important;}.bdg-p{background:#f5dc78!important;color:#071431!important;}.bdg-d{background:#e9eef3!important;color:#7f8a96!important;}
+.ec-sub{display:flex!important;align-items:center!important;gap:10px!important;color:#071431!important;font-size:clamp(15px,1.5vw,20px)!important;font-weight:800!important;margin-top:clamp(12px,1.8vw,20px)!important;text-transform:uppercase!important;letter-spacing:.2px!important;}
+.ec-sub i{font-size:1.05em!important;color:#071431!important;}
+.ec-chips{display:flex!important;flex-wrap:wrap!important;gap:clamp(8px,1vw,12px)!important;margin-top:clamp(14px,1.8vw,20px)!important;}
+.ev-person-chip{background:#071431!important;color:#fff!important;border-radius:16px!important;padding:6px 13px!important;font-size:clamp(12px,1.15vw,15px)!important;font-weight:800!important;display:inline-flex!important;align-items:center!important;gap:9px!important;line-height:1!important;}
+.ev-person-chip b{color:#f2d969!important;font-size:.9em!important;letter-spacing:.5px!important;}
+.ec-side{display:flex!important;align-items:center!important;justify-content:center!important;gap:10px!important;color:#071431!important;font-size:clamp(16px,1.6vw,22px)!important;font-weight:900!important;min-width:54px!important;}
+.ec-side i{font-size:1.05em!important;}
+.fab-new-event{background:#071431!important;color:#fff!important;right:clamp(22px,4vw,58px)!important;bottom:92px!important;width:clamp(76px,8vw,98px)!important;height:clamp(76px,8vw,98px)!important;font-size:clamp(32px,4vw,48px)!important;border-radius:50%!important;box-shadow:0 12px 30px rgba(7,20,49,.35)!important;}
+@media(min-width:1100px){
+  #view-events .scroll-area > div > div[style*="padding:8px"]{width:min(100%,1120px)!important;}
+  .ev-card{grid-template-columns:120px minmax(0,1fr) 70px!important;}
+}
+@media(max-width:640px){
+  .events-toolbar{padding:30px 24px 28px!important;}
+  .events-toolbar h2{font-size:42px!important;margin-bottom:28px!important;}
+  .events-actions{gap:12px!important;flex-wrap:nowrap!important;overflow-x:auto!important;padding-bottom:2px!important;}
+  .events-actions .btn{min-width:max-content!important;font-size:15px!important;padding:14px 18px!important;border-radius:13px!important;}
+  #view-events .scroll-area > div > div[style*="padding:8px"]{padding:30px 22px!important;}
+  .ev-section-title{font-size:27px!important;margin-bottom:24px!important;}
+  .ev-card{grid-template-columns:84px minmax(0,1fr) 34px!important;gap:16px!important;min-height:154px!important;padding:16px!important;border-radius:24px!important;}
+  .ev-date-badge{width:74px!important;height:104px!important;border-radius:14px!important;}
+  .ev-date-badge .day{font-size:38px!important;}.ev-date-badge .mon{font-size:18px!important;}
+  .ec-title{font-size:24px!important;letter-spacing:.8px!important;}
+  .ev-badge{font-size:12px!important;padding:7px 14px!important;}
+  .ec-sub{font-size:15px!important;margin-top:14px!important;align-items:flex-start!important;}
+  .ec-chips{gap:8px!important;margin-top:14px!important;}
+  .ev-person-chip{font-size:13px!important;padding:6px 11px!important;}
+  .ec-side{font-size:17px!important;gap:6px!important;min-width:30px!important;}
+}
+@media(max-width:390px){
+  .events-toolbar{padding-left:18px!important;padding-right:18px!important;}
+  #view-events .scroll-area > div > div[style*="padding:8px"]{padding-left:16px!important;padding-right:16px!important;}
+  .ev-card{grid-template-columns:72px minmax(0,1fr) 28px!important;gap:12px!important;padding:14px!important;}
+  .ev-date-badge{width:66px!important;height:94px!important;}
+  .ec-title{font-size:21px!important;}
+  .ec-sub{font-size:13px!important;}
+}
+
+
+
+/* ═══════════════════════════════════════
+   AJUSTE EVENTOS COMPACTO — MISMA ESCALA HOME
+   Reduce tamaños sin tocar ids, onclick ni funciones.
+═══════════════════════════════════════ */
+#view-events .scroll-area{overflow-y:auto!important;}
+#view-events .scroll-area > div{padding-bottom:96px!important;}
+.events-toolbar{
+  padding:clamp(18px,3vw,32px) clamp(18px,4vw,38px) clamp(14px,2.4vw,24px)!important;
+  border-bottom-width:5px!important;
+}
+.events-toolbar h2{
+  font-size:clamp(30px,4.4vw,44px)!important;
+  margin-bottom:clamp(16px,2.4vw,24px)!important;
+  letter-spacing:.2px!important;
+}
+.events-actions{
+  gap:clamp(9px,1.6vw,16px)!important;
+}
+.events-actions .btn{
+  border-radius:12px!important;
+  padding:clamp(9px,1.1vw,13px) clamp(14px,1.8vw,22px)!important;
+  min-height:40px!important;
+  font-size:clamp(12px,1vw,15px)!important;
+  box-shadow:0 4px 10px rgba(0,0,0,.11)!important;
+}
+#view-events .scroll-area > div > div[style*="padding:8px"]{
+  width:min(100%,760px)!important;
+  padding:clamp(18px,2.5vw,30px) clamp(14px,3vw,24px)!important;
+}
+.ev-section-title{
+  font-size:clamp(22px,2.5vw,29px)!important;
+  margin-bottom:clamp(16px,2.2vw,24px)!important;
+}
+#ev-list{gap:clamp(13px,2vw,20px)!important;}
+.ev-card{
+  border-radius:22px!important;
+  padding:clamp(13px,1.8vw,20px)!important;
+  grid-template-columns:clamp(68px,8vw,92px) minmax(0,1fr) auto!important;
+  gap:clamp(12px,1.7vw,20px)!important;
+  min-height:clamp(102px,10vw,128px)!important;
+  box-shadow:0 6px 16px rgba(7,20,49,.11)!important;
+}
+.ev-card:hover{box-shadow:0 9px 20px rgba(7,20,49,.15)!important;}
+.ev-date-badge{
+  width:clamp(62px,6.8vw,82px)!important;
+  height:clamp(76px,7.8vw,94px)!important;
+  border-radius:14px!important;
+  box-shadow:0 5px 12px rgba(7,20,49,.12)!important;
+}
+.ev-date-badge .day{
+  font-size:clamp(28px,3.3vw,38px)!important;
+  letter-spacing:.6px!important;
+}
+.ev-date-badge .mon{
+  font-size:clamp(13px,1.45vw,18px)!important;
+  margin-top:8px!important;
+  letter-spacing:.8px!important;
+}
+.ec-title-row{
+  gap:clamp(10px,1.4vw,18px)!important;
+}
+.ec-title{
+  font-size:clamp(19px,2.1vw,27px)!important;
+  letter-spacing:.8px!important;
+  line-height:1.06!important;
+}
+.ev-badge{
+  border-radius:999px!important;
+  padding:6px 13px!important;
+  font-size:clamp(10px,.9vw,12px)!important;
+  letter-spacing:.35px!important;
+}
+.ec-sub{
+  gap:8px!important;
+  font-size:clamp(12px,1.22vw,16px)!important;
+  margin-top:clamp(9px,1.3vw,14px)!important;
+}
+.ec-chips{
+  gap:clamp(6px,.8vw,9px)!important;
+  margin-top:clamp(10px,1.3vw,14px)!important;
+}
+.ev-person-chip{
+  border-radius:999px!important;
+  padding:5px 10px!important;
+  font-size:clamp(10px,.95vw,12px)!important;
+  gap:7px!important;
+}
+.ec-side{
+  font-size:clamp(13px,1.35vw,17px)!important;
+  min-width:38px!important;
+  gap:7px!important;
+}
+.fab-new-event{
+  right:clamp(18px,3vw,34px)!important;
+  bottom:84px!important;
+  width:clamp(58px,6.2vw,72px)!important;
+  height:clamp(58px,6.2vw,72px)!important;
+  font-size:clamp(27px,3.2vw,36px)!important;
+  box-shadow:0 9px 22px rgba(7,20,49,.32)!important;
+}
+@media(min-width:1100px){
+  #view-events .scroll-area > div > div[style*="padding:8px"]{width:min(100%,900px)!important;}
+  .ev-card{grid-template-columns:92px minmax(0,1fr) 54px!important;}
+}
+@media(max-width:640px){
+  .events-toolbar{padding:24px 22px 21px!important;}
+  .events-toolbar h2{font-size:34px!important;margin-bottom:20px!important;}
+  .events-actions{gap:10px!important;flex-wrap:nowrap!important;overflow-x:auto!important;}
+  .events-actions .btn{font-size:13px!important;padding:11px 15px!important;min-height:42px!important;}
+  #view-events .scroll-area > div > div[style*="padding:8px"]{padding:24px 20px!important;}
+  .ev-section-title{font-size:23px!important;margin-bottom:18px!important;}
+  #ev-list{gap:14px!important;}
+  .ev-card{grid-template-columns:70px minmax(0,1fr) 28px!important;gap:13px!important;min-height:122px!important;padding:14px!important;border-radius:21px!important;}
+  .ev-date-badge{width:64px!important;height:84px!important;border-radius:13px!important;}
+  .ev-date-badge .day{font-size:31px!important;}
+  .ev-date-badge .mon{font-size:14px!important;margin-top:7px!important;}
+  .ec-title{font-size:20px!important;letter-spacing:.65px!important;}
+  .ev-badge{font-size:10px!important;padding:6px 11px!important;}
+  .ec-sub{font-size:12.5px!important;margin-top:10px!important;gap:7px!important;}
+  .ec-chips{gap:6px!important;margin-top:10px!important;}
+  .ev-person-chip{font-size:11px!important;padding:5px 9px!important;}
+  .ec-side{font-size:14px!important;gap:5px!important;min-width:25px!important;}
+  .fab-new-event{right:20px!important;bottom:82px!important;width:62px!important;height:62px!important;font-size:31px!important;}
+}
+@media(max-width:390px){
+  .events-toolbar{padding-left:16px!important;padding-right:16px!important;}
+  #view-events .scroll-area > div > div[style*="padding:8px"]{padding-left:14px!important;padding-right:14px!important;}
+  .ev-card{grid-template-columns:62px minmax(0,1fr) 24px!important;gap:10px!important;padding:12px!important;min-height:112px!important;}
+  .ev-date-badge{width:58px!important;height:78px!important;}
+  .ec-title{font-size:18px!important;}
+  .ec-sub{font-size:11.5px!important;}
+  .ev-person-chip{font-size:10px!important;padding:5px 8px!important;}
+}
+
+
+
+/* ═══════════════════════════════════════
+   AJUSTE EVENTOS — SIN BARRA SUPERIOR + TOOLBAR FIJO + BOTONES ICONO
+   No toca funciones, ids ni onclick.
+═══════════════════════════════════════ */
+body:has(#view-events.active) > header{
+  display:none!important;
+}
+body:has(#view-events.active) #views-wrap{
+  height:calc(100dvh - 72px)!important;
+  flex:1 1 auto!important;
+}
+body:has(#view-events.active) #view-events{
+  height:calc(100dvh - 72px)!important;
+  overflow:hidden!important;
+  background:#fff!important;
+}
+#view-events .scroll-area{
+  position:relative!important;
+  height:100%!important;
+  overflow-y:auto!important;
+  background:#fff!important;
+}
+#view-events .scroll-area > div{
+  padding-top:0!important;
+  padding-bottom:calc(92px + env(safe-area-inset-bottom))!important;
+}
+#view-events .events-toolbar{
+  position:sticky!important;
+  top:0!important;
+  z-index:180!important;
+  background:#071431!important;
+  border-bottom:5px solid #f2d969!important;
+  padding:clamp(18px,2.6vw,28px) clamp(18px,3.6vw,42px) clamp(15px,2vw,22px)!important;
+  box-shadow:0 8px 20px rgba(7,20,49,.12)!important;
+}
+#view-events .events-toolbar h2{
+  font-size:clamp(30px,4vw,42px)!important;
+  margin:0 0 clamp(14px,1.8vw,20px)!important;
+  line-height:1!important;
+}
+#view-events .events-actions{
+  display:flex!important;
+  align-items:center!important;
+  gap:clamp(10px,1.3vw,14px)!important;
+  overflow:visible!important;
+  flex-wrap:wrap!important;
+}
+#view-events .events-actions .btn:not(.btn-primary){
+  width:clamp(42px,4.4vw,52px)!important;
+  height:clamp(42px,4.4vw,52px)!important;
+  min-width:clamp(42px,4.4vw,52px)!important;
+  min-height:clamp(42px,4.4vw,52px)!important;
+  max-width:clamp(42px,4.4vw,52px)!important;
+  padding:0!important;
+  border-radius:50%!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:0!important;
+  font-size:0!important;
+  line-height:1!important;
+  overflow:hidden!important;
+  background:#fff!important;
+  color:#071431!important;
+  box-shadow:0 5px 13px rgba(0,0,0,.14)!important;
+}
+#view-events .events-actions .btn:not(.btn-primary) i{
+  font-size:clamp(16px,1.6vw,20px)!important;
+  margin:0!important;
+  color:#071431!important;
+  line-height:1!important;
+}
+#view-events .events-actions .btn-primary{
+  display:none!important;
+}
+#view-events .scroll-area > div > div[style*="padding:8px"]{
+  padding-top:clamp(20px,2.5vw,34px)!important;
+}
+#view-events .fab-new-event{
+  z-index:190!important;
+}
+@media(max-width:640px){
+  body:has(#view-events.active) #views-wrap,
+  body:has(#view-events.active) #view-events{
+    height:calc(100dvh - 72px)!important;
+  }
+  #view-events .events-toolbar{
+    padding:24px 24px 20px!important;
+  }
+  #view-events .events-toolbar h2{
+    font-size:38px!important;
+    margin-bottom:18px!important;
+  }
+  #view-events .events-actions{
+    gap:12px!important;
+    flex-wrap:nowrap!important;
+  }
+  #view-events .events-actions .btn:not(.btn-primary){
+    width:48px!important;height:48px!important;min-width:48px!important;min-height:48px!important;max-width:48px!important;
+  }
+  #view-events .events-actions .btn:not(.btn-primary) i{font-size:18px!important;}
+}
+@media(max-width:390px){
+  #view-events .events-toolbar{padding-left:18px!important;padding-right:18px!important;}
+  #view-events .events-actions .btn:not(.btn-primary){
+    width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;max-width:44px!important;
+  }
+}
+
+
+/* ═══════════════════════════════════════
+   ESCALA FINAL — HOME Y EVENTOS COMO MINISTERIO/CANCIONES
+   Solo CSS: no modifica funciones, ids, onclick ni lógica JS.
+   Objetivo: contenido centrado, ancho moderado, tipografías limpias,
+   tarjetas menos grandes y estética respirable en PC y móvil.
+═══════════════════════════════════════ */
+:root{
+  --ui-scale-max:760px;
+  --ui-scale-wide:820px;
+}
+
+/* HOME: misma escala visual de Ministerio/Canciones */
+body:has(#view-home.active){overflow-x:hidden!important;background:#f6f8fb!important;}
+body:has(#view-home.active) #views-wrap{overflow:hidden!important;}
+#view-home .scroll-area{
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  background:#f6f8fb!important;
+  -webkit-overflow-scrolling:touch!important;
+}
+#view-home .home-page{
+  min-height:calc(100dvh - 72px)!important;
+  height:auto!important;
+  display:block!important;
+  overflow:visible!important;
+  background:#f6f8fb!important;
+  padding-bottom:calc(92px + env(safe-area-inset-bottom))!important;
+}
+#view-home .home-top{
+  background:#071431!important;
+  border-bottom:5px solid #f2d66b!important;
+  padding:18px clamp(18px,4vw,42px) 16px!important;
+  display:grid!important;
+  grid-template-columns:42px minmax(180px,270px) minmax(260px,1fr)!important;
+  align-items:center!important;
+  gap:clamp(14px,2.2vw,28px)!important;
+}
+#view-home .home-menu-btn{width:40px!important;height:40px!important;font-size:26px!important;margin:0!important;}
+#view-home .home-user{gap:12px!important;margin:0!important;align-items:center!important;min-width:0!important;}
+#view-home .initial-avatar{
+  width:58px!important;height:58px!important;flex:0 0 58px!important;
+  font-size:20px!important;border-width:1.5px!important;box-shadow:none!important;
+}
+#view-home .home-user-name{font-size:15px!important;line-height:1.05!important;max-width:190px!important;letter-spacing:.8px!important;}
+#view-home .home-user-role{font-size:10px!important;letter-spacing:1px!important;margin-top:3px!important;}
+#view-home .home-next{width:100%!important;min-width:0!important;max-width:520px!important;justify-self:start!important;}
+#view-home .home-next-title{font-size:17px!important;line-height:1.1!important;padding-bottom:6px!important;margin-bottom:6px!important;letter-spacing:.9px!important;}
+#view-home .home-next-venue{font-size:12px!important;letter-spacing:.6px!important;}
+#view-home .home-next-row{font-size:13px!important;margin-top:6px!important;gap:8px!important;font-family:'Nunito',sans-serif!important;}
+#view-home .home-next-row i{font-size:13px!important;width:15px!important;}
+#view-home .home-content{
+  width:100%!important;
+  max-width:var(--ui-scale-max)!important;
+  margin:0 auto!important;
+  padding:0 16px 28px!important;
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  grid-template-rows:auto auto auto!important;
+  gap:16px!important;
+  height:auto!important;
+  min-height:auto!important;
+  overflow:visible!important;
+}
+#view-home .home-ministry{
+  grid-column:1!important;
+  grid-row:auto!important;
+  margin:0!important;
+  border-radius:0 0 16px 16px!important;
+  padding:14px 18px 16px!important;
+  background:#eaf7fb!important;
+  box-shadow:0 4px 12px rgba(7,20,49,.08)!important;
+}
+#view-home .hm-tabs{gap:70px!important;font-size:14px!important;margin-bottom:12px!important;}
+#view-home .hm-tabs span:first-child{padding:0 24px 6px!important;border-bottom:2px solid #071431!important;}
+#view-home .hm-people{display:flex!important;justify-content:center!important;gap:18px!important;overflow-x:auto!important;padding:0 0 8px!important;}
+#view-home .hm-person{min-width:74px!important;max-width:82px!important;text-align:center!important;}
+#view-home .mini-avatar{width:52px!important;height:52px!important;font-size:15px!important;margin:0 auto 7px!important;box-shadow:0 4px 10px rgba(7,20,49,.10)!important;}
+#view-home .hm-name{font-size:13px!important;line-height:1.1!important;font-weight:900!important;}
+#view-home .hm-role{font-size:9px!important;line-height:1.15!important;letter-spacing:.45px!important;}
+#view-home .hm-min-btn{padding:8px 30px!important;font-size:11px!important;margin-top:8px!important;border-radius:999px!important;}
+#view-home .home-card{
+  grid-column:1!important;
+  grid-row:auto!important;
+  display:block!important;
+  border-radius:20px!important;
+  padding:16px!important;
+  margin:0!important;
+  box-shadow:0 5px 14px rgba(7,20,49,.10)!important;
+}
+#view-home .home-card-head{padding-bottom:10px!important;margin-bottom:11px!important;border-bottom:2px solid #f2d66b!important;}
+#view-home .home-card h2{font-size:22px!important;font-weight:800!important;letter-spacing:.1px!important;}
+#view-home .hm-list-btn{padding:8px 14px!important;font-size:11px!important;border-radius:999px!important;gap:6px!important;}
+#view-home .hm-song{min-height:42px!important;margin:7px 0!important;padding:8px 11px!important;border-radius:14px!important;gap:9px!important;box-shadow:0 3px 8px rgba(7,20,49,.11)!important;}
+#view-home .hm-song > i{font-size:18px!important;min-width:20px!important;}
+#view-home .hm-song-title{font-size:13.5px!important;font-weight:800!important;}
+#view-home .hm-pill{font-size:10.5px!important;padding:6px 9px!important;border-radius:999px!important;gap:4px!important;}
+#view-home .hm-bottom-grid{
+  grid-column:1!important;
+  grid-row:auto!important;
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:16px!important;
+  margin:0!important;
+}
+#view-home .hm-info-card{border-radius:18px!important;padding:15px!important;min-height:118px!important;box-shadow:0 5px 12px rgba(7,20,49,.10)!important;}
+#view-home .hm-info-title{font-size:15px!important;line-height:1.05!important;padding-bottom:8px!important;margin-bottom:9px!important;letter-spacing:.7px!important;}
+#view-home .hm-info-line{font-size:12.5px!important;line-height:1.22!important;margin:6px 0!important;gap:7px!important;}
+#view-home .hm-info-line i{font-size:13px!important;width:15px!important;}
+
+/* EVENTOS: barra Agenda fija, pequeña, con botones redondos y contenido al ancho Ministerio/Canciones */
+body:has(#view-events.active){overflow-x:hidden!important;background:#f6f8fb!important;}
+body:has(#view-events.active) > header{display:none!important;}
+body:has(#view-events.active) #views-wrap,
+body:has(#view-events.active) #view-events{height:calc(100dvh - 72px)!important;overflow:hidden!important;background:#f6f8fb!important;}
+#view-events .scroll-area{height:100%!important;overflow-y:auto!important;overflow-x:hidden!important;background:#f6f8fb!important;-webkit-overflow-scrolling:touch!important;}
+#view-events .scroll-area > div{padding-top:0!important;padding-bottom:calc(92px + env(safe-area-inset-bottom))!important;}
+#view-events .events-toolbar{
+  position:sticky!important;
+  top:0!important;
+  z-index:180!important;
+  background:#071431!important;
+  border-bottom:5px solid #f2d66b!important;
+  padding:18px clamp(18px,4vw,42px) 16px!important;
+  box-shadow:0 6px 16px rgba(7,20,49,.13)!important;
+}
+#view-events .events-toolbar h2{
+  max-width:var(--ui-scale-max)!important;
+  margin:0 auto 14px!important;
+  color:#fff!important;
+  font-size:30px!important;
+  line-height:1!important;
+  letter-spacing:.5px!important;
+  font-weight:800!important;
+}
+#view-events .events-actions{
+  max-width:var(--ui-scale-max)!important;
+  margin:0 auto!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:12px!important;
+  flex-wrap:wrap!important;
+  overflow:visible!important;
+}
+#view-events .events-actions .btn:not(.btn-primary){
+  width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;max-width:42px!important;
+  padding:0!important;border-radius:50%!important;font-size:0!important;gap:0!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  background:#fff!important;color:#071431!important;border:0!important;
+  box-shadow:0 4px 11px rgba(0,0,0,.13)!important;
+}
+#view-events .events-actions .btn:not(.btn-primary) i{font-size:16px!important;margin:0!important;color:#071431!important;}
+#view-events .events-actions .btn-primary{display:none!important;}
+#view-events .scroll-area > div > div[style*="padding:8px"]{
+  width:100%!important;
+  max-width:var(--ui-scale-max)!important;
+  margin:0 auto!important;
+  padding:22px 16px 28px!important;
+}
+#view-events .ev-section-title{font-size:24px!important;line-height:1.1!important;margin:0 0 18px!important;font-weight:900!important;letter-spacing:.4px!important;color:#071431!important;}
+#view-events #ev-list{gap:14px!important;}
+#view-events .ev-card{
+  border-radius:18px!important;
+  padding:14px!important;
+  grid-template-columns:76px minmax(0,1fr) 38px!important;
+  gap:14px!important;
+  min-height:108px!important;
+  box-shadow:0 5px 14px rgba(7,20,49,.10)!important;
+  align-items:center!important;
+}
+#view-events .ev-date-badge{width:68px!important;height:82px!important;border-radius:13px!important;box-shadow:0 4px 10px rgba(7,20,49,.12)!important;}
+#view-events .ev-date-badge .day{font-size:31px!important;line-height:.95!important;font-weight:500!important;letter-spacing:.5px!important;}
+#view-events .ev-date-badge .mon{font-size:14px!important;margin-top:7px!important;letter-spacing:.8px!important;}
+#view-events .ec-title-row{gap:10px!important;align-items:center!important;}
+#view-events .ec-title{font-size:20px!important;line-height:1.07!important;letter-spacing:.75px!important;font-weight:900!important;}
+#view-events .ev-badge{font-size:10.5px!important;padding:6px 11px!important;border-radius:999px!important;letter-spacing:.35px!important;}
+#view-events .ec-sub{font-size:13px!important;margin-top:10px!important;gap:7px!important;letter-spacing:.15px!important;}
+#view-events .ec-sub i{font-size:13px!important;}
+#view-events .ec-chips{gap:7px!important;margin-top:10px!important;}
+#view-events .ev-person-chip{font-size:10.5px!important;padding:5px 9px!important;border-radius:999px!important;gap:6px!important;}
+#view-events .ec-side{font-size:14px!important;min-width:30px!important;gap:5px!important;}
+#view-events .fab-new-event{width:58px!important;height:58px!important;right:22px!important;bottom:82px!important;font-size:30px!important;border-radius:50%!important;box-shadow:0 8px 20px rgba(7,20,49,.30)!important;}
+
+@media(min-width:1100px){
+  :root{--ui-scale-max:760px;}
+  #view-home .home-content,
+  #view-events .events-toolbar h2,
+  #view-events .events-actions,
+  #view-events .scroll-area > div > div[style*="padding:8px"]{max-width:760px!important;}
+}
+@media(max-width:760px){
+  #view-home .home-top{grid-template-columns:38px minmax(130px,1fr) minmax(170px,1.15fr)!important;padding:16px 14px 14px!important;gap:10px!important;}
+  #view-home .initial-avatar{width:50px!important;height:50px!important;flex-basis:50px!important;font-size:17px!important;}
+  #view-home .home-user-name{font-size:13px!important;max-width:130px!important;}
+  #view-home .home-next-title{font-size:15px!important;}
+  #view-home .home-next-venue{font-size:11px!important;}
+  #view-home .home-next-row{font-size:12px!important;}
+  #view-home .hm-people{justify-content:flex-start!important;}
+  #view-home .hm-bottom-grid{grid-template-columns:1fr 1fr!important;gap:13px!important;}
+  #view-events .events-toolbar{padding:18px 16px 15px!important;}
+  #view-events .events-toolbar h2{font-size:28px!important;margin-bottom:13px!important;}
+  #view-events .events-actions{gap:10px!important;flex-wrap:nowrap!important;overflow-x:auto!important;padding-bottom:2px!important;}
+  #view-events .events-actions .btn:not(.btn-primary){width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;max-width:40px!important;}
+  #view-events .ev-card{grid-template-columns:70px minmax(0,1fr) 28px!important;gap:12px!important;min-height:112px!important;padding:13px!important;}
+  #view-events .ev-date-badge{width:62px!important;height:78px!important;}
+  #view-events .ec-title{font-size:18px!important;}
+}
+@media(max-width:520px){
+  #view-home .home-top{grid-template-columns:34px minmax(105px,1fr) minmax(140px,1.05fr)!important;padding-left:12px!important;padding-right:12px!important;}
+  #view-home .home-menu-btn{width:34px!important;height:34px!important;font-size:24px!important;}
+  #view-home .initial-avatar{width:44px!important;height:44px!important;flex-basis:44px!important;}
+  #view-home .home-user-name{font-size:12px!important;max-width:95px!important;}
+  #view-home .home-user-role{font-size:9px!important;}
+  #view-home .home-content{padding-left:12px!important;padding-right:12px!important;gap:14px!important;}
+  #view-home .hm-tabs{gap:42px!important;font-size:13px!important;}
+  #view-home .hm-bottom-grid{grid-template-columns:1fr!important;}
+  #view-home .hm-song{min-height:40px!important;}
+  #view-home .hm-pill{font-size:9.5px!important;padding:5px 7px!important;}
+  #view-events .scroll-area > div > div[style*="padding:8px"]{padding-left:12px!important;padding-right:12px!important;}
+  #view-events .ev-section-title{font-size:22px!important;margin-bottom:16px!important;}
+  #view-events .ev-card{grid-template-columns:62px minmax(0,1fr) 24px!important;gap:10px!important;border-radius:17px!important;}
+  #view-events .ev-date-badge{width:56px!important;height:72px!important;border-radius:12px!important;}
+  #view-events .ev-date-badge .day{font-size:27px!important;}
+  #view-events .ev-date-badge .mon{font-size:12px!important;margin-top:6px!important;}
+  #view-events .ec-title{font-size:16.5px!important;}
+  #view-events .ec-sub{font-size:11.5px!important;}
+  #view-events .ev-person-chip{font-size:10px!important;padding:5px 8px!important;}
+}
+
+
+/* Ajuste Home: pestañas VOCES / MÚSICOS clicables */
+#view-home .hm-tabs span{cursor:pointer;user-select:none;padding:0 24px 6px!important;border-bottom:2px solid transparent!important;color:rgba(7,20,49,.34)!important;transition:color .15s ease,border-color .15s ease;}
+#view-home .hm-tabs span.active{color:#071431!important;border-bottom-color:#071431!important;}
+#view-home .hm-tabs span:first-child{border-bottom-color:transparent!important;}
+#view-home .hm-tabs span:first-child.active{border-bottom-color:#071431!important;}
+#view-home .hm-tabs span:hover{color:#071431!important;}
+
+
+
+/* ══ AJUSTE FINAL TIPOGRÁFICO: Nunito en toda la app ══ */
+:root{
+  --app-font:'Nunito',sans-serif;
+  --app-text-size:14px;
+  --app-title-size:16px;
+  --app-subtitle-size:14px;
+}
+body,
+button,
+input,
+textarea,
+select,
+.card,
+.ev-card,
+.song-card,
+.member-card,
+.modal,
+.sheet,
+.drawer,
+#views-wrap{
+  font-family:var(--app-font)!important;
+  font-size:var(--app-text-size)!important;
+}
+body :not(i):not(.fa):not(.fas):not(.far):not(.fab):not(.fa-solid):not(.fa-regular):not(.fa-brands):not(.song-thumb):not(.act-icon){
+  font-family:var(--app-font)!important;
+}
+/* Títulos principales y de tarjetas: misma fuente, peso fuerte, tamaño uniforme */
+h1,h2,h3,h4,
+.logo h1,
+.page-title,
+.section-title,
+.ev-section-title,
+.home-section-title,
+.home-next-row,
+.d-top h2,
+.mv-hdr h2,
+.reg-logo h2,
+.prof-name,
+.mcm-name,
+.ev-card-modal h3,
+.event-title,
+.ev-title,
+.song-title,
+.member-name,
+.modal-title,
+.sheet-title,
+.card-title,
+.title,
+.name,
+.nm{
+  font-family:var(--app-font)!important;
+  font-size:var(--app-title-size)!important;
+  font-weight:800!important;
+  letter-spacing:.01em!important;
+  line-height:1.22!important;
+}
+/* Subtítulos, metadatos y textos secundarios: misma fuente, peso normal */
+.subtitle,
+.sub-title,
+.subtext,
+.desc,
+.description,
+.meta,
+.muted,
+.role,
+.member-role,
+.song-artist,
+.song-meta,
+.ev-card .meta,
+.ev-card .where,
+.ev-card .time,
+.hm-info-line,
+.info-line,
+.small,
+.tag,
+.badge,
+.role-pill,
+.btn,
+label,
+input,
+textarea,
+select,
+p,span,li{
+  font-family:var(--app-font)!important;
+  font-size:var(--app-subtitle-size)!important;
+  font-weight:400!important;
+  line-height:1.28!important;
+}
+/* Elementos que deben resaltar sin cambiar de fuente */
+.btn,
+.role-pill,
+.badge,
+.tag,
+.nav-label,
+.song-title,
+.event-title,
+.ev-title,
+.member-name,
+.logo h1,
+.ev-section-title,
+.section-title,
+.home-section-title{
+  font-weight:800!important;
+}
+/* Mantener FontAwesome intacto */
+i.fa,i.fas,i.far,i.fab,
+.fa,.fas,.far,.fab,.fa-solid,.fa-regular,.fa-brands,
+.song-thumb,.act-icon,.logo::before{
+  font-family:'Font Awesome 6 Free'!important;
+  font-weight:900!important;
+}
+.fab,.fa-brands{font-family:'Font Awesome 6 Brands'!important;}
+/* Evitar que los iconos tomen el tamaño textual uniforme */
+i.fa,i.fas,i.far,i.fab,.fa,.fas,.far,.fab,.fa-solid,.fa-regular,.fa-brands,.song-thumb,.act-icon{
+  line-height:1!important;
 }
 
 </style>
@@ -850,7 +2000,7 @@ header{background:#071431;color:#fff;border-bottom:7px solid var(--accent);paddi
             <button class="btn btn-primary btn-sm" id="new-ev-btn" onclick="openNewEvForm()" disabled><i class="fa-solid fa-plus"></i> Nuevo Evento</button>
             <button class="btn btn-ghost btn-sm" onclick="exportCalendarPDF()" title="Exportar PDF de eventos"><i class="fa-solid fa-file-pdf"></i> PDF Eventos</button>
             <button class="btn btn-ghost btn-sm" onclick="exportVoicesCalendar()" title="Calendario Voces"><i class="fa-solid fa-microphone"></i> Cal. Voces</button>
-            <button class="btn btn-ghost btn-sm" onclick="openBirthdayPanel()" title="Cumpleaños"><i class="fa-solid fa-cake-candles"></i></button>
+            <button class="btn btn-ghost btn-sm" onclick="openBirthdayPanel()" title="Cumpleaños"><i class="fa-solid fa-cake-candles"></i> Cumpleaños</button>
           </div>
         </div>
 
@@ -909,7 +2059,7 @@ header{background:#071431;color:#fff;border-bottom:7px solid var(--accent);paddi
     <div class="scroll-area">
       <div style="padding:16px;max-width:680px;margin:0 auto;width:100%;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-          <h2 style="font-family:'Playfair Display',serif;font-size:20px;">🎵 Canciones</h2>
+          <h2 style="font-family:'Nunito',sans-serif;font-size:20px;">🎵 Canciones</h2>
           <span style="font-size:11px;color:var(--muted);" id="songs-count"></span>
         </div>
         <input class="search-bar" type="text" placeholder="🔍 Buscar canción o tono..." oninput="filterSongs(this.value)">
@@ -1190,6 +2340,37 @@ const fmtDate = s => {
   if(!s) return '—';
   const [y,m,d] = s.split('-');
   return `${d} ${'ene feb mar abr may jun jul ago sep oct nov dic'.split(' ')[+m-1]} ${y}`;
+};
+const fmtDateShortDay = s => {
+  if(!s) return '—';
+  const [y,m,d] = s.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  const days = ['Dom.','Lun.','Mar.','Mié.','Jue.','Vie.','Sáb.'];
+  const months = ['Ene.','Feb.','Mar.','Abr.','May.','Jun.','Jul.','Ago.','Sep.','Oct.','Nov.','Dic.'];
+  return `${days[dt.getDay()]} ${d} ${months[m-1]}`;
+};
+const pastelByKey = (key, type='song') => {
+  const song = [
+    {bg:'#fff3c8', border:'#f2d66b', ink:'#7a5d00'},
+    {bg:'#ffe2e7', border:'#f4a8b6', ink:'#9b3147'},
+    {bg:'#ddf7ff', border:'#8bdff2', ink:'#066c83'},
+    {bg:'#eadfff', border:'#bca5f4', ink:'#5c3da5'},
+    {bg:'#def8e8', border:'#93dfb0', ink:'#1f7a47'},
+    {bg:'#ffe9d6', border:'#f4bd8d', ink:'#9a5520'}
+  ];
+  const member = [
+    {bg:'#fff4cf', border:'#f2d66b', ink:'#071431'},
+    {bg:'#e5f8ff', border:'#91dff0', ink:'#071431'},
+    {bg:'#f0e6ff', border:'#bea7f4', ink:'#071431'},
+    {bg:'#ffe5eb', border:'#f4a8b6', ink:'#071431'},
+    {bg:'#e2f8eb', border:'#9cdfb6', ink:'#071431'},
+    {bg:'#ffe9d8', border:'#f2be93', ink:'#071431'}
+  ];
+  const arr = type === 'member' ? member : song;
+  const str = String(key || '0');
+  let h = 0;
+  for(let i=0;i<str.length;i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  return arr[Math.abs(h) % arr.length];
 };
 const fmtTime = ts => {
   if(!ts) return '';
@@ -1903,18 +3084,37 @@ function renderHomeDashboard(nextEv) {
   const userRole = currentUser?.cargo || currentUser?.role || 'Voz';
   const assignees = ev?.assignees ? Object.values(ev.assignees) : [];
   const vozP = assignees.find(a => a.rolEvento === 'Voz Principal') || assignees.find(a => a.cargo === 'Voz' || a.role === 'Cantante') || assignees[0];
-  const orderedPeople = assignees.slice().sort((a,b)=>{
-    const av = a === vozP ? 0 : 1, bv = b === vozP ? 0 : 1;
-    return av-bv;
+
+  // Home: pestañas VOCES / MÚSICOS sin cambiar la data ni las funciones del evento.
+  window._homeMinistryTab = window._homeMinistryTab || 'voices';
+  const isVoiceRole = (a) => {
+    const r = (a.rolEvento || a.cargo || a.role || '').toLowerCase();
+    return r.includes('voz') || r.includes('coro') || r.includes('cantante') || r.includes('principal') || r.includes('director');
+  };
+  const isMusicianRole = (a) => {
+    const r = (a.rolEvento || a.cargo || a.role || '').toLowerCase();
+    return r.includes('guit') || r.includes('tecl') || r.includes('baj') || r.includes('bater') ||
+           r.includes('perc') || r.includes('tromp') || r.includes('saxo') || r.includes('violin') ||
+           r.includes('músico') || r.includes('musico') || r.includes('instrument');
+  };
+  const sortPeople = (arr) => arr.slice().sort((a,b)=>{
+    const ar = (a.rolEvento || a.cargo || a.role || '').toLowerCase();
+    const br = (b.rolEvento || b.cargo || b.role || '').toLowerCase();
+    const score = r => r.includes('principal') ? 0 : r.includes('director') ? 1 : r.includes('voz') ? 2 : r.includes('coro') ? 3 : 4;
+    return score(ar)-score(br);
   });
-  const peopleHtml = orderedPeople.length ? orderedPeople.map((a,i)=>{
-    const rol = a.rolEvento || a.cargo || a.role || (i===0?'VOZ':'COROS');
+  const voicesPeople = sortPeople(assignees.filter(isVoiceRole));
+  const musiciansPeople = sortPeople(assignees.filter(a => isMusicianRole(a) && !isVoiceRole(a)));
+  const activePeople = window._homeMinistryTab === 'musicians' ? musiciansPeople : voicesPeople;
+  const emptyLabel = window._homeMinistryTab === 'musicians' ? 'Sin músicos asignados' : 'Sin voces asignadas';
+  const peopleHtml = activePeople.length ? activePeople.map((a,i)=>{
+    const rol = a.rolEvento || a.cargo || a.role || (window._homeMinistryTab==='musicians'?'MÚSICO':(i===0?'VOZ':'COROS'));
     return `<div class="hm-person">
       <div class="mini-avatar ${i>0?'other':''}">${_mdInitials(a.name)}</div>
       <div class="hm-name">${_mdFirstName(a.name)}</div>
       <div class="hm-role">${rol}</div>
     </div>`;
-  }).join('') : `<div class="hm-empty">Sin encargados asignados</div>`;
+  }).join('') : `<div class="hm-empty">${emptyLabel}</div>`;
   const songsForDay = _mdEventSongs(ev, vozP).slice(0,5);
   const songsHtml = songsForDay.length ? songsForDay.map(s => `<div class="hm-song">
       <i class="fa-solid fa-music"></i><div class="hm-song-title">${s.title}</div>
@@ -1932,20 +3132,23 @@ function renderHomeDashboard(nextEv) {
         <div><div class="home-user-name">${userName}</div><div class="home-user-role">${userRole}</div></div>
       </div>
       <div class="home-next" onclick="${ev?`openEvDetailModal('${ev.id}')`:''}">
-        <div class="home-next-title">Próximo Servicio</div>
+        <div class="home-next-title">${ev?.title || 'CULTO GENERAL'}</div>
         <div class="home-next-venue">${ev?.venue || 'MONTE DE DIOS'}</div>
-        <div class="home-next-row"><i class="fa-solid fa-calendar-days"></i> ${ev ? fmtDate(ev.date).replace(/\s\d{4}$/,'') : 'Sin fecha'}</div>
+        <div class="home-next-row"><i class="fa-solid fa-calendar-days"></i> ${ev ? fmtDateShortDay(ev.date) : 'Sin fecha'}</div>
         <div class="home-next-row"><i class="fa-solid fa-clock"></i> ${ev?.time || '—'}</div>
       </div>
     </div>
     <div class="home-content">
       <section class="home-ministry">
-        <div class="hm-tabs"><span>VOCES</span><span>MÚSICOS</span></div>
+        <div class="hm-tabs">
+          <span class="${window._homeMinistryTab==='voices'?'active':''}" onclick="window._homeMinistryTab='voices'; renderHomeDashboard()">VOCES</span>
+          <span class="${window._homeMinistryTab==='musicians'?'active':''}" onclick="window._homeMinistryTab='musicians'; renderHomeDashboard()">MÚSICOS</span>
+        </div>
         <div class="hm-people">${peopleHtml}</div>
         <button class="hm-min-btn" onclick="switchView('musicians', document.querySelector(\`.bnav-btn[onclick*=\\'musicians\\']\`))">VER MINISTERIO</button>
       </section>
       <section class="home-card">
-        <div class="home-card-head"><h2>Canciones de Día</h2><button class="hm-list-btn" onclick="switchView('songs', document.querySelector(\`.bnav-btn[onclick*=\\'songs\\']\`))"><i class="fa-solid fa-list"></i> Ver lista</button></div>
+        <div class="home-card-head"><h2>Canciones del Día</h2><button class="hm-list-btn" onclick="switchView('songs', document.querySelector(\`.bnav-btn[onclick*=\\'songs\\']\`))"><i class="fa-solid fa-list"></i> CANCIONES</button></div>
         ${songsHtml}
       </section>
       <div class="hm-bottom-grid">
@@ -1956,10 +3159,10 @@ function renderHomeDashboard(nextEv) {
           <div class="hm-info-line"><i class="fa-solid fa-location-dot"></i> ${ensayo?.venue || '—'}</div>
         </section>
         <section class="hm-info-card bday" onclick="openBirthdayPanel()">
-          <div class="hm-info-title">Cumpleaños</div>
+          <div class="hm-info-title">Cumpleaños<br>Próximo</div>
           <div class="hm-info-line"><i class="fa-solid fa-cake-candles"></i> ${bday ? (bday.fullName || bday.displayName || bday.name) : 'Sin datos'}</div>
           <div class="hm-info-line"><i class="fa-solid fa-calendar-days"></i> ${bdayDate}</div>
-          <div class="hm-info-line"><i class="fa-solid fa-location-dot"></i> ${bday?.cargo || bday?.role || 'Ministerio'}</div>
+          <div class="hm-info-line"><i class="fa-solid fa-user"></i> ${bday?.cargo || bday?.role || 'Ministerio'}</div>
         </section>
       </div>
     </div>`;
@@ -1978,24 +3181,27 @@ function renderEL() {
   renderHomeDashboard(nextEv);
   if(!c) return;
   if(!evArr.length) { c.innerHTML=`<div class="empty-s"><div class="ei"><i class="fa-solid fa-music"></i></div>Sin eventos aún</div>`; return; }
-  c.innerHTML = evArr.map(ev => {
+  c.innerHTML = evArr.map((ev, idx) => {
     const isT=ev.date===td, isPast=ev.date<td;
-    const badge=isT?'<span class="ev-badge bdg-t">HOY</span>':isPast?'<span class="ev-badge bdg-d">Pasado</span>':'<span class="ev-badge bdg-p">Próximo</span>';
+    const badge=isT?'<span class="ev-badge bdg-t">HOY</span>':isPast?'<span class="ev-badge bdg-d">PASADO</span>':'<span class="ev-badge bdg-p">PRÓXIMO</span>';
     const assignees = ev.assignees ? Object.values(ev.assignees) : [];
     const venue = ev.venue || 'IGLESIA MONTE';
-    const assigneeNames = assignees.length ? assignees.map(a=>_mdFirstName(a.name)).slice(0,3).join(', ') : 'Sin encargados';
-    return `<div class="ev-card" onclick="openEvDetailModal('${ev.id}')">
+    const chips = assignees.length ? assignees.slice(0,4).map(a=>{
+      const nm = _mdFirstName(a.name || 'Integrante');
+      const ini = ((a.initials || nm || 'M').trim().split(/\s+/).map(x=>x[0]).join('') || 'M').slice(0,2).toUpperCase();
+      return `<span class="ev-person-chip"><b>${ini}</b> ${nm}</span>`;
+    }).join('') : `<span class="ev-person-chip"><b>—</b> Sin asignar</span>`;
+    return `<div class="ev-card ev-tone-${idx % 5}" onclick="openEvDetailModal('${ev.id}')">
       <div class="ev-date-badge"><div class="day">${_mdDay(ev.date)}</div><div class="mon">${_mdMonth(ev.date)}</div></div>
-      <div>
-        <div class="ec-title">${ev.title} ${badge}</div>
-        <div class="ec-sub">${venue} ${ev.time || ''}</div>
-        <div class="ec-meta" style="display:none;">${assigneeNames}</div>
+      <div class="ec-main">
+        <div class="ec-title-row"><span class="ec-title">${ev.title}</span>${badge}</div>
+        <div class="ec-sub"><i class="fa-solid fa-location-dot"></i><span>${venue}</span><span>${ev.time || ''}</span></div>
+        <div class="ec-chips">${chips}</div>
       </div>
-      <div class="ec-side"><i class="fa-solid fa-users"></i> ${assignees.length}</div>
+      <div class="ec-side"><i class="fa-solid fa-users"></i><span>${assignees.length}</span></div>
     </div>`;
   }).join('');
 }
-
 
 function renderNextEventHero(ev) {
   const hero = document.getElementById('next-ev-hero');
@@ -2397,14 +3603,14 @@ function showRoleSelector(personName, onSelect) {
   overlay.innerHTML = `
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;
       width:min(340px,100%);padding:22px;max-height:85vh;overflow-y:auto;">
-      <div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;margin-bottom:4px;">Asignar rol</div>
+      <div style="font-family:'Nunito',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px;">Asignar rol</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">${personName}</div>
       <div style="display:flex;flex-direction:column;gap:6px;">
         ${roles.map(r=>`
           <button onclick="this.closest('.role-sel-overlay').dataset.sel='${r}'"
             style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;
             padding:10px 14px;text-align:left;cursor:pointer;color:var(--text);
-            font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;transition:all .15s;"
+            font-family:'Nunito',sans-serif;font-size:13px;font-weight:500;transition:all .15s;"
             onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
             onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)'">
             ${r}
@@ -2412,7 +3618,7 @@ function showRoleSelector(personName, onSelect) {
       </div>
       <button onclick="this.closest('div').parentElement.remove()"
         style="margin-top:12px;width:100%;background:transparent;border:1px solid var(--border);
-        border-radius:9px;padding:9px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;">
+        border-radius:9px;padding:9px;color:var(--muted);cursor:pointer;font-family:'Nunito',sans-serif;">
         Cancelar
       </button>
     </div>`;
@@ -2496,6 +3702,7 @@ function showMemberCard(musId) {
   const m = musicians[musId];
   if(!m) return;
   const color = rc(m.role);
+  const modalTone = pastelByKey(musId || m.name, 'member');
   const cargoIco = {Músico:'🎸', Voz:'🎤', Líder:'👑'}[m.cargo||''] || '🎵';
 
   // Instrument: if Músico → role is the instrument; if Voz → Cantante; if Líder → Líder
@@ -2536,18 +3743,21 @@ function showMemberCard(musId) {
             ${s.bpm?`<span style="background:rgba(92,168,224,.12);color:var(--info);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;">${s.bpm} BPM</span>`:''}
           </div>
           <div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;">
-            ${s.ytLink?`<button class="song-btn play" style="font-size:10px;padding:3px 8px;" onclick="openSongLink('${s.ytLink}')">▶ Video</button>`:''}
-            ${s.letraFileId?`<button class="song-btn" style="font-size:10px;padding:3px 8px;" onclick="downloadFromTelegram('${s.letraFileId}','${(s.letraFileName||s.title+'_letras.pdf').replace(/'/g,"\\'")}','Letras de ${s.title.replace(/'/g,"\\'")}')">📄 Letras</button>`
-              : s.letraLink?`<button class="song-btn" style="font-size:10px;padding:3px 8px;" onclick="openSongLink('${s.letraLink}')">📄 Letras</button>`
-              : s.letraData?`<button class="song-btn" style="font-size:10px;padding:3px 8px;" onclick="downloadPDF('${s.letraData}','${s.letraName||'letras.pdf'}','Letras de ${s.title.replace(/'/g,"\\'")}')">📄 Letras</button>`:''}
-            ${s.chartFileId?`<button class="song-btn" style="font-size:10px;padding:3px 8px;" onclick="downloadFromTelegram('${s.chartFileId}','${(s.chartFileName||s.title+'_chart.pdf').replace(/'/g,"\\'")}','Chart de ${s.title.replace(/'/g,"\\'")}')">🎼 Chart</button>`
-              : s.chartLink?`<button class="song-btn" style="font-size:10px;padding:3px 8px;" onclick="openSongLink('${s.chartLink}')">🎼 Chart</button>`
-              : s.chartData?`<button class="song-btn" style="font-size:10px;padding:3px 8px;" onclick="downloadPDF('${s.chartData}','${s.chartName||'chart.pdf'}','Chart de ${s.title.replace(/'/g,"\\'")}')">🎼 Chart</button>`:''}
+            ${s.ytLink?`<button class="song-btn song-video play" style="font-size:10px;padding:3px 8px;" onclick="openSongLink('${s.ytLink}')">▶ Video</button>`:''}
+            ${s.letraFileId?`<button class="song-btn song-letras" style="font-size:10px;padding:3px 8px;" onclick="downloadFromTelegram('${s.letraFileId}','${(s.letraFileName||s.title+'_letras.pdf').replace(/'/g,"\\'")}','Letras de ${s.title.replace(/'/g,"\\'")}')">📄 Letras</button>`
+              : s.letraLink?`<button class="song-btn song-letras" style="font-size:10px;padding:3px 8px;" onclick="openSongLink('${s.letraLink}')">📄 Letras</button>`
+              : s.letraData?`<button class="song-btn song-letras" style="font-size:10px;padding:3px 8px;" onclick="downloadPDF('${s.letraData}','${s.letraName||'letras.pdf'}','Letras de ${s.title.replace(/'/g,"\\'")}')">📄 Letras</button>`:''}
+            ${s.chartFileId?`<button class="song-btn song-chart" style="font-size:10px;padding:3px 8px;" onclick="downloadFromTelegram('${s.chartFileId}','${(s.chartFileName||s.title+'_chart.pdf').replace(/'/g,"\\'")}','Chart de ${s.title.replace(/'/g,"\\'")}')">🎼 Chart</button>`
+              : s.chartLink?`<button class="song-btn song-chart" style="font-size:10px;padding:3px 8px;" onclick="openSongLink('${s.chartLink}')">🎼 Chart</button>`
+              : s.chartData?`<button class="song-btn song-chart" style="font-size:10px;padding:3px 8px;" onclick="downloadPDF('${s.chartData}','${s.chartName||'chart.pdf'}','Chart de ${s.title.replace(/'/g,"\\'")}')">🎼 Chart</button>`:''}
           </div>
         </div>`).join('')
     : '<div style="font-size:11px;color:var(--muted);">Sin temas en lista</div>';
 
   const box = document.getElementById('member-card-content');
+  box.style.setProperty('--member-modal-bg', modalTone.bg);
+  box.style.setProperty('--member-modal-border', modalTone.border);
+  box.style.setProperty('--member-modal-ink', modalTone.ink);
   box.innerHTML = `
     <button class="mcm-close" onclick="document.getElementById('modal-member').classList.add('hidden'); if(window._memberCardUnsub){try{window._memberCardUnsub();}catch(e){} window._memberCardUnsub=null;}">✕</button>
     <div class="mcm-header">
@@ -2903,7 +4113,7 @@ function openBirthdayPanel() {
       width:min(380px,100%);max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
       <!-- Header -->
       <div style="padding:18px 18px 12px;border-bottom:1px solid var(--border);flex-shrink:0;">
-        <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;
+        <div style="font-family:'Nunito',sans-serif;font-size:18px;font-weight:700;
           margin-bottom:2px;">🎂 FECHAS DE CUMPLEAÑOS</div>
         <div style="font-size:11px;color:var(--muted);">Ordenados por proximidad</div>
       </div>
@@ -2927,12 +4137,12 @@ function openBirthdayPanel() {
         <button onclick="exportBirthdayPDF()"
           style="flex:1;background:linear-gradient(135deg,var(--accent),var(--accent2));
           color:#0d0d0f;border:none;border-radius:10px;padding:11px;
-          font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">
+          font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">
           📄 Exportar nombres
         </button>
         <button onclick="document.getElementById('bday-panel-overlay')?.remove()"
           style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
-          padding:11px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);cursor:pointer;">
+          padding:11px;font-family:'Nunito',sans-serif;font-size:13px;color:var(--text);cursor:pointer;">
           Aceptar
         </button>
       </div>
@@ -3750,7 +4960,7 @@ function checkBirthdayAlerts() {
       <!-- Header -->
       <div style="padding:20px 20px 14px;text-align:center;flex-shrink:0;">
         <div style="font-size:42px;margin-bottom:8px;">🎂</div>
-        <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;
+        <div style="font-family:'Nunito',sans-serif;font-size:18px;font-weight:700;
           color:var(--accent);margin-bottom:4px;">Próximos Cumpleaños</div>
         <div style="font-size:11px;color:var(--muted);">Cumplen años esta semana</div>
       </div>
@@ -3761,13 +4971,13 @@ function checkBirthdayAlerts() {
         <button id="bday-accept-btn"
           style="flex:1;background:linear-gradient(135deg,var(--accent),var(--accent2));
           color:#0d0d0f;border:none;border-radius:12px;padding:13px;
-          font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;">
+          font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;cursor:pointer;">
           Aceptar
         </button>
         <button id="bday-deact-btn"
           style="flex:1;background:var(--surface2);border:1px solid var(--border);
           border-radius:12px;padding:13px;color:var(--muted);cursor:pointer;
-          font-family:'DM Sans',sans-serif;font-size:13px;">
+          font-family:'Nunito',sans-serif;font-size:13px;">
           Desactivar
         </button>
       </div>
@@ -4300,7 +5510,7 @@ function renderProfileModal() {
         display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:700;flex-shrink:0;">
         ${u.nombres[0]}${u.apellidos[0]}</div>
       <div>
-        <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700;">${u.fullName}</div>
+        <div style="font-family:'Nunito',sans-serif;font-size:17px;font-weight:700;">${u.fullName}</div>
         <div style="font-size:11px;color:var(--muted);">${u.role||u.cargo}</div>
         <span style="display:inline-block;margin-top:3px;font-size:10px;padding:1px 8px;border-radius:20px;
           font-weight:700;background:${color}18;color:${color};border:1px solid ${color}30;">${cargoIco} ${u.cargo}</span>
@@ -4344,7 +5554,7 @@ function renderProfileModal() {
                 inputmode="numeric" pattern="[0-9]*"
                 style="background:var(--surface2);border:1px solid var(--border);
                   color:var(--text);border-radius:8px;padding:8px 11px;
-                  font-family:'DM Sans',sans-serif;font-size:13px;width:100%;outline:none;">
+                  font-family:'Nunito',sans-serif;font-size:13px;width:100%;outline:none;">
             </div>
           </div>
           <div class="form-row"><label>🎬 Link YouTube</label>
@@ -4611,7 +5821,7 @@ async function uploadSong() {
       <div style="background:var(--surface);border:1px solid var(--accent);border-radius:16px;
         width:min(340px,100%);padding:24px;text-align:center;">
         <div style="font-size:28px;margin-bottom:10px;">⚠️</div>
-        <div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--accent);">
+        <div style="font-family:'Nunito',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--accent);">
           Este tema ya existe
         </div>
         <div style="font-size:13px;color:var(--muted);margin-bottom:20px;">
@@ -4620,19 +5830,19 @@ async function uploadSong() {
         <div style="display:flex;flex-direction:column;gap:8px;">
           <button id="dup-view"
             style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;
-            padding:11px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
+            padding:11px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;
             color:var(--text);cursor:pointer;">
             🔍 Ver tema
           </button>
           <button id="dup-continue"
             style="background:linear-gradient(135deg,var(--accent),var(--accent2));color:#0d0d0f;
-            border:none;border-radius:10px;padding:11px;font-family:'DM Sans',sans-serif;
+            border:none;border-radius:10px;padding:11px;font-family:'Nunito',sans-serif;
             font-size:13px;font-weight:700;cursor:pointer;">
             ➕ Continuar y subir igual
           </button>
           <button id="dup-cancel"
             style="background:transparent;border:1px solid var(--border);border-radius:10px;
-            padding:11px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--muted);cursor:pointer;">
+            padding:11px;font-family:'Nunito',sans-serif;font-size:13px;color:var(--muted);cursor:pointer;">
             ✕ Cancelar y corregir
           </button>
         </div>
@@ -4773,13 +5983,13 @@ function openEditSong(songId) {
   overlay.innerHTML = `
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;
       width:min(380px,100%);max-height:90vh;overflow-y:auto;padding:22px;">
-      <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700;margin-bottom:16px;">✏️ Editar tema</div>
+      <div style="font-family:'Nunito',sans-serif;font-size:17px;font-weight:700;margin-bottom:16px;">✏️ Editar tema</div>
 
       <div style="margin-bottom:11px;">
         <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);display:block;margin-bottom:5px;">Título</label>
         <input type="text" id="edit-song-title" value="${s.title.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}"
           style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
-          padding:10px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;box-sizing:border-box;">
+          padding:10px 13px;color:var(--text);font-family:'Nunito',sans-serif;font-size:14px;box-sizing:border-box;">
       </div>
 
       <div style="display:flex;gap:10px;margin-bottom:11px;">
@@ -4787,13 +5997,13 @@ function openEditSong(songId) {
           <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);display:block;margin-bottom:5px;">Tono</label>
           <input type="text" id="edit-song-tono" value="${(s.tono||'').replace(/"/g,'&quot;')}" placeholder="Ej: Fm, C"
             style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
-            padding:10px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;box-sizing:border-box;">
+            padding:10px 13px;color:var(--text);font-family:'Nunito',sans-serif;font-size:14px;box-sizing:border-box;">
         </div>
         <div style="flex:1;">
           <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);display:block;margin-bottom:5px;">BPM</label>
           <input type="number" id="edit-song-bpm" value="${s.bpm||''}" placeholder="Ej: 120"
             style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
-            padding:10px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;box-sizing:border-box;">
+            padding:10px 13px;color:var(--text);font-family:'Nunito',sans-serif;font-size:14px;box-sizing:border-box;">
         </div>
       </div>
 
@@ -4801,33 +6011,33 @@ function openEditSong(songId) {
         <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);display:block;margin-bottom:5px;">Link Video (YouTube)</label>
         <input type="text" id="edit-song-yt" value="${(s.ytLink||'').replace(/"/g,'&quot;')}" placeholder="https://youtube.com/..."
           style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
-          padding:10px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;box-sizing:border-box;">
+          padding:10px 13px;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;box-sizing:border-box;">
       </div>
 
       <div style="margin-bottom:11px;">
         <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);display:block;margin-bottom:5px;">Link Letras</label>
         <input type="text" id="edit-song-letra" value="${(s.letraLink||'').replace(/"/g,'&quot;')}" placeholder="https://..."
           style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
-          padding:10px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;box-sizing:border-box;">
+          padding:10px 13px;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;box-sizing:border-box;">
       </div>
 
       <div style="margin-bottom:20px;">
         <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);display:block;margin-bottom:5px;">Link Chart</label>
         <input type="text" id="edit-song-chart" value="${(s.chartLink||'').replace(/"/g,'&quot;')}" placeholder="https://..."
           style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
-          padding:10px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;box-sizing:border-box;">
+          padding:10px 13px;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;box-sizing:border-box;">
       </div>
 
       <div style="display:flex;gap:9px;">
         <button onclick="document.getElementById('edit-song-overlay')?.remove()"
           style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;
-          padding:12px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;">
+          padding:12px;color:var(--muted);cursor:pointer;font-family:'Nunito',sans-serif;font-size:13px;">
           Cancelar
         </button>
         <button id="edit-song-save-btn" onclick="saveEditSong('${songId}')"
           style="flex:2;background:linear-gradient(135deg,var(--accent),var(--accent2));
           color:#0d0d0f;border:none;border-radius:12px;padding:12px;
-          font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;">
+          font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;cursor:pointer;">
           ✓ Guardar cambios
         </button>
       </div>
@@ -4951,7 +6161,7 @@ function toggleSongSelected(songId) {
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;
       width:min(360px,100%);max-height:80vh;overflow:hidden;display:flex;flex-direction:column;">
       <div style="padding:20px 20px 12px;border-bottom:1px solid var(--border);">
-        <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700;margin-bottom:4px;">
+        <div style="font-family:'Nunito',sans-serif;font-size:17px;font-weight:700;margin-bottom:4px;">
           ⭐ ¿Para qué fecha?
         </div>
         <div style="font-size:12px;color:var(--muted);">
@@ -4963,7 +6173,7 @@ function toggleSongSelected(songId) {
           <button onclick="window._pickSongDate('${songId}','${ev.id}')"
             style="background:var(--surface2);border:1px solid var(--border);border-radius:11px;
             padding:12px 14px;text-align:left;cursor:pointer;color:var(--text);
-            font-family:'DM Sans',sans-serif;transition:border-color .15s;"
+            font-family:'Nunito',sans-serif;transition:border-color .15s;"
             onmouseover="this.style.borderColor='var(--accent)'"
             onmouseout="this.style.borderColor='var(--border)'">
             <div style="font-weight:700;font-size:13px;">${ev.title}</div>
@@ -4974,7 +6184,7 @@ function toggleSongSelected(songId) {
         <button onclick="window._pickSongDate('${songId}',null)"
           style="background:transparent;border:1px solid var(--border);border-radius:11px;
           padding:10px 14px;text-align:center;cursor:pointer;color:var(--muted);
-          font-family:'DM Sans',sans-serif;font-size:12px;margin-top:4px;">
+          font-family:'Nunito',sans-serif;font-size:12px;margin-top:4px;">
           ☆ Agregar sin fecha específica
         </button>
       </div>
@@ -4982,7 +6192,7 @@ function toggleSongSelected(songId) {
         <button onclick="document.getElementById('song-date-picker')?.remove()"
           style="width:100%;background:transparent;border:1px solid var(--border);
           border-radius:10px;padding:9px;color:var(--muted);cursor:pointer;
-          font-family:'DM Sans',sans-serif;font-size:13px;">
+          font-family:'Nunito',sans-serif;font-size:13px;">
           Cancelar
         </button>
       </div>
@@ -5176,25 +6386,25 @@ function showDownloadConfirm(label, onConfirm) {
         <button onclick="openFileManager()"
           style="background:linear-gradient(135deg,var(--accent),var(--accent2));
           color:#0d0d0f;border:none;border-radius:9px;padding:12px 20px;font-weight:700;
-          font-size:14px;cursor:pointer;width:100%;font-family:'DM Sans',sans-serif;margin-bottom:8px;">
+          font-size:14px;cursor:pointer;width:100%;font-family:'Nunito',sans-serif;margin-bottom:8px;">
           📁 Abrir mis archivos
         </button>
         <button onclick="document.querySelectorAll('.dl-confirm').forEach(e=>e.remove())"
           style="background:none;border:none;color:var(--muted);font-size:11px;
-          cursor:pointer;margin-top:4px;text-decoration:underline;font-family:'DM Sans',sans-serif;">
+          cursor:pointer;margin-top:4px;text-decoration:underline;font-family:'Nunito',sans-serif;">
           Cerrar
         </button>
       </div>
       <div id="dl-action-btns" style="display:flex;gap:8px;justify-content:center;">
         <button onclick="this.closest('.dl-confirm').remove()"
           style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;
-          padding:9px 18px;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;">
+          padding:9px 18px;color:var(--text);cursor:pointer;font-family:'Nunito',sans-serif;font-size:13px;">
           Cancelar
         </button>
         <button id="dl-confirm-btn"
           style="background:linear-gradient(135deg,var(--accent),var(--accent2));color:#0d0d0f;
           border:none;border-radius:9px;padding:9px 18px;font-weight:700;cursor:pointer;
-          font-family:'DM Sans',sans-serif;font-size:13px;">
+          font-family:'Nunito',sans-serif;font-size:13px;">
           ⬇ Sí, descargar
         </button>
       </div>
@@ -5382,13 +6592,14 @@ function renderSongsList() {
     const canStar  = !!currentUser;
     const isChosen = canStar && !!mySelections[s.id];
 
+    const cardTone = pastelByKey(s.id || s.title, 'song');
     const starBtn = canStar ? `
       <button data-catalog-star="${s.id}"
         onclick="toggleSongSelected('${s.id}')"
-        style="background:${isChosen?'rgba(240,180,41,.2)':'transparent'};
-          border:1px solid ${isChosen?'var(--accent)':'var(--border)'};
+        style="background:${isChosen?cardTone.bg:'transparent'};
+          border:1px solid ${isChosen?cardTone.border:'var(--border)'};
           border-radius:8px;padding:5px 9px;cursor:pointer;
-          box-shadow:${isChosen?'0 0 8px rgba(240,180,41,.4)':'none'};
+          box-shadow:${isChosen?'0 0 8px rgba(7,20,49,.10)':'none'};
           display:flex;align-items:center;justify-content:center;
           transition:all .2s;flex-shrink:0;"
         title="${isChosen?'Quitar de mi lista':'Agregar a mi lista'}">
@@ -5397,10 +6608,8 @@ function renderSongsList() {
           : '<span style="font-size:18px;line-height:1;opacity:.35;">☆</span>'}
       </button>` : '';
 
-    return `<div class="song-card" data-song-row="${s.id}"
-      style="border-color:${isChosen?'var(--accent)':'var(--border)'};
-        background:${isChosen?'rgba(240,180,41,.06)':'var(--surface)'};
-        box-shadow:${isChosen?'0 0 12px rgba(240,180,41,.15)':'none'};
+    return `<div class="song-card ${isChosen?'song-card-chosen':'song-card-plain'}" data-song-row="${s.id}"
+      style="--song-pastel-bg:${cardTone.bg};--song-pastel-border:${cardTone.border};--song-pastel-ink:${cardTone.ink};
         transition:border-color .2s,background .2s,box-shadow .2s;">
       <div class="song-card-top">
         <div class="song-thumb">🎵</div>
@@ -5419,13 +6628,13 @@ function renderSongsList() {
         ${starBtn}
       </div>
       <div class="song-actions">
-        <button class="song-btn play ${!hasYT?'disabled':''}"
+        <button class="song-btn song-video play ${!hasYT?'disabled':''}"
           onclick="${hasYT?`openSongLink('${s.ytLink}')`:''}">▶ Video</button>
-        <button class="song-btn ${!(s.letraFileId||s.letraLink)?'disabled':''}"
+        <button class="song-btn song-letras ${!(s.letraFileId||s.letraLink)?'disabled':''}"
           onclick="${s.letraFileId
             ? `downloadFromTelegram('${s.letraFileId}','${s.letraFileName||s.title+'_letras.pdf'}','Letras de ${s.title}')`
             : s.letraLink?`openSongLink('${s.letraLink}')`:''}" >📄 Letras</button>
-        <button class="song-btn ${!(s.chartFileId||s.chartLink)?'disabled':''}"
+        <button class="song-btn song-chart ${!(s.chartFileId||s.chartLink)?'disabled':''}"
           onclick="${s.chartFileId
             ? `downloadFromTelegram('${s.chartFileId}','${s.chartFileName||s.title+'_chart.pdf'}','Chart de ${s.title}')`
             : s.chartLink?`openSongLink('${s.chartLink}')`:''}" >🎼 Chart</button>
@@ -5912,3 +7121,346 @@ setTimeout(startReminderEngine, 2000);
 </script>
 </body>
 </html>
+
+<style id="unificar-home-eventos-ministerio-canciones-v2">
+/* ═══════════════════════════════════════
+   AJUSTE FINAL: Agenda con separador + botones a la derecha
+   y colores unificados en Ministerio / Canciones.
+   Solo interfaz: no toca funciones, ids, onclick ni lógica JS.
+═══════════════════════════════════════ */
+:root{
+  --nuevo-azul:#071431;
+  --nuevo-dorado:#f2d66b;
+  --nuevo-fondo:#f6f8fb;
+  --nuevo-celeste:#eaf7fb;
+  --nuevo-verde:#edf8e6;
+  --nuevo-rosa:#fde6ed;
+  --nuevo-lila:#f0ecff;
+  --nuevo-crema:#fff7e3;
+  --nuevo-texto:#071431;
+}
+
+/* EVENTOS: barra Agenda en una sola línea, separador blanco vertical y botones a la derecha */
+#view-events .events-toolbar{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:0!important;
+  padding:18px clamp(18px,4vw,42px) 16px!important;
+  background:var(--nuevo-azul)!important;
+  border-bottom:5px solid var(--nuevo-dorado)!important;
+}
+#view-events .events-toolbar h2{
+  width:auto!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:0 24px 0 0!important;
+  border-right:2px solid rgba(255,255,255,.82)!important;
+  color:#fff!important;
+  font-size:30px!important;
+  line-height:1!important;
+  font-weight:800!important;
+  letter-spacing:.5px!important;
+  flex:0 0 auto!important;
+}
+#view-events .events-actions{
+  max-width:none!important;
+  margin:0!important;
+  padding:0 22px!important;
+  display:flex!important;
+  justify-content:flex-end!important;
+  align-items:center!important;
+  gap:12px!important;
+  flex:0 1 600px!important;
+  overflow:visible!important;
+}
+#view-events .events-actions .btn:not(.btn-primary){
+  width:42px!important;
+  height:42px!important;
+  min-width:42px!important;
+  min-height:42px!important;
+  border-radius:50%!important;
+}
+
+/* El área de eventos conserva la escala estética ya lograda */
+#view-events .scroll-area > div > div[style*="padding:8px"]{
+  max-width:760px!important;
+}
+
+/* MINISTERIO: integrar al nuevo diseño sin alterar estructura */
+body:has(#view-musicians.active){
+  background:var(--nuevo-fondo)!important;
+  overflow-x:hidden!important;
+}
+body:has(#view-musicians.active) > header{
+  background:var(--nuevo-azul)!important;
+  border-bottom:5px solid var(--nuevo-dorado)!important;
+  box-shadow:0 6px 16px rgba(7,20,49,.13)!important;
+}
+#view-musicians,
+#view-musicians .scroll-area{
+  background:var(--nuevo-fondo)!important;
+}
+#view-musicians .mv-wrap{
+  max-width:760px!important;
+  margin:0 auto!important;
+  padding:18px 16px calc(96px + env(safe-area-inset-bottom))!important;
+  color:var(--nuevo-texto)!important;
+}
+#view-musicians .mv-hdr{
+  padding:0 4px!important;
+  margin-bottom:14px!important;
+}
+#view-musicians .mv-hdr h2{
+  color:var(--nuevo-texto)!important;
+  font-family:'Nunito',sans-serif!important;
+  font-size:22px!important;
+  font-weight:800!important;
+  letter-spacing:.2px!important;
+}
+#view-musicians .search-bar,
+#view-songs .search-bar{
+  background:var(--nuevo-celeste)!important;
+  border:1px solid rgba(7,20,49,.10)!important;
+  border-radius:10px!important;
+  box-shadow:none!important;
+  color:var(--nuevo-texto)!important;
+}
+#view-musicians #min-filter-bar{
+  gap:7px!important;
+  padding:10px 0 8px!important;
+}
+#view-musicians .min-filter-btn{
+  border:1px solid rgba(7,20,49,.10)!important;
+  background:var(--nuevo-celeste)!important;
+  color:rgba(7,20,49,.62)!important;
+  border-radius:999px!important;
+  font-size:11px!important;
+  font-weight:800!important;
+  padding:7px 14px!important;
+}
+#view-musicians .min-filter-btn.active{
+  background:var(--nuevo-dorado)!important;
+  color:var(--nuevo-texto)!important;
+  border-color:var(--nuevo-dorado)!important;
+}
+#view-musicians .mus-table > *{
+  background:#fff!important;
+  border:1px solid rgba(7,20,49,.10)!important;
+  border-radius:14px!important;
+  box-shadow:0 4px 12px rgba(7,20,49,.06)!important;
+}
+
+/* CANCIONES: mismo lenguaje visual del nuevo diseño */
+body:has(#view-songs.active){
+  background:var(--nuevo-fondo)!important;
+  overflow-x:hidden!important;
+}
+body:has(#view-songs.active) > header{
+  background:var(--nuevo-azul)!important;
+  border-bottom:5px solid var(--nuevo-dorado)!important;
+  box-shadow:0 6px 16px rgba(7,20,49,.13)!important;
+}
+#view-songs,
+#view-songs .scroll-area{
+  background:var(--nuevo-fondo)!important;
+}
+#view-songs .scroll-area > div{
+  max-width:760px!important;
+  padding:18px 16px calc(96px + env(safe-area-inset-bottom))!important;
+  color:var(--nuevo-texto)!important;
+}
+#view-songs .scroll-area > div > div:first-child h2{
+  color:var(--nuevo-texto)!important;
+  font-size:22px!important;
+  font-weight:800!important;
+  letter-spacing:.2px!important;
+}
+#view-songs #songs-count,
+#view-musicians #mus-count{
+  color:rgba(7,20,49,.48)!important;
+  font-weight:700!important;
+}
+#view-songs #songs-list > *{
+  background:#fffdf6!important;
+  border:1px solid rgba(242,214,107,.72)!important;
+  border-radius:14px!important;
+  box-shadow:0 4px 12px rgba(7,20,49,.06)!important;
+}
+#view-songs .song-btn,
+#view-songs button{
+  border-radius:10px!important;
+}
+#view-songs .tone-badge,
+#view-songs .bpm-badge{
+  border-radius:999px!important;
+}
+
+/* Bottom nav coherente con el nuevo diseño */
+.bottom-nav{
+  background:var(--nuevo-azul)!important;
+  border-top:1px solid rgba(255,255,255,.05)!important;
+}
+.bottom-nav .bnav-btn.active,
+.bottom-nav .bnav-btn.active .bnav-icon{
+  color:var(--nuevo-dorado)!important;
+}
+
+@media(max-width:760px){
+  #view-events .events-toolbar{
+    justify-content:flex-start!important;
+    padding:17px 16px 15px!important;
+  }
+  #view-events .events-toolbar h2{
+    font-size:26px!important;
+    padding-right:18px!important;
+  }
+  #view-events .events-actions{
+    flex:1 1 auto!important;
+    padding:0 4px 0 16px!important;
+    gap:10px!important;
+    overflow-x:auto!important;
+  }
+  #view-events .events-actions .btn:not(.btn-primary){
+    width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;
+  }
+}
+@media(max-width:430px){
+  #view-events .events-toolbar h2{font-size:23px!important;padding-right:14px!important;}
+  #view-events .events-actions{padding-left:12px!important;gap:8px!important;}
+  #view-events .events-actions .btn:not(.btn-primary){
+    width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;
+  }
+  #view-musicians .mv-wrap,
+  #view-songs .scroll-area > div{padding-left:12px!important;padding-right:12px!important;}
+}
+
+
+/* ══════════════════════════════════════════════
+   AJUSTES PUNTUALES — armonía visual solicitada
+══════════════════════════════════════════════ */
+:root{
+  --font-title:'Nunito',sans-serif;
+  --font-ui:'Nunito',sans-serif;
+  --smoke-white:#f7f7f5;
+  --pastel-video-bg:#ffe3e6;
+  --pastel-video-border:#f4a7b0;
+  --pastel-video-ink:#c83245;
+  --pastel-letras-bg:#dcf7ff;
+  --pastel-letras-border:#8bdff2;
+  --pastel-letras-ink:#067e9b;
+  --pastel-chart-bg:#eee2ff;
+  --pastel-chart-border:#bea7f4;
+  --pastel-chart-ink:#6b42b7;
+}
+body, button, input, textarea, select,
+.home-user-role,.home-next-venue,.home-next-row,.song-meta,.mcm-role,.mcm-row-label,
+.mv-hdr span,#songs-count,#mus-count{font-family:var(--font-ui)!important;}
+h1,h2,h3,h4,.home-card h2,.hm-info-title,.home-next-title,.mv-hdr h2,
+#view-songs .scroll-area > div > div:first-child h2,.song-title,.mcm-name,
+.logo::after{font-family:var(--font-title)!important;}
+
+.member-card-modal{
+  background:var(--member-modal-bg,#fff)!important;
+  border:1px solid var(--member-modal-border,rgba(7,20,49,.10))!important;
+  box-shadow:0 22px 50px rgba(7,20,49,.22)!important;
+}
+.member-card-modal .mcm-header{
+  background:linear-gradient(135deg,rgba(255,255,255,.72),rgba(255,255,255,.34))!important;
+  border-bottom:1px solid var(--member-modal-border,rgba(7,20,49,.10))!important;
+}
+.member-card-modal .mcm-body{background:rgba(255,255,255,.42)!important;}
+.member-card-modal .mcm-unavail,
+.member-card-modal .mcm-row{
+  background:rgba(255,255,255,.56)!important;
+  border-color:rgba(7,20,49,.08)!important;
+  border-radius:14px!important;
+}
+
+#view-songs #songs-list > .song-card.song-card-plain{
+  background:var(--smoke-white)!important;
+  border-color:rgba(7,20,49,.08)!important;
+}
+#view-songs #songs-list > .song-card.song-card-chosen{
+  background:var(--song-pastel-bg)!important;
+  border-color:var(--song-pastel-border)!important;
+  box-shadow:0 6px 16px rgba(7,20,49,.08)!important;
+}
+#view-songs .song-card-chosen .song-title{color:var(--song-pastel-ink)!important;}
+#view-songs .song-thumb{background:rgba(255,255,255,.55)!important;color:var(--nuevo-azul)!important;}
+
+.song-btn.song-video{
+  background:var(--pastel-video-bg)!important;
+  border-color:var(--pastel-video-border)!important;
+  color:var(--pastel-video-ink)!important;
+}
+.song-btn.song-letras{
+  background:var(--pastel-letras-bg)!important;
+  border-color:var(--pastel-letras-border)!important;
+  color:var(--pastel-letras-ink)!important;
+}
+.song-btn.song-chart{
+  background:var(--pastel-chart-bg)!important;
+  border-color:var(--pastel-chart-border)!important;
+  color:var(--pastel-chart-ink)!important;
+}
+.song-btn.song-video:hover,.song-btn.song-letras:hover,.song-btn.song-chart:hover{
+  filter:saturate(1.08) brightness(.99)!important;
+  transform:translateY(-1px)!important;
+  box-shadow:0 5px 12px rgba(7,20,49,.10)!important;
+}
+.song-btn.disabled{filter:grayscale(.15)!important;opacity:.42!important;}
+
+
+/* === AJUSTE FINAL DE TIPOGRAFÍA: NUNITO EN TODA LA APP ===
+   Títulos en negrita, subtítulos/textos normales, sin afectar FontAwesome. */
+:root{
+  --app-font:'Nunito',sans-serif!important;
+  --font-title:'Nunito',sans-serif!important;
+  --font-ui:'Nunito',sans-serif!important;
+}
+body, body *:not(i):not(.fa):not(.fas):not(.far):not(.fab):not(.fa-solid):not(.fa-regular):not(.fa-brands):not(.song-thumb):not(.act-icon){
+  font-family:'Nunito',sans-serif!important;
+}
+/* Títulos principales y nombres importantes */
+h1,h2,h3,h4,
+.logo h1,.logo::after,
+.home-user-name,.home-next-title,.home-card h2,.hm-info-title,
+.events-toolbar h2,.ev-section-title,.ev-hero-title,.ec-title,
+.mv-hdr h2,.member-name,.mcm-name,.prof-name,.reg-logo h2,
+.song-title,#view-songs .scroll-area > div > div:first-child h2,
+.upload-form h4,.modal h3,.pin-modal h3,.date-picker-modal h3,
+.battery-box h3,.avail-section h3,.rol-selector-box h4{
+  font-family:'Nunito',sans-serif!important;
+  font-weight:800!important;
+}
+/* Subtítulos y textos secundarios en peso normal para que se vea más limpio */
+p,li,label,
+.home-user-role,.home-next-venue,.home-next-row,
+.hm-role,.hm-info-line,.hm-empty,
+.ec-sub,.ec-meta,.ev-hero-meta,.ev-hero-sec-title,
+.song-meta,.song-owner,.mcm-role,.mcm-row-label,.mcm-row-value,
+.prof-role,.mus-role,.asgn-role,.modal p,.battery-box p,
+#songs-count,#mus-count,.mv-hdr span,.muted,.meta,.small{
+  font-family:'Nunito',sans-serif!important;
+  font-weight:400!important;
+}
+/* Botones y etiquetas: Nunito semibold, manteniendo lectura clara */
+button,.btn,.role-pill,.badge,.tag,.ev-badge,.song-btn,.filter-chip,.utab,
+.hm-min-btn,.hm-list-btn,.hm-pill,.cargo-card .cname,.instr-card .iname{
+  font-family:'Nunito',sans-serif!important;
+  font-weight:700!important;
+}
+input,textarea,select{
+  font-family:'Nunito',sans-serif!important;
+  font-weight:400!important;
+}
+/* Mantener iconos FontAwesome intactos */
+i,.fa,.fas,.far,.fab,.fa-solid,.fa-regular,.fa-brands,
+.song-thumb,.act-icon,.logo::before,
+.bnav-icon,.home-menu-btn i,.hm-song > i,.hm-info-line i,.home-next-row i{
+  font-family:'Font Awesome 6 Free'!important;
+  font-weight:900!important;
+}
+.fab,.fa-brands{font-family:'Font Awesome 6 Brands'!important;}
+</style>
