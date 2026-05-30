@@ -14,6 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Monte de Dios</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <!-- ══ FIREBASE ══════════════════════════════════════════════════════════ -->
@@ -542,6 +543,145 @@ textarea{resize:vertical;min-height:64px;}
 .rol-item{background:var(--surface2);border:1px solid var(--border);border-radius:9px;
   padding:10px 14px;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;}
 .rol-item:hover{border-color:var(--accent);color:var(--accent);}
+
+
+/* ══════════════════════════════════════════════
+   REDISEÑO VISUAL 2026 — HOME Y EVENTOS
+══════════════════════════════════════════════ */
+:root{
+  --bg:#f6f8fb;--surface:#ffffff;--surface2:#eef7fb;--border:#d9e5ea;
+  --accent:#f3d978;--accent2:#0a1a3d;--text:#071431;--muted:#8c9aa9;
+  --success:#1f8b5c;--danger:#e4445f;--info:#0aa6d9;
+  --lab-blue:#dff6ff;--lab-cyan:#12d2f2;--soft-pink:#ffdce2;
+}
+body{background:var(--bg);color:var(--text);}
+header{background:#071431;color:#fff;border-bottom:7px solid var(--accent);padding:16px 18px 14px;align-items:center;}
+.logo h1,.logo-icon{display:none;}
+.logo{gap:14px;cursor:pointer;}
+.logo::before{content:'\f0c9';font-family:'Font Awesome 6 Free';font-weight:900;font-size:28px;color:#fff;}
+.logo::after{content:'Monte de Dios';font-weight:800;letter-spacing:.4px;color:#fff;font-size:14px;}
+.hdr-r .rt-label,.hdr-r .rt-dot,#upload-switch-wrap{display:none!important;}
+#role-btn{background:transparent!important;border:0!important;color:#fff!important;font-size:0!important;padding:0!important;width:78px;justify-content:flex-start;position:relative;}
+#role-btn::before{content:attr(data-initials);width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#ffec76,#ff4f67);display:flex;align-items:center;justify-content:center;color:#071431;font-size:19px;font-weight:900;box-shadow:0 8px 16px rgba(0,0,0,.2);}
+#role-btn::after{content:'PERFIL';font-size:9px;color:rgba(255,255,255,.62);position:absolute;left:62px;bottom:5px;letter-spacing:.8px;}
+.btn,.role-pill{font-family:'DM Sans',sans-serif;}
+.btn-primary{background:#071431;color:#fff;}
+.btn-ghost{background:#fff;color:#071431;border:1px solid var(--border);box-shadow:0 4px 10px rgba(7,20,49,.08);}
+.bottom-nav{background:#071431;border-top:none;height:72px;box-shadow:0 -8px 22px rgba(7,20,49,.16);}
+.bnav-btn{color:rgba(255,255,255,.48);font-size:11px;border-top:none;padding:8px 2px;}
+.bnav-btn.active{color:var(--accent);border-top:none;}
+.bnav-icon{font-size:21px;margin-bottom:2px;}
+.scroll-area::-webkit-scrollbar-thumb{background:#b8d8e1;}
+
+.home-page{min-height:100%;padding-bottom:92px;background:#fff;}
+.home-top{background:#071431;color:#fff;border-bottom:7px solid var(--accent);padding:18px 18px 16px;display:flex;align-items:center;gap:18px;}
+.home-menu-btn{width:48px;height:48px;border:none;background:transparent;color:#fff;font-size:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.home-user{display:flex;align-items:center;gap:12px;min-width:0;flex:1;cursor:pointer;}
+.initial-avatar,.mini-avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;text-transform:uppercase;}
+.initial-avatar{width:70px;height:70px;background:linear-gradient(135deg,#ffed75,#ff526a);color:#071431;font-size:23px;box-shadow:0 8px 20px rgba(0,0,0,.22);}
+.home-user-name{color:var(--accent);font-weight:900;font-size:19px;letter-spacing:.6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.home-user-role{font-size:13px;color:rgba(255,255,255,.52);margin-top:4px;text-transform:uppercase;letter-spacing:.8px;}
+.home-next{min-width:260px;max-width:360px;cursor:pointer;}
+.home-next-title{font-size:22px;font-weight:900;border-bottom:3px solid var(--accent);padding-bottom:7px;margin-bottom:7px;}
+.home-next-venue{font-size:15px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.9);}
+.home-next-row{display:flex;align-items:center;gap:10px;font-size:20px;font-family:'Playfair Display',serif;margin-top:7px;}
+.home-next-row i{font-size:18px;color:#fff;width:20px;text-align:center;}
+.home-content{padding:0 24px 26px;max-width:780px;margin:0 auto;}
+.home-ministry{background:#dff6ff;margin:0 -2px 26px;border-radius:0 0 2px 2px;padding:14px 10px 18px;box-shadow:0 2px 9px rgba(7,20,49,.09);}
+.hm-tabs{display:flex;justify-content:center;gap:80px;color:rgba(7,20,49,.28);font-weight:800;font-size:18px;margin-bottom:14px;}
+.hm-tabs span:first-child{color:#071431;border-bottom:2px solid #071431;padding:0 18px 6px;}
+.hm-people{display:flex;gap:18px;align-items:flex-start;justify-content:center;overflow-x:auto;padding:2px 0 10px;}
+.hm-person{min-width:92px;text-align:center;}
+.mini-avatar{width:56px;height:56px;margin:0 auto 7px;background:linear-gradient(135deg,#ffeb62,#f54664);color:#071431;font-size:18px;box-shadow:0 6px 12px rgba(7,20,49,.12);}
+.mini-avatar.female,.mini-avatar.other{background:linear-gradient(135deg,#ffe657,#6ec6ff);}
+.hm-name{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hm-role{font-size:11px;color:rgba(7,20,49,.25);font-weight:800;text-transform:uppercase;margin-top:3px;letter-spacing:.8px;}
+.hm-min-btn{display:flex;margin:4px auto 0;border:none;background:#f4d978;color:#071431;border-radius:22px;padding:13px 34px;font-weight:900;box-shadow:0 6px 12px rgba(7,20,49,.12);cursor:pointer;}
+.home-card{background:#fff;border-radius:30px;padding:18px 18px 20px;margin-bottom:24px;box-shadow:0 6px 16px rgba(7,20,49,.12);border:1px solid #eef3f6;}
+.home-card-head{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #f0d778;padding-bottom:11px;margin-bottom:13px;}
+.home-card h2{font-size:26px;letter-spacing:.4px;margin:0;font-weight:500;}
+.hm-list-btn{border:none;background:#071431;color:#fff;border-radius:18px;padding:11px 20px;font-weight:800;display:flex;align-items:center;gap:8px;cursor:pointer;}
+.hm-song{display:flex;align-items:center;gap:10px;background:#fff;border-radius:18px;margin:9px 0;padding:10px 12px;box-shadow:0 3px 9px rgba(7,20,49,.15);}
+.hm-song-title{flex:1;font-size:16px;font-weight:800;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hm-pill{display:inline-flex;align-items:center;gap:6px;background:#f3d978;color:#071431;border-radius:18px;padding:8px 12px;font-size:13px;font-weight:900;margin-left:4px;white-space:nowrap;}
+.hm-bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:10px;}
+.hm-info-card{border-radius:24px;padding:20px 18px;box-shadow:0 6px 12px rgba(7,20,49,.14);min-height:154px;}
+.hm-info-card.ensayo{background:#dff6ff;}
+.hm-info-card.bday{background:#ffdce2;}
+.hm-info-title{font-size:23px;text-transform:uppercase;line-height:1.05;border-bottom:3px solid rgba(7,20,49,.75);padding-bottom:9px;margin-bottom:11px;}
+.hm-info-line{display:flex;align-items:center;gap:9px;font-size:17px;margin:7px 0;color:#071431;}
+.hm-info-line i{width:18px;text-align:center;color:#0aa6d9;}
+.hm-info-card.bday .hm-info-line i{color:#e4445f;}
+.hm-empty{font-size:13px;color:var(--muted);padding:12px;text-align:center;}
+
+#view-events .scroll-area{background:#fff;}
+.events-toolbar{background:#071431;color:#fff;border-bottom:7px solid var(--accent);padding:22px 22px 14px;}
+.events-toolbar h2{font-size:38px;font-weight:300;margin:0 0 12px;color:#fff;}
+.events-actions{display:flex;gap:10px;align-items:center;overflow-x:auto;}
+.events-actions .btn{border-radius:12px;padding:13px 18px;white-space:nowrap;font-weight:800;}
+.events-actions .btn-primary{display:none!important;}
+.ev-section-title{font-size:26px;font-weight:900;color:#071431;margin:12px 0 18px;}
+.ev-list{gap:22px;padding:0 16px 28px;}
+.ev-card{background:#dff6ff;border:0;border-radius:24px;padding:17px 20px;box-shadow:0 5px 12px rgba(7,20,49,.14);display:grid;grid-template-columns:112px 1fr auto;align-items:center;gap:18px;min-height:105px;}
+.ev-card:hover{background:#dff6ff;transform:translateY(-1px);}
+.ev-date-badge{width:84px;height:84px;border-radius:16px;background:#12d2f2;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#071431;font-weight:900;box-shadow:0 5px 12px rgba(7,20,49,.12);}
+.ev-date-badge .day{font-size:28px;line-height:1;}
+.ev-date-badge .mon{font-size:18px;margin-top:8px;}
+.ec-title{font-size:26px;font-weight:900;color:#071431;}
+.ec-sub{font-size:14px;text-transform:uppercase;margin-top:10px;color:#071431;letter-spacing:.4px;}
+.ec-side{display:flex;align-items:center;gap:8px;font-size:16px;color:#071431;font-weight:800;}
+.ev-badge{font-size:10px;padding:4px 9px;margin-left:4px;}
+.bdg-p{background:#f3d978;color:#071431}.bdg-t{background:#ffcad1;color:#e4445f}.bdg-d{background:#eef3f6;color:#8392a0}
+.fab-new-event{position:fixed;right:32px;bottom:92px;width:78px;height:78px;border-radius:50%;background:#071431;color:#fff;border:none;font-size:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(7,20,49,.35);z-index:190;cursor:pointer;}
+.fab-new-event:disabled{opacity:.42;cursor:not-allowed;}
+.song-thumb,.act-icon{font-family:'Font Awesome 6 Free';font-weight:900;}
+.song-thumb{font-size:0!important;}
+.song-thumb::before{content:'\f001';font-size:20px;}
+
+@media(max-width:720px){
+  header{display:none;}
+  .home-top{padding:24px 18px 16px;align-items:flex-start;}
+  .home-menu-btn{width:42px;height:42px;font-size:28px;margin-top:22px;}
+  .home-user{flex:0 0 248px;gap:12px;margin-top:18px;}
+  .initial-avatar{width:72px;height:72px;}
+  .home-next{flex:1;min-width:0;max-width:none;}
+  .home-next-title{font-size:19px;}
+  .home-next-row{font-size:20px;}
+  .home-content{padding:0 22px 18px;}
+  .hm-tabs{gap:50px;}
+  .hm-people{justify-content:flex-start;}
+  .home-card h2{font-size:24px;}
+  .hm-bottom-grid{gap:16px;}
+  .hm-info-title{font-size:20px;}
+  .hm-info-line{font-size:15px;}
+  .events-toolbar{padding:26px 20px 16px;}
+  .events-toolbar h2{font-size:38px;}
+  .ev-card{grid-template-columns:96px 1fr auto;border-radius:24px;padding:17px 18px;}
+  .ev-date-badge{width:78px;height:78px;}
+  .ec-title{font-size:24px;}
+}
+@media(max-width:520px){
+  .home-top{gap:8px;}
+  .home-user{flex-basis:168px;flex-direction:column;align-items:center;text-align:center;margin-top:0;}
+  .home-user-name{font-size:18px;max-width:150px;}
+  .home-user-role{font-size:12px;}
+  .home-next-title{font-size:18px;}
+  .home-next-venue{font-size:14px;}
+  .home-next-row{font-size:19px;}
+  .hm-bottom-grid{grid-template-columns:1fr 1fr;gap:14px;}
+  .hm-info-card{padding:16px 14px;}
+  .hm-info-title{font-size:17px;}
+  .hm-info-line{font-size:14px;}
+  .hm-song-title{font-size:14px;}
+  .hm-pill{font-size:12px;padding:7px 9px;}
+  .ev-card{grid-template-columns:82px 1fr 34px;gap:10px;padding:14px 12px;}
+  .ev-date-badge{width:68px;height:68px;}
+  .ev-date-badge .day{font-size:24px}.ev-date-badge .mon{font-size:15px;}
+  .ec-title{font-size:20px;}.ec-sub{font-size:12px;}
+  .events-actions .btn{padding:11px 13px;font-size:12px;}
+  .fab-new-event{right:20px;bottom:86px;width:66px;height:66px;font-size:30px;}
+}
+
 </style>
 </head>
 <body>
@@ -688,29 +828,35 @@ textarea{resize:vertical;min-height:64px;}
 <!-- VIEWS CONTAINER -->
 <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;" id="views-wrap">
 
+
+  <!-- ══ VIEW: HOME ══ -->
+  <div class="view" id="view-home">
+    <div class="scroll-area">
+      <div id="home-dashboard" class="home-page">
+        <!-- Renderizado por renderHomeDashboard() -->
+      </div>
+    </div>
+  </div>
+
   <!-- ══ VIEW: EVENTOS ══ -->
   <div class="view" id="view-events">
     <div class="scroll-area" style="flex:1;">
       <div style="padding:0 0 80px;">
 
-        <!-- ZONA A: PRÓXIMO EVENTO DESTACADO -->
-        <div id="next-ev-hero" style="display:none;">
-          <!-- Renderizado por renderNextEventHero() -->
+        <!-- ZONA A: ACCIONES DE AGENDA -->
+        <div class="events-toolbar">
+          <h2>Agenda</h2>
+          <div class="events-actions">
+            <button class="btn btn-primary btn-sm" id="new-ev-btn" onclick="openNewEvForm()" disabled><i class="fa-solid fa-plus"></i> Nuevo Evento</button>
+            <button class="btn btn-ghost btn-sm" onclick="exportCalendarPDF()" title="Exportar PDF de eventos"><i class="fa-solid fa-file-pdf"></i> PDF Eventos</button>
+            <button class="btn btn-ghost btn-sm" onclick="exportVoicesCalendar()" title="Calendario Voces"><i class="fa-solid fa-microphone"></i> Cal. Voces</button>
+            <button class="btn btn-ghost btn-sm" onclick="openBirthdayPanel()" title="Cumpleaños"><i class="fa-solid fa-cake-candles"></i></button>
+          </div>
         </div>
 
-        <!-- ZONA B: ACCIONES -->
-        <div style="display:flex;gap:7px;padding:10px 12px;border-bottom:1px solid var(--border);">
-          <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center;"
-            id="new-ev-btn" onclick="openNewEvForm()" disabled>＋ Nuevo Evento</button>
-          <button class="btn btn-ghost btn-sm" onclick="exportCalendarPDF()" title="Exportar PDF de eventos">📅 PDF Eventos</button>
-          <button class="btn btn-ghost btn-sm" onclick="exportVoicesCalendar()" title="Calendario Voces">🎤 Cal. Voces</button>
-          <button class="btn btn-ghost btn-sm" onclick="openBirthdayPanel()" title="Cumpleaños">🎂</button>
-        </div>
-
-        <!-- ZONA C: LISTA DE EVENTOS -->
+        <!-- ZONA B: LISTA DE EVENTOS -->
         <div style="padding:8px 10px;">
-          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
-            color:var(--muted);margin-bottom:8px;padding:4px 2px;">Todos los eventos</div>
+          <div class="ev-section-title">Próximos Eventos</div>
           <div id="ev-list">
             <div class="empty-s"><div class="ei">🎶</div>Sin eventos aún</div>
           </div>
@@ -718,6 +864,7 @@ textarea{resize:vertical;min-height:64px;}
 
       </div>
     </div>
+    <button class="fab-new-event" id="new-ev-fab" onclick="openNewEvForm()" disabled title="Crear evento"><i class="fa-solid fa-plus"></i></button>
     <!-- new-ev-form placeholder -->
     <div id="new-ev-form" style="display:none;"></div>
   </div>
@@ -775,14 +922,17 @@ textarea{resize:vertical;min-height:64px;}
 
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
-  <button class="bnav-btn active" onclick="switchView('events',this)">
-    <span class="bnav-icon">🗓️</span>Eventos
+  <button class="bnav-btn active" onclick="switchView('home',this)">
+    <span class="bnav-icon"><i class="fa-solid fa-house"></i></span>Home
+  </button>
+  <button class="bnav-btn" onclick="switchView('events',this)">
+    <span class="bnav-icon"><i class="fa-solid fa-calendar-days"></i></span>Eventos
   </button>
   <button class="bnav-btn" onclick="switchView('musicians',this)">
-    <span class="bnav-icon">🎤</span>Ministerio
+    <span class="bnav-icon"><i class="fa-solid fa-microphone"></i></span>Ministerio
   </button>
   <button class="bnav-btn" onclick="switchView('songs',this)">
-    <span class="bnav-icon">🎵</span>Canciones
+    <span class="bnav-icon"><i class="fa-solid fa-music"></i></span>Canciones
   </button>
 </nav>
 
@@ -1672,11 +1822,16 @@ function closePinModal() {
 
 function updateAdminUI() {
   const newEvBtn = document.getElementById('new-ev-btn');
+  const newEvFab = document.getElementById('new-ev-fab');
   if(isAdmin) {
     if(newEvBtn) newEvBtn.disabled = false;
+    if(newEvFab) newEvFab.disabled = false;
   } else {
     if(newEvBtn) newEvBtn.disabled = true;
+    if(newEvFab) newEvFab.disabled = true;
   }
+  const roleBtn = document.getElementById('role-btn');
+  if(roleBtn) roleBtn.setAttribute('data-initials', _mdInitials(currentUser?.fullName || currentUser?.displayName));
   // FIX 8: mostrar switch solo al admin (display flex/none)
   const switchWrap = document.getElementById('upload-switch-wrap');
   if(switchWrap) switchWrap.style.display = isAdmin ? 'flex' : 'none';
@@ -1694,35 +1849,153 @@ function updateStats() {
   if(selEv && events[selEv]) renderEvSongsBar(events[selEv]);
 }
 
+
+function _mdInitials(name) {
+  const src = (name || currentUser?.fullName || currentUser?.displayName || 'Invitado Usuario').trim();
+  const parts = src.split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0]||'I') + (parts[1]?.[0]||parts[0]?.[1]||'U')).toUpperCase();
+}
+function _mdFirstName(name) { return (name||'').trim().split(/\s+/)[0] || '—'; }
+function _mdMonth(dateStr) {
+  const m = String(dateStr||'').split('-')[1];
+  return 'ENE FEB MAR ABR MAY JUN JUL AGO SEP OCT NOV DIC'.split(' ')[(+m||1)-1] || '—';
+}
+function _mdDay(dateStr) { return String(dateStr||'').split('-')[2] || '—'; }
+function _mdNextBirthday() {
+  const all = Object.values(musicians).filter(m => m.bday && (m.fullName || m.displayName || m.name));
+  const base = new Date(); base.setHours(0,0,0,0);
+  return all.map(m => {
+    const [,mo,d] = String(m.bday).split('-').map(Number);
+    let next = new Date(base.getFullYear(), (mo||1)-1, d||1);
+    if(next < base) next = new Date(base.getFullYear()+1, (mo||1)-1, d||1);
+    return {...m, nextBday: next, daysLeft: Math.round((next-base)/86400000)};
+  }).sort((a,b)=>a.daysLeft-b.daysLeft)[0] || null;
+}
+function _mdNearestPractice() {
+  const td = today();
+  return Object.values(events)
+    .filter(ev => String(ev.title||'').toLowerCase().includes('ensayo'))
+    .sort((a,b)=>{
+      const ap=a.date<td, bp=b.date<td;
+      if(!ap && bp) return -1; if(ap && !bp) return 1;
+      return ap ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
+    })[0] || null;
+}
+function _mdEventSongs(ev, vozP) {
+  if(!vozP) return [];
+  const vozId = vozP.musId || vozP.id;
+  const selected = (window._allSelections && window._allSelections[vozId]) || (vozId===currentUser?.id ? window._mySelections : null) || null;
+  const allSongs = Object.values(songs);
+  if(selected && Object.keys(selected).length) return allSongs.filter(s => selected[s.id]);
+  return allSongs.filter(s => (s.ownerId === vozId || s.ownerName === vozP.name) && s.selected === true);
+}
+function renderHomeDashboard(nextEv) {
+  const home = document.getElementById('home-dashboard');
+  if(!home) return;
+  const td = today();
+  const evArr = Object.values(events).sort((a,b) => {
+    const aP = a.date < td, bP = b.date < td;
+    if(!aP && bP) return -1; if(aP && !bP) return 1;
+    return aP ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
+  });
+  const ev = nextEv || evArr.find(e => e.date >= td) || evArr[0] || null;
+  const userName = currentUser?.displayName || currentUser?.fullName || currentUser?.loginLabel || 'Invitado';
+  const userRole = currentUser?.cargo || currentUser?.role || 'Voz';
+  const assignees = ev?.assignees ? Object.values(ev.assignees) : [];
+  const vozP = assignees.find(a => a.rolEvento === 'Voz Principal') || assignees.find(a => a.cargo === 'Voz' || a.role === 'Cantante') || assignees[0];
+  const orderedPeople = assignees.slice().sort((a,b)=>{
+    const av = a === vozP ? 0 : 1, bv = b === vozP ? 0 : 1;
+    return av-bv;
+  });
+  const peopleHtml = orderedPeople.length ? orderedPeople.map((a,i)=>{
+    const rol = a.rolEvento || a.cargo || a.role || (i===0?'VOZ':'COROS');
+    return `<div class="hm-person">
+      <div class="mini-avatar ${i>0?'other':''}">${_mdInitials(a.name)}</div>
+      <div class="hm-name">${_mdFirstName(a.name)}</div>
+      <div class="hm-role">${rol}</div>
+    </div>`;
+  }).join('') : `<div class="hm-empty">Sin encargados asignados</div>`;
+  const songsForDay = _mdEventSongs(ev, vozP).slice(0,5);
+  const songsHtml = songsForDay.length ? songsForDay.map(s => `<div class="hm-song">
+      <i class="fa-solid fa-music"></i><div class="hm-song-title">${s.title}</div>
+      <span class="hm-pill"><i class="fa-solid fa-bell"></i> Tono ${s.tono || '—'}</span>
+      <span class="hm-pill"><i class="fa-solid fa-gauge-high"></i> ${s.bpm ? s.bpm + ' BPM' : 'BPM —'}</span>
+    </div>`).join('') : `<div class="hm-empty">${vozP ? `${_mdFirstName(vozP.name)} no tiene canciones elegidas` : 'Sin voz principal asignada'}</div>`;
+  const ensayo = _mdNearestPractice();
+  const bday = _mdNextBirthday();
+  const bdayDate = bday ? fmtDate(bday.bday).replace(/\s\d{4}$/,'') : '—';
+  home.innerHTML = `
+    <div class="home-top">
+      <button class="home-menu-btn" onclick="openProfileModal()"><i class="fa-solid fa-bars"></i></button>
+      <div class="home-user" onclick="openProfileModal()">
+        <div class="initial-avatar">${_mdInitials(userName)}</div>
+        <div><div class="home-user-name">${userName}</div><div class="home-user-role">${userRole}</div></div>
+      </div>
+      <div class="home-next" onclick="${ev?`openEvDetailModal('${ev.id}')`:''}">
+        <div class="home-next-title">Próximo Servicio</div>
+        <div class="home-next-venue">${ev?.venue || 'MONTE DE DIOS'}</div>
+        <div class="home-next-row"><i class="fa-solid fa-calendar-days"></i> ${ev ? fmtDate(ev.date).replace(/\s\d{4}$/,'') : 'Sin fecha'}</div>
+        <div class="home-next-row"><i class="fa-solid fa-clock"></i> ${ev?.time || '—'}</div>
+      </div>
+    </div>
+    <div class="home-content">
+      <section class="home-ministry">
+        <div class="hm-tabs"><span>VOCES</span><span>MÚSICOS</span></div>
+        <div class="hm-people">${peopleHtml}</div>
+        <button class="hm-min-btn" onclick="switchView('musicians', document.querySelector(\`.bnav-btn[onclick*=\\'musicians\\']\`))">VER MINISTERIO</button>
+      </section>
+      <section class="home-card">
+        <div class="home-card-head"><h2>Canciones de Día</h2><button class="hm-list-btn" onclick="switchView('songs', document.querySelector(\`.bnav-btn[onclick*=\\'songs\\']\`))"><i class="fa-solid fa-list"></i> Ver lista</button></div>
+        ${songsHtml}
+      </section>
+      <div class="hm-bottom-grid">
+        <section class="hm-info-card ensayo" onclick="${ensayo?`openEvDetailModal('${ensayo.id}')`:''}">
+          <div class="hm-info-title">Ensayo<br>Programado</div>
+          <div class="hm-info-line"><i class="fa-solid fa-calendar-days"></i> ${ensayo ? fmtDate(ensayo.date).replace(/\s\d{4}$/,'') : 'Sin ensayo'}</div>
+          <div class="hm-info-line"><i class="fa-solid fa-clock"></i> ${ensayo?.time || '—'}</div>
+          <div class="hm-info-line"><i class="fa-solid fa-location-dot"></i> ${ensayo?.venue || '—'}</div>
+        </section>
+        <section class="hm-info-card bday" onclick="openBirthdayPanel()">
+          <div class="hm-info-title">Cumpleaños</div>
+          <div class="hm-info-line"><i class="fa-solid fa-cake-candles"></i> ${bday ? (bday.fullName || bday.displayName || bday.name) : 'Sin datos'}</div>
+          <div class="hm-info-line"><i class="fa-solid fa-calendar-days"></i> ${bdayDate}</div>
+          <div class="hm-info-line"><i class="fa-solid fa-location-dot"></i> ${bday?.cargo || bday?.role || 'Ministerio'}</div>
+        </section>
+      </div>
+    </div>`;
+}
 function renderEL() {
   const c = document.getElementById('ev-list');
   const td = today();
   const evArr = Object.values(events).sort((a,b) => {
     const aP = a.date < td, bP = b.date < td;
-    if(!aP && bP) return -1;  // upcoming before past
+    if(!aP && bP) return -1;
     if(aP && !bP) return 1;
-    if(aP && bP) return b.date.localeCompare(a.date); // most recent past first
-    return a.date.localeCompare(b.date); // nearest upcoming first
+    if(aP && bP) return b.date.localeCompare(a.date);
+    return a.date.localeCompare(b.date);
   });
-  if(!evArr.length) { c.innerHTML=`<div class="empty-s"><div class="ei">🎶</div>Sin eventos aún</div>`; return; }
+  const nextEv = evArr.find(ev => ev.date >= td) || evArr[0] || null;
+  renderHomeDashboard(nextEv);
+  if(!c) return;
+  if(!evArr.length) { c.innerHTML=`<div class="empty-s"><div class="ei"><i class="fa-solid fa-music"></i></div>Sin eventos aún</div>`; return; }
   c.innerHTML = evArr.map(ev => {
     const isT=ev.date===td, isPast=ev.date<td;
     const badge=isT?'<span class="ev-badge bdg-t">HOY</span>':isPast?'<span class="ev-badge bdg-d">Pasado</span>':'<span class="ev-badge bdg-p">Próximo</span>';
     const assignees = ev.assignees ? Object.values(ev.assignees) : [];
-    const chips = assignees.slice(0,3).map(a=>`<span class="av-chip">${a.name.split(' ')[0]}</span>`).join('');
-    const more = assignees.length>3?`<span class="av-chip">+${assignees.length-3}</span>`:'';
+    const venue = ev.venue || 'IGLESIA MONTE';
+    const assigneeNames = assignees.length ? assignees.map(a=>_mdFirstName(a.name)).slice(0,3).join(', ') : 'Sin encargados';
     return `<div class="ev-card" onclick="openEvDetailModal('${ev.id}')">
-      <div class="ec-top"><div class="ec-title">${ev.title}</div>${badge}</div>
-      <div class="ec-meta">
-        <span>📅 ${fmtDate(ev.date)}</span>${ev.time?`<span>⏰ ${ev.time}</span>`:''}${ev.venue?`<span>📍 ${ev.venue}</span>`:''}
+      <div class="ev-date-badge"><div class="day">${_mdDay(ev.date)}</div><div class="mon">${_mdMonth(ev.date)}</div></div>
+      <div>
+        <div class="ec-title">${ev.title} ${badge}</div>
+        <div class="ec-sub">${venue} ${ev.time || ''}</div>
+        <div class="ec-meta" style="display:none;">${assigneeNames}</div>
       </div>
-      ${assignees.length?`<div class="ec-chips">${chips}${more}</div>`:''}
+      <div class="ec-side"><i class="fa-solid fa-users"></i> ${assignees.length}</div>
     </div>`;
   }).join('');
-  // Render hero with nearest upcoming/today event
-  const nextEv = evArr.find(ev => ev.date >= td) || evArr[0];
-  renderNextEventHero(nextEv);
 }
+
 
 function renderNextEventHero(ev) {
   const hero = document.getElementById('next-ev-hero');
@@ -3256,6 +3529,7 @@ function switchView(name, btn) {
   if(view) view.classList.add('active');
   if(btn) btn.classList.add('active');
   if(name==='songs') renderSongsList();
+  if(name==='home') renderHomeDashboard();
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -5631,7 +5905,7 @@ musicians[DEMO_ADMIN.id] = {
   displayName:'Admin.L', unavailDates:{}, createdAt:0
 };
 
-document.getElementById('view-events').classList.add('active');
+document.getElementById('view-home').classList.add('active');
 buildLoginSection();  // shows AdminLider card with password field
 initApp();
 setTimeout(startReminderEngine, 2000);
