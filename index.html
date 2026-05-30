@@ -7315,14 +7315,27 @@ setTimeout(startReminderEngine, 2000);
 <script id="fix-ios-pull-blank">
 (function(){
   var startY = 0;
+  var startX = 0;
   document.addEventListener('touchstart', function(e){
-    if(e.touches && e.touches.length) startY = e.touches[0].clientY;
+    if(e.touches && e.touches.length){
+      startY = e.touches[0].clientY;
+      startX = e.touches[0].clientX;
+    }
   }, {passive:true});
   document.addEventListener('touchmove', function(e){
+    // IMPORTANTE: no bloquear los carruseles horizontales de etiquetas.
+    // Antes este bloqueo anti rebote de iPhone interceptaba el swipe horizontal
+    // y por eso las etiquetas de Ministerio no respondían a la primera.
+    if(e.target.closest && e.target.closest('#min-filter-bar, .horizontal-scroll, .filters')) return;
+
     var scroller = e.target.closest ? e.target.closest('.scroll-area') : null;
     if(!scroller) return;
     var y = e.touches && e.touches.length ? e.touches[0].clientY : startY;
+    var x = e.touches && e.touches.length ? e.touches[0].clientX : startX;
     var dy = y - startY;
+    var dx = x - startX;
+    // Si el movimiento es más horizontal que vertical, dejarlo libre.
+    if(Math.abs(dx) > Math.abs(dy)) return;
     var atTop = scroller.scrollTop <= 0;
     var atBottom = Math.ceil(scroller.scrollTop + scroller.clientHeight) >= scroller.scrollHeight;
     if((atTop && dy > 0) || (atBottom && dy < 0)) e.preventDefault();
@@ -7659,6 +7672,110 @@ setTimeout(startReminderEngine, 2000);
     }
   }
 </style>
+
+
+
+<!-- Ajuste final: swipe horizontal fluido en etiquetas de Ministerio para Android/iPhone/PC -->
+<style id="fix-ministerio-tags-scroll-mobile-final">
+  #view-musicians #min-filter-bar,
+  #min-filter-bar{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    max-width:100%!important;
+    width:100%!important;
+    box-sizing:border-box!important;
+    padding:10px 4px 10px 4px!important;
+    gap:8px!important;
+    -webkit-overflow-scrolling:touch!important;
+    scrollbar-width:none!important;
+    touch-action:pan-x!important;
+    overscroll-behavior-x:contain!important;
+    overscroll-behavior-y:auto!important;
+    scroll-snap-type:none!important;
+    cursor:grab!important;
+    user-select:none!important;
+    -webkit-user-select:none!important;
+    position:relative!important;
+    z-index:5!important;
+  }
+  #view-musicians #min-filter-bar::-webkit-scrollbar,
+  #min-filter-bar::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;}
+  #view-musicians #min-filter-bar .min-filter-btn,
+  #min-filter-bar .min-filter-btn{
+    flex:0 0 auto!important;
+    white-space:nowrap!important;
+    min-width:max-content!important;
+    touch-action:pan-x!important;
+    -webkit-tap-highlight-color:transparent!important;
+  }
+  #min-filter-bar.is-touch-scrolling .min-filter-btn,
+  #min-filter-bar.is-dragging .min-filter-btn{pointer-events:none!important;}
+</style>
+<script id="fix-ministerio-tags-scroll-mobile-final">
+(function(){
+  function initTagsScroll(){
+    var bar = document.getElementById('min-filter-bar');
+    if(!bar || bar.dataset.mobileScrollFix === '1') return;
+    bar.dataset.mobileScrollFix = '1';
+
+    var active = false, startX = 0, startY = 0, startScroll = 0, moved = false;
+
+    function getPoint(e){
+      if(e.touches && e.touches.length) return e.touches[0];
+      if(e.changedTouches && e.changedTouches.length) return e.changedTouches[0];
+      return e;
+    }
+
+    bar.addEventListener('touchstart', function(e){
+      var p = getPoint(e);
+      active = true;
+      moved = false;
+      startX = p.clientX;
+      startY = p.clientY;
+      startScroll = bar.scrollLeft;
+      bar.classList.add('is-touch-scrolling');
+    }, {passive:true});
+
+    bar.addEventListener('touchmove', function(e){
+      if(!active) return;
+      var p = getPoint(e);
+      var dx = p.clientX - startX;
+      var dy = p.clientY - startY;
+      if(Math.abs(dx) > 2) moved = true;
+      // Cuando el gesto es horizontal, mover manualmente el carrusel y no dejar
+      // que el scroll vertical o el anti-rebote capture el toque.
+      if(Math.abs(dx) > Math.abs(dy)){
+        bar.scrollLeft = startScroll - dx;
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, {passive:false});
+
+    function endTouch(){
+      if(!active) return;
+      active = false;
+      setTimeout(function(){
+        moved = false;
+        bar.classList.remove('is-touch-scrolling');
+      }, 80);
+    }
+    bar.addEventListener('touchend', endTouch, {passive:true});
+    bar.addEventListener('touchcancel', endTouch, {passive:true});
+
+    bar.addEventListener('click', function(e){
+      if(moved){
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initTagsScroll);
+  else initTagsScroll();
+})();
+</script>
 
 </body>
 
