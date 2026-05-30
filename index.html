@@ -7713,67 +7713,56 @@ setTimeout(startReminderEngine, 2000);
   #min-filter-bar.is-touch-scrolling .min-filter-btn,
   #min-filter-bar.is-dragging .min-filter-btn{pointer-events:none!important;}
 </style>
-<script id="fix-ministerio-tags-scroll-mobile-final">
+
+
+<style id="fix-ministerio-tags-click-scroll-final-ok">
+/* Corrección final: scroll horizontal nativo y filtros sin retraso.
+   No se usa JS táctil encima de los botones para no bloquear el onclick original. */
+#view-musicians #min-filter-bar,
+#min-filter-bar{
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  -webkit-overflow-scrolling:touch!important;
+  touch-action:pan-x!important;
+  scroll-behavior:auto!important;
+  cursor:grab!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+  scrollbar-width:none!important;
+}
+#view-musicians #min-filter-bar::-webkit-scrollbar,
+#min-filter-bar::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;}
+#view-musicians #min-filter-bar .min-filter-btn,
+#min-filter-bar .min-filter-btn{
+  flex:0 0 auto!important;
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+  cursor:pointer!important;
+  -webkit-tap-highlight-color:transparent!important;
+}
+#min-filter-bar.is-touch-scrolling .min-filter-btn{pointer-events:auto!important;}
+#min-filter-bar.is-dragging .min-filter-btn{pointer-events:none!important;}
+</style>
+<script id="fix-ministerio-tags-click-fallback-final-ok">
 (function(){
-  function initTagsScroll(){
+  function initMinFilterClickFallback(){
     var bar = document.getElementById('min-filter-bar');
-    if(!bar || bar.dataset.mobileScrollFix === '1') return;
-    bar.dataset.mobileScrollFix = '1';
-
-    var active = false, startX = 0, startY = 0, startScroll = 0, moved = false;
-
-    function getPoint(e){
-      if(e.touches && e.touches.length) return e.touches[0];
-      if(e.changedTouches && e.changedTouches.length) return e.changedTouches[0];
-      return e;
-    }
-
-    bar.addEventListener('touchstart', function(e){
-      var p = getPoint(e);
-      active = true;
-      moved = false;
-      startX = p.clientX;
-      startY = p.clientY;
-      startScroll = bar.scrollLeft;
-      bar.classList.add('is-touch-scrolling');
+    if(!bar || bar.dataset.clickFallbackReady === '1') return;
+    bar.dataset.clickFallbackReady = '1';
+    var sx=0, sy=0, moved=false;
+    bar.addEventListener('pointerdown', function(e){ sx=e.clientX; sy=e.clientY; moved=false; }, {passive:true});
+    bar.addEventListener('pointermove', function(e){ if(Math.abs(e.clientX-sx)>8 || Math.abs(e.clientY-sy)>8) moved=true; }, {passive:true});
+    bar.addEventListener('pointerup', function(e){
+      // Si fue un toque corto, asegurar el filtro incluso si algún estilo interceptó el click.
+      if(moved) return;
+      var btn = e.target.closest ? e.target.closest('.min-filter-btn') : null;
+      if(!btn || !bar.contains(btn)) return;
+      var m = (btn.getAttribute('onclick')||'').match(/setMinFilter\('([^']+)'/);
+      if(m && typeof window.setMinFilter === 'function') window.setMinFilter(m[1], btn);
     }, {passive:true});
-
-    bar.addEventListener('touchmove', function(e){
-      if(!active) return;
-      var p = getPoint(e);
-      var dx = p.clientX - startX;
-      var dy = p.clientY - startY;
-      if(Math.abs(dx) > 2) moved = true;
-      // Cuando el gesto es horizontal, mover manualmente el carrusel y no dejar
-      // que el scroll vertical o el anti-rebote capture el toque.
-      if(Math.abs(dx) > Math.abs(dy)){
-        bar.scrollLeft = startScroll - dx;
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    }, {passive:false});
-
-    function endTouch(){
-      if(!active) return;
-      active = false;
-      setTimeout(function(){
-        moved = false;
-        bar.classList.remove('is-touch-scrolling');
-      }, 80);
-    }
-    bar.addEventListener('touchend', endTouch, {passive:true});
-    bar.addEventListener('touchcancel', endTouch, {passive:true});
-
-    bar.addEventListener('click', function(e){
-      if(moved){
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    }, true);
   }
-
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initTagsScroll);
-  else initTagsScroll();
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', initMinFilterClickFallback);
+  else initMinFilterClickFallback();
 })();
 </script>
 
